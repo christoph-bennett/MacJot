@@ -8,8 +8,17 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     var onOpen: (URL) -> Void = { _ in }
     /// Context menu items for a Note.
     var menuItems: (URL) -> [NSMenuItem] = { _ in [] }
+    /// The Delete key was pressed on a Note; `next` is the Note to show afterwards.
+    var onDelete: (_ note: URL, _ next: URL?) -> Void = { _, _ in }
 
-    let tableView = NSTableView()
+    let tableView = NoteTableView()
+    /// The open Draft, if any, is a row of its own on top, so a new Note shows up
+    /// in the list straight away rather than once it gets its file.
+    private enum Row {
+        case draft(title: String)
+        case note(NoteSummary)
+    }
+    private var rows: [Row] = []
     private var notes: [NoteSummary] = []
     private var isSelectingProgrammatically = false
 
@@ -21,6 +30,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         tableView.rowHeight = 44
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.onDeleteKey = { [weak self] in self?.deleteSelected() }
         tableView.menu = {
             let menu = NSMenu()
             menu.delegate = self
@@ -37,7 +47,8 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     /// Shows `notes`, highlighting the open one without triggering `onOpen`.
     /// `keepingOrder` keeps known rows where they were (Notes new to the list go
     /// first), so rows don't jump while the user arrows through them.
-    func show(_ notes: [NoteSummary], selecting current: URL?, keepingOrder: Bool = false) {
+    /// `draftTitle` non-nil adds the open Draft as the selected top row.
+    func show(_ notes: [NoteSummary], selecting current: URL?, keepingOrder: Bool = false, draftTitle: String? = nil) {
         if keepingOrder {
             let previous = Dictionary(self.notes.enumerated().map { ($1.url, $0) }, uniquingKeysWith: { a, _ in a })
             self.notes = notes.filter { previous[$0.url] == nil }
@@ -45,38 +56,80 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         } else {
             self.notes = notes
         }
+        rows = (draftTitle.map { [Row.draft(title: $0)] } ?? []) + self.notes.map(Row.note)
         isSelectingProgrammatically = true
         defer { isSelectingProgrammatically = false }
         tableView.reloadData()
-        if let current, let row = notes.firstIndex(where: { $0.url.standardizedFileURL == current.standardizedFileURL }) {
-            tableView.selectRowIndexes([row], byExtendingSelection: false)
-            tableView.scrollRowToVisible(row)
+        let selected = draftTitle != nil ? 0 : current.flatMap { current in
+            rows.firstIndex { if case .note(let n) = $0 { n.url.standardizedFileURL == current.standardizedFileURL } else { false } }
+        }
+        if let selected {
+            tableView.selectRowIndexes([selected], byExtendingSelection: false)
+            tableView.scrollRowToVisible(selected)
         } else {
             tableView.deselectAll(nil)
         }
     }
 
+    /// Follows the Draft's Title as it's typed, without reloading the list.
+    func updateDraftTitle(_ title: String) {
+        guard case .draft = rows.first else { return }
+        rows[0] = .draft(title: title)
+        tableView.reloadData(forRowIndexes: [0], columnIndexes: [0])
+    }
+
+    private func note(at row: Int) -> NoteSummary? {
+        guard rows.indices.contains(row), case .note(let note) = rows[row] else { return nil }
+        return note
+    }
+
     // MARK: Table
 
-    func numberOfRows(in tableView: NSTableView) -> Int { notes.count }
+    func numberOfRows(in tableView: NSTableView) -> Int { rows.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let cell = tableView.makeView(withIdentifier: NoteRowView.identifier, owner: self) as? NoteRowView ?? NoteRowView()
-        cell.show(notes[row])
+        switch rows[row] {
+        case .draft(let title): cell.showDraft(title: title)
+        case .note(let note): cell.show(note)
+        }
         return cell
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
-        guard !isSelectingProgrammatically, notes.indices.contains(tableView.selectedRow) else { return }
-        onOpen(notes[tableView.selectedRow].url)
+        guard !isSelectingProgrammatically, let note = note(at: tableView.selectedRow) else { return }
+        onOpen(note.url)
+    }
+
+    /// The Draft row has no file, so there's nothing to delete.
+    private func deleteSelected() {
+        let row = tableView.selectedRow
+        guard let selected = note(at: row) else { return }
+        onDelete(selected.url, (note(at: row + 1) ?? note(at: row - 1))?.url)
     }
 
     // MARK: Context menu
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        guard notes.indices.contains(tableView.clickedRow) else { return }
-        menuItems(notes[tableView.clickedRow].url).forEach(menu.addItem)
+        guard let note = note(at: tableView.clickedRow) else { return }
+        menuItems(note.url).forEach(menu.addItem)
+    }
+}
+
+/// Sends ⌫ (Delete), ⌦ (fn-Delete, Forward Delete) and ⌘⌫ (Finder's Move to
+/// Trash) to `onDeleteKey`.
+final class NoteTableView: NSTableView {
+    var onDeleteKey: () -> Void = {}
+
+    override func keyDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        let isDelete = event.keyCode == 51 || event.keyCode == 117  // kVK_Delete, kVK_ForwardDelete
+        if isDelete, modifiers.isEmpty || modifiers == .command {
+            onDeleteKey()
+        } else {
+            super.keyDown(with: event)
+        }
     }
 }
 
@@ -111,6 +164,11 @@ private final class NoteRowView: NSTableCellView {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not used from nibs") }
+
+    func showDraft(title: String) {
+        self.title.stringValue = title
+        detail.stringValue = "New note"
+    }
 
     func show(_ note: NoteSummary) {
         title.stringValue = note.title

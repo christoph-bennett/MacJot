@@ -34,6 +34,11 @@ public final class NotesFolder {
     private var persistedText = ""
     private var isInRecovery = false
 
+    /// The open Note is a Draft: it has no file in the Notes Folder yet.
+    public var isDraft: Bool {
+        isOpen && currentNoteURL == nil
+    }
+
     /// The open Note is a Draft with nothing in it yet: closing it would leave no trace.
     public var isBlankDraft: Bool {
         isOpen && currentNoteURL == nil && Title.isBlank(latestText)

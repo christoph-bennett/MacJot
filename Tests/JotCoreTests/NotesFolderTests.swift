@@ -440,6 +440,24 @@ final class NotesFolderTests {
         #expect(try makeFolder().notes().map(\.title) == ["Note"])
     }
 
+    @Test func isDraftWhileTheOpenNoteHasNoFileYet() throws {
+        let folder = try makeFolder()
+        #expect(!folder.isDraft)
+        try folder.startDraft()
+        #expect(folder.isDraft)
+        folder.update(text: "Idea")
+        try folder.flush()
+        #expect(folder.isDraft)       // only in the Recovery Copy so far
+        folder.update(text: "Idea\n")
+        try folder.flush()
+        #expect(!folder.isDraft)      // has its file now
+    }
+
+    @Test func displayTitleOfDraftText() {
+        #expect(NoteSummary.displayTitle(of: "# **Plan** for Q4\nbody") == "Plan for Q4")
+        #expect(NoteSummary.displayTitle(of: "  \n") == nil)
+    }
+
     // MARK: Opening existing Notes
 
     @Test func openingAnExistingNoteReturnsItsTextAndSavesToIt() throws {

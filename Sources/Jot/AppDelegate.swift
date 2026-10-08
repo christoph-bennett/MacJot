@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var searchHotkey: GlobalHotkey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.register(defaults: [CapturePanelController.confirmTrashKey: true])
         let folder: NotesFolder
         do {
             folder = try NotesFolder(url: Self.defaultNotesFolderURL, recoveryURL: Self.recoveryURL) { url in

@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import JotCore
 
 /// The Capture Panel: a floating Markdown editor bound to the Notes Folder's open
@@ -46,6 +47,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             return actions(for: note)
         }
         noteList.onOpen = { [weak self] in self?.open($0) }
+        noteList.onDelete = { [weak self] note, next in self?.trashFromList(note, thenOpen: next) }
         noteList.menuItems = { [weak self] in self?.actions(for: $0) ?? [] }
         noteListItem.minimumThickness = 180
         noteListItem.maximumThickness = 320
@@ -66,6 +68,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         panel.initialFirstResponder = textView
         panel.delegate = self
         panel.onCancel = { [weak self] in self?.hide() }
+        panel.onShortcut = { [weak self] in self?.handleShortcut($0) ?? false }
         // Setting the content view controller resized the panel; restore the remembered frame.
         if !panel.setFrameUsingName(Self.frameAutosaveName) {
             panel.setContentSize(Self.defaultSize)
@@ -119,6 +122,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         }
         isShowingSaveError = false  // the previous Note was saved, so its failure streak is over
         display("", cursor: 0)
+        reloadNoteList()  // shows the Draft as the selected top row
         show()
     }
 
@@ -132,6 +136,18 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         noteListItem.isCollapsed = false
         show()
         panel.makeFirstResponder(noteList.tableView)
+    }
+
+    /// Matched by physical key: with Control held, the reported characters vary by
+    /// keyboard layout. (S and N sit in the same place on QWERTY and QWERTZ.)
+    private func handleShortcut(_ event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        switch (modifiers, Int(event.keyCode)) {
+        case ([.control, .command], kVK_ANSI_S): toggleNoteList()
+        case ([.command], kVK_ANSI_N): showNewDraft()
+        default: return false
+        }
+        return true
     }
 
     @objc func toggleNoteList() {
@@ -162,6 +178,21 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         reloadNoteList(keepingOrder: true)
     }
 
+    /// Asks first unless the user turned that off (Settings, ticket 14).
+    private func confirmTrash(_ note: URL, then proceed: @escaping () -> Void) {
+        guard UserDefaults.standard.bool(forKey: Self.confirmTrashKey) else { return proceed() }
+        let alert = NSAlert()
+        alert.messageText = "Move “\(note.lastPathComponent)” to the Trash?"
+        alert.informativeText = "You can restore it from the Trash in Finder."
+        alert.addButton(withTitle: "Move to Trash").hasDestructiveAction = true
+        alert.addButton(withTitle: "Cancel").keyEquivalent = "\u{1b}"
+        alert.beginSheetModal(for: panel) { response in
+            if response == .alertFirstButtonReturn { proceed() }
+        }
+    }
+
+    static let confirmTrashKey = "confirmBeforeMovingToTrash"
+
     private func trash(_ note: URL) {
         let wasOpen = folder.currentNoteURL?.standardizedFileURL == note.standardizedFileURL
         do {
@@ -175,11 +206,26 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         reloadNoteList()
     }
 
+    /// Delete key in the Note List: trash the selected Note and, like Mail, move on
+    /// to the next one, keeping focus in the list.
+    private func trashFromList(_ note: URL, thenOpen next: URL?) {
+        confirmTrash(note) { [weak self] in
+            guard let self else { return }
+            trash(note)
+            if let next {
+                open(next)
+            } else if folder.currentNoteURL == nil {
+                showNewDraft()
+            }
+            panel.makeFirstResponder(noteList.tableView)
+        }
+    }
+
     private func actions(for note: URL) -> [NSMenuItem] {
         NoteActions.items(
             for: note,
             prepare: { [weak self] in self?.save { try $0.flush() } },
-            trash: { [weak self] in self?.trash($0) }
+            trash: { [weak self] note in self?.confirmTrash(note) { self?.trash(note) } }
         )
     }
 
@@ -188,10 +234,15 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private func reloadNoteList(evenIfCollapsed: Bool = false, keepingOrder: Bool = false) {
         guard evenIfCollapsed || !noteListItem.isCollapsed else { return }
         do {
-            noteList.show(try folder.notes(), selecting: folder.currentNoteURL, keepingOrder: keepingOrder)
+            noteList.show(try folder.notes(), selecting: folder.currentNoteURL, keepingOrder: keepingOrder,
+                          draftTitle: folder.isDraft ? draftTitle : nil)
         } catch {
             NSLog("Jot: couldn't list notes: \(error)")
         }
+    }
+
+    private var draftTitle: String {
+        NoteSummary.displayTitle(of: textView.string) ?? "New Note"
     }
 
     /// Replaces the editor's text (no undo across Notes) and places the cursor.
@@ -269,6 +320,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     func textDidChange(_ notification: Notification) {
         folder.update(text: textView.string)
+        if folder.isDraft, !noteListItem.isCollapsed { noteList.updateDraftTitle(draftTitle) }
         cancelAutosave()
         autosave = Task { [weak self] in
             try? await Task.sleep(for: Self.autosaveDelay)
@@ -364,12 +416,24 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     }
 }
 
-/// Sends `Esc` that no view handled (e.g. in the Note List) to the controller.
+/// Sends `Esc` that no view handled (e.g. in the Note List) to the controller, and
+/// handles the panel's own shortcuts. Neither the main menu nor
+/// `performKeyEquivalent` can be relied on for those: the panel is non-activating,
+/// and while Jot isn't the active app macOS hands ⌘-keys straight to the focused
+/// view (⌃⌘S typed commas into the editor, ⌘N type-selected in the Note List).
+/// So they're caught here, as the panel receives them.
 final class CapturePanel: NSPanel {
     var onCancel: () -> Void = {}
+    /// Return true if the shortcut was handled.
+    var onShortcut: (NSEvent) -> Bool = { _ in false }
 
     override func cancelOperation(_ sender: Any?) {
         onCancel()
+    }
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown, event.modifierFlags.contains(.command), onShortcut(event) { return }
+        super.sendEvent(event)
     }
 }
 

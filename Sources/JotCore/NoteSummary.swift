@@ -31,6 +31,15 @@ public struct NoteSummary: Equatable {
         self.preview = String(preview.prefix(200))
     }
 
+    /// The Title of `text` without its Markdown, as the Note List shows it; `nil`
+    /// if there is no Title (yet). For a Draft, which has no summary of its own.
+    public static func displayTitle(of text: String) -> String? {
+        let ns = text as NSString
+        guard let line = NoteStructure(ns).titleLine else { return nil }
+        let title = plain(ns, line: line)
+        return title.isEmpty ? nil : title
+    }
+
     /// The line with its Markdown markers removed, as the editor would dim them.
     private static func plain(_ ns: NSString, line: NSRange) -> String {
         let text = ns as String
