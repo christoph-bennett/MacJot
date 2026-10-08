@@ -16,6 +16,11 @@ public final class NotesFolder {
     public let url: URL
     private let recoveryURL: URL
     private let moveToTrash: Trash
+    private let clock: () -> Date
+
+    /// New Notes' filenames start with their creation day (`2026-10-08-plan.md`).
+    /// Affects only Notes created from now on; existing files keep their names.
+    public var usesDatePrefix: Bool
 
     /// File of the open Note; `nil` while it is still a Draft or after leaving.
     public private(set) var currentNoteURL: URL?
@@ -27,6 +32,10 @@ public final class NotesFolder {
     public private(set) var leaveCount = 0
     /// The slug the open Note's file was named from (its name may carry a `-2` suffix).
     private var currentSlug: String?
+    /// The open Note's Date Prefix, kept when it's renamed; empty if it has none.
+    private var currentPrefix = ""
+    /// When the open Draft was started: its creation day, for the Date Prefix.
+    private var draftStarted: Date
 
     private var isOpen = false
     private var latestText = ""
@@ -46,10 +55,14 @@ public final class NotesFolder {
 
     /// Creates the Notes Folder if needed and turns a Recovery Copy left by a
     /// crash into a Note.
-    public init(url: URL, recoveryURL: URL, trash: @escaping Trash) throws {
+    public init(url: URL, recoveryURL: URL, clock: @escaping () -> Date = Date.init, datePrefix: Bool = false,
+                trash: @escaping Trash) throws {
         self.url = url
         self.recoveryURL = recoveryURL
         self.moveToTrash = trash
+        self.clock = clock
+        self.usesDatePrefix = datePrefix
+        draftStarted = clock()
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(
             at: recoveryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -65,6 +78,8 @@ public final class NotesFolder {
         isInRecovery = false
         currentNoteURL = nil
         currentSlug = nil
+        currentPrefix = ""
+        draftStarted = clock()
     }
 
     public func update(text: String) {
@@ -104,6 +119,7 @@ public final class NotesFolder {
         isOpen = false
         currentNoteURL = nil
         currentSlug = nil
+        currentPrefix = ""
         lastLeftNoteURL = left
         leaveCount += 1
         return wrote
@@ -116,7 +132,7 @@ public final class NotesFolder {
     /// every autosave, and summarising every line of every Note each time adds up.
     public func notes() throws -> [NoteSummary] {
         let files = try FileManager.default.contentsOfDirectory(
-            at: url, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles])
+            at: url, includingPropertiesForKeys: [.contentModificationDateKey, .creationDateKey], options: [.skipsHiddenFiles])
         let notes = files
             .filter { $0.pathExtension.lowercased() == "md" }
             .compactMap { file -> NoteSummary? in
@@ -124,11 +140,19 @@ public final class NotesFolder {
                     ?? .distantPast
                 if let cached = summaries[file], cached.modified == modified { return cached }
                 guard let text = try? String(contentsOf: file, encoding: .utf8) else { return nil }
-                return NoteSummary(url: file, text: text, modified: modified)
+                return NoteSummary(url: file, text: text, modified: modified, created: created(file, text: text))
             }
             .sorted { $0.modified > $1.modified }
         summaries = Dictionary(notes.map { ($0.url, $0) }, uniquingKeysWith: { a, _ in a })
         return notes
+    }
+
+    /// From the Date Prefix if the file has one, else the file system's creation date.
+    private func created(_ file: URL, text: String) -> Date {
+        let slug = Title.slug(Title.of(text) ?? "")
+        if let prefix = DatePrefix.of(fileName: file.lastPathComponent, titleSlug: slug),
+           let day = DatePrefix.day(of: prefix) { return day }
+        return (try? file.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
     }
 
     /// The last `notes()`, by file.
@@ -149,7 +173,9 @@ public final class NotesFolder {
         persistedText = text
         isInRecovery = false
         currentNoteURL = note
-        currentSlug = Title.slug(Title.of(text) ?? "")
+        let slug = Title.slug(Title.of(text) ?? "")
+        currentSlug = slug
+        currentPrefix = DatePrefix.of(fileName: note.lastPathComponent, titleSlug: slug) ?? ""
         return text
     }
 
@@ -160,6 +186,7 @@ public final class NotesFolder {
             isOpen = false
             currentNoteURL = nil
             currentSlug = nil
+            currentPrefix = ""
         }
     }
 
@@ -186,8 +213,10 @@ public final class NotesFolder {
 
         if materialising || Title.isFinished(text) {
             let slug = Title.slug(Title.of(text) ?? "")
-            currentNoteURL = try create(Data(text.utf8), slug: slug)
+            let prefix = newPrefix(createdAt: draftStarted)
+            currentNoteURL = try create(Data(text.utf8), name: prefix + slug)
             currentSlug = slug
+            currentPrefix = prefix
             persistedText = text
             try discardRecoveryCopy()
             return true
@@ -214,7 +243,9 @@ public final class NotesFolder {
         }
         let text = String(decoding: data, as: UTF8.self)
         if !Title.isBlank(text), try !hasNote(identicalTo: data) {
-            _ = try create(data, slug: Title.slug(Title.of(text) ?? ""))
+            // Dated by the copy's last write, close to when the Draft was written, not by the relaunch.
+            let written = (try? recoveryURL.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? clock()
+            _ = try create(data, name: newPrefix(createdAt: written) + Title.slug(Title.of(text) ?? ""))
         }
         try removeRecoveryCopy()
     }
@@ -246,27 +277,32 @@ public final class NotesFolder {
     private func renameIfNeeded(_ file: URL) throws -> Bool {
         let slug = Title.slug(Title.of(latestText) ?? "")
         guard slug != currentSlug else { return false }
-        currentNoteURL = try place(file, slug: slug)
+        currentNoteURL = try place(file, name: currentPrefix + slug)
         currentSlug = slug
         return true
     }
 
     /// Writes a new Note's file. The text goes to a hidden temporary file first
     /// and is then moved into place, so the Note appears complete or not at all.
-    private func create(_ data: Data, slug: String) throws -> URL {
+    private func create(_ data: Data, name: String) throws -> URL {
         let temporary = url.appendingPathComponent(".jot-\(UUID().uuidString).tmp")
         try data.write(to: temporary)
         defer { try? FileManager.default.removeItem(at: temporary) }
-        return try place(temporary, slug: slug)
+        return try place(temporary, name: name)
     }
 
-    /// Moves `source` to the first free `<slug>.md`, `<slug>-2.md`, … `RENAME_EXCL`
+    /// The Date Prefix for a Note created now, if they're on.
+    private func newPrefix(createdAt date: Date) -> String {
+        usesDatePrefix ? DatePrefix.string(for: date) : ""
+    }
+
+    /// Moves `source` to the first free `<name>.md`, `<name>-2.md`, … `RENAME_EXCL`
     /// makes each attempt fail rather than replace a file that appeared in the meantime.
-    private func place(_ source: URL, slug: String) throws -> URL {
+    private func place(_ source: URL, name: String) throws -> URL {
         var suffix = 1
         while true {
-            let name = suffix == 1 ? "\(slug).md" : "\(slug)-\(suffix).md"
-            let candidate = url.appendingPathComponent(name)
+            let file = suffix == 1 ? "\(name).md" : "\(name)-\(suffix).md"
+            let candidate = url.appendingPathComponent(file)
             if renamex_np(source.path, candidate.path, UInt32(RENAME_EXCL)) == 0 {
                 return candidate
             }

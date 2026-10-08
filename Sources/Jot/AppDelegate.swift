@@ -6,14 +6,20 @@ import ServiceManagement
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var panel: CapturePanelController?
+    private let settings = SettingsWindowController()
     private var captureHotkey: GlobalHotkey?
     private var searchHotkey: GlobalHotkey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        UserDefaults.standard.register(defaults: [CapturePanelController.confirmTrashKey: true])
+        let defaults = UserDefaults.standard
+        defaults.register(defaults: [
+            CapturePanelController.confirmTrashKey: true,
+            SettingsWindowController.datePrefixKey: false,
+        ])
         let folder: NotesFolder
         do {
-            folder = try NotesFolder(url: Self.defaultNotesFolderURL, recoveryURL: Self.recoveryURL) { url in
+            folder = try NotesFolder(url: Self.defaultNotesFolderURL, recoveryURL: Self.recoveryURL,
+                                     datePrefix: defaults.bool(forKey: SettingsWindowController.datePrefixKey)) { url in
                 try FileManager.default.trashItem(at: url, resultingItemURL: nil)
             }
         } catch {
@@ -21,9 +27,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        settings.onDatePrefixChange = { [weak folder] in folder?.usesDatePrefix = $0 }
         let panel = CapturePanelController(folder: folder)
+        panel.onShowSettings = { [weak self] in self?.showSettings() }
         self.panel = panel
-        NSApp.mainMenu = MainMenu.make(newNoteTarget: panel)
+        NSApp.mainMenu = MainMenu.make(newNoteTarget: panel, settingsTarget: self)
         statusItem = makeStatusItem()
         registerHotkeys()
         registerLaunchAtLoginOnFirstRun()
@@ -44,6 +52,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Show Notes", action: #selector(showNotes), keyEquivalent: "").target = self
         menu.addItem(.separator())
+        menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
+        menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Jot", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu
         return item
@@ -55,6 +65,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showNotes() {
         panel?.showNotes()
+    }
+
+    @objc func showSettings() {
+        settings.show()
     }
 
     // MARK: Hotkeys

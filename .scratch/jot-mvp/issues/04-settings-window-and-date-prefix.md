@@ -4,12 +4,12 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Settings… menu item opens a single Settings window (re-focuses if already open)
-- [ ] Date Prefix toggle persists across relaunch; default off
-- [ ] Prefix on, created 2026-10-08 → `2026-10-08-<slug>.md`
-- [ ] Prefix on, Note later retitled → `2026-10-08-<new-slug>.md` (date unchanged)
-- [ ] Prefix switched on after a Note exists → existing filename unchanged
-- [ ] Created date derived from prefix when present, else file creation date
-- [ ] Seam 1 tests cover the prefix cases with an injected clock
+- [x] Settings… menu item opens a single Settings window (re-focuses if already open)
+- [x] Date Prefix toggle persists across relaunch; default off
+- [x] Prefix on, created 2026-10-08 → `2026-10-08-<slug>.md`
+- [x] Prefix on, Note later retitled → `2026-10-08-<new-slug>.md` (date unchanged)
+- [x] Prefix switched on after a Note exists → existing filename unchanged
+- [x] Created date derived from prefix when present, else file creation date
+- [x] Seam 1 tests cover the prefix cases with an injected clock

@@ -9,12 +9,15 @@ public struct NoteSummary: Equatable {
     /// searching, the snippet around the match instead.
     public let preview: String
     public let modified: Date
+    /// From the Date Prefix if the filename has one, else the file's creation date.
+    public let created: Date
     /// What search looks at, held in memory (the in-memory Search Index).
     private let content: Content
 
-    init(url: URL, text: String, modified: Date) {
+    init(url: URL, text: String, modified: Date, created: Date) {
         self.url = url
         self.modified = modified
+        self.created = created
         content = Content(text)
         title = content.title ?? "Untitled"
         preview = String((content.lines.first ?? "").prefix(Self.previewLength))
@@ -24,6 +27,7 @@ public struct NoteSummary: Equatable {
         url = note.url
         title = note.title
         modified = note.modified
+        created = note.created
         content = note.content
         self.preview = preview
     }

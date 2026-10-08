@@ -7,6 +7,8 @@ final class NotesFolderTests {
     let root: URL
     let support: URL
     var trashed: [String] = []
+    /// The injected clock's time.
+    var now = day(2026, 10, 8, hour: 12)
     var trashedContents: [String] = []
 
     init() throws {
@@ -25,8 +27,9 @@ final class NotesFolderTests {
     private var recoveryURL: URL { support.appendingPathComponent("recovery.md") }
 
     /// Records trashed filenames and removes the file, as the system Trash would.
-    private func makeFolder() throws -> NotesFolder {
-        try NotesFolder(url: root, recoveryURL: recoveryURL) { [unowned self] url in
+    private func makeFolder(datePrefix: Bool = false) throws -> NotesFolder {
+        try NotesFolder(url: root, recoveryURL: recoveryURL, clock: { [unowned self] in now },
+                        datePrefix: datePrefix) { [unowned self] url in
             trashed.append(url.lastPathComponent)
             trashedContents.append(try String(contentsOf: url, encoding: .utf8))
             try FileManager.default.removeItem(at: url)
@@ -696,4 +699,144 @@ final class NotesFolderTests {
         try folder.leave()
         #expect(try contents("keep-me.md") == "Keep me")
     }
+
+    // MARK: Date Prefix
+
+    /// A Note written in a Draft started at `now` and left.
+    private func writeDraft(_ folder: NotesFolder, _ text: String) throws {
+        try folder.startDraft()
+        folder.update(text: text)
+        try folder.leave()
+    }
+
+    /// Opens `name`, replaces its text and leaves it.
+    private func edit(_ folder: NotesFolder, _ name: String, to text: String) throws {
+        _ = try folder.open(root.appendingPathComponent(name))
+        folder.update(text: text)
+        try folder.leave()
+    }
+
+    @Test func datePrefixIsOffByDefault() throws {
+        try writeDraft(try makeFolder(), "Plan")
+        #expect(try files() == ["plan.md"])
+    }
+
+    @Test func datePrefixNamesANewNoteAfterItsCreationDay() throws {
+        try writeDraft(try makeFolder(datePrefix: true), "Plan")
+        #expect(try files() == ["2026-10-08-plan.md"])
+    }
+
+    @Test func datePrefixIsTheDayTheDraftWasStarted() throws {
+        let folder = try makeFolder(datePrefix: true)
+        now = day(2026, 10, 8, hour: 23, minute: 59)
+        try folder.startDraft()
+        folder.update(text: "Late idea")
+        now = day(2026, 10, 9, hour: 0, minute: 1)
+        try folder.leave()
+        #expect(try files() == ["2026-10-08-late-idea.md"])
+    }
+
+    @Test func retitlingKeepsTheDatePrefix() throws {
+        let folder = try makeFolder(datePrefix: true)
+        try writeDraft(folder, "Plan")
+        now = day(2026, 12, 24)
+        try edit(folder, "2026-10-08-plan.md", to: "New plan")
+        #expect(try files() == ["2026-10-08-new-plan.md"])
+    }
+
+    @Test func prefixedNotesWithTheSameTitleGetSuffixes() throws {
+        let folder = try makeFolder(datePrefix: true)
+        try writeDraft(folder, "Plan")
+        try writeDraft(folder, "Plan")
+        #expect(try files() == ["2026-10-08-plan-2.md", "2026-10-08-plan.md"])
+        try edit(folder, "2026-10-08-plan-2.md", to: "Other")
+        #expect(try files() == ["2026-10-08-other.md", "2026-10-08-plan.md"])
+    }
+
+    @Test func switchingThePrefixOnLeavesExistingNotesAlone() throws {
+        let folder = try makeFolder()
+        try writeDraft(folder, "Plan")
+        folder.usesDatePrefix = true
+        try edit(folder, "plan.md", to: "Plan\nmore")
+        #expect(try files() == ["plan.md"])
+        try edit(folder, "plan.md", to: "Renamed")
+        #expect(try files() == ["renamed.md"])
+        try writeDraft(folder, "Fresh")
+        #expect(try files() == ["2026-10-08-fresh.md", "renamed.md"])
+    }
+
+    @Test func switchingThePrefixOffKeepsExistingPrefixes() throws {
+        let folder = try makeFolder(datePrefix: true)
+        try writeDraft(folder, "Plan")
+        folder.usesDatePrefix = false
+        try edit(folder, "2026-10-08-plan.md", to: "Renamed")
+        try writeDraft(folder, "Fresh")
+        #expect(try files() == ["2026-10-08-renamed.md", "fresh.md"])
+    }
+
+    @Test func aDateInTheTitleIsNotMistakenForAPrefix() throws {
+        let folder = try makeFolder()
+        try writeDraft(folder, "2026-10-08 meeting")
+        #expect(try files() == ["2026-10-08-meeting.md"])
+        try edit(folder, "2026-10-08-meeting.md", to: "Standup")
+        #expect(try files() == ["standup.md"])
+    }
+
+    @Test func prefixedNoteWhoseTitleStartsWithADateKeepsBoth() throws {
+        let folder = try makeFolder(datePrefix: true)
+        try writeDraft(folder, "2026-01-01 review")
+        #expect(try files() == ["2026-10-08-2026-01-01-review.md"])
+        try edit(folder, "2026-10-08-2026-01-01-review.md", to: "Review")
+        #expect(try files() == ["2026-10-08-review.md"])
+    }
+
+    @Test func recoveryCopyRestoredWithThePrefixOnGetsTodaysDate() throws {
+        try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        try "Crashed idea".write(to: recoveryURL, atomically: true, encoding: .utf8)
+        _ = try makeFolder(datePrefix: true)
+        #expect(try files() == ["2026-10-08-crashed-idea.md"])
+    }
+
+    @Test func recoveryCopyIsDatedByItsFileNotTheRelaunch() throws {
+        try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        try "Late idea".write(to: recoveryURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.creationDate: day(2026, 10, 8, hour: 23, minute: 50)],
+                                              ofItemAtPath: recoveryURL.path)
+        now = day(2026, 10, 9, hour: 8)
+        _ = try makeFolder(datePrefix: true)
+        #expect(try files() == ["2026-10-08-late-idea.md"])
+    }
+
+    /// A date someone put in front of a filename is never dropped, even when the
+    /// name no longer follows the Title (renamed in Finder, or a crash before rename).
+    @Test func leadingDateOfANameThatDriftedFromTheTitleIsKept() throws {
+        try writeNote("2026-10-08-notes.md", "Plan")
+        try edit(try makeFolder(), "2026-10-08-notes.md", to: "Budget")
+        #expect(try files() == ["2026-10-08-budget.md"])
+    }
+
+    @Test func createdDateComesFromTheDatePrefix() throws {
+        try writeNote("2026-10-08-plan.md", "Plan")
+        let note = try #require(try makeFolder().notes().first)
+        #expect(note.created == day(2026, 10, 8, hour: 0))
+    }
+
+    @Test func createdDateWithoutPrefixIsTheFilesCreationDate() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let created = day(2025, 3, 1, hour: 9)
+        try FileManager.default.setAttributes([.creationDate: created], ofItemAtPath: url.path)
+        #expect(try makeFolder().notes().first?.created == created)
+    }
+
+    @Test func dateInTheTitleIsNotACreatedDate() throws {
+        let url = try writeNote("2026-10-08-meeting.md", "2026-10-08 meeting")
+        let created = day(2025, 3, 1, hour: 9)
+        try FileManager.default.setAttributes([.creationDate: created], ofItemAtPath: url.path)
+        #expect(try makeFolder().notes().first?.created == created)
+    }
+}
+
+/// A local time on a given day, as the clock would report it.
+private func day(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12, minute: Int = 0) -> Date {
+    Calendar.current.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
 }

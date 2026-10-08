@@ -20,6 +20,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private let cursors = CursorPositions()
     private var autosave: Task<Void, Never>?
     private var isShowingSaveError = false
+    /// ⌘, in the panel.
+    var onShowSettings: () -> Void = {}
 
     init(folder: NotesFolder) {
         self.folder = folder
@@ -153,12 +155,13 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     }
 
     /// Matched by physical key: with Control held, the reported characters vary by
-    /// keyboard layout. (S and N sit in the same place on QWERTY and QWERTZ.)
+    /// keyboard layout. (S, N and the comma sit in the same place on QWERTY and QWERTZ.)
     private func handleShortcut(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
         switch (modifiers, Int(event.keyCode)) {
         case ([.control, .command], kVK_ANSI_S): toggleNoteList()
         case ([.command], kVK_ANSI_N): showNewDraft()
+        case ([.command], kVK_ANSI_Comma): onShowSettings()
         default: return false
         }
         return true

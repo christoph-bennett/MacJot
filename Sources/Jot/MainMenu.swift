@@ -1,13 +1,17 @@
 import AppKit
 
 /// Jot never shows a menu bar of its own, but the main menu is what routes
-/// ⌘N, ⌃⌘S, ⌘C, ⌘V, ⌘Z, ⌘A, ⌘W and ⌘Q to the panel and text view.
+/// ⌘N, ⌃⌘S, ⌘C, ⌘V, ⌘Z, ⌘A, ⌘W, ⌘, and ⌘Q to the panel, text view and
+/// Settings window (the panel also catches its own, see `CapturePanel`).
 @MainActor
 enum MainMenu {
-    static func make(newNoteTarget: CapturePanelController) -> NSMenu {
+    static func make(newNoteTarget: CapturePanelController, settingsTarget: AppDelegate) -> NSMenu {
         let main = NSMenu()
 
         let app = NSMenu()
+        app.addItem(withTitle: "Settings…", action: #selector(AppDelegate.showSettings), keyEquivalent: ",")
+            .target = settingsTarget
+        app.addItem(.separator())
         app.addItem(withTitle: "Quit Jot", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         main.addItem(submenu: app, title: "Jot")
 
