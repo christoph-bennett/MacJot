@@ -10,6 +10,7 @@ final class GlobalHotkey {
         var modifiers: UInt32  // Carbon modifier mask, e.g. `controlKey | optionKey`
 
         static let defaultCapture = Combination(keyCode: UInt32(kVK_ANSI_N), modifiers: UInt32(controlKey | optionKey))
+        static let defaultSearch = Combination(keyCode: UInt32(kVK_ANSI_F), modifiers: UInt32(controlKey | optionKey))
     }
 
     enum RegistrationError: Error {

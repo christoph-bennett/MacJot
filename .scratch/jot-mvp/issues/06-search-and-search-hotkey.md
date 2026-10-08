@@ -1,5 +1,7 @@
 # 06: Search and the Search Hotkey
 
+**Already done in ticket 05 follow-up:** the Search Hotkey `⌃⌥F` and the full state matrix exist; from hidden it opens the Note List focused with the most recent Note in the editor. What remains here is the search field: `⌃⌥F` should then focus it instead of the list.
+
 **What to build:** The Note List gets a search field that filters live by Title and body, case- and diacritic-insensitive, held in memory. While searching, each row's preview shows the snippet around the match. Arrow keys move the selection and Return opens the selected Note. `Esc` clears a non-empty search; a second `Esc` closes the panel. The **Search Hotkey** (`⌃⌥F`, fixed default for now) summons the panel with the sidebar open, search focused and the most recently modified Note in the editor. The full hotkey state matrix applies:
 
 | Panel state | Capture Hotkey | Search Hotkey |

@@ -76,14 +76,31 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     // MARK: Showing and hiding
 
-    /// Capture Hotkey: hidden → new Draft; visible but not key → front, content kept; key → hide.
+    /// The panel is in "notes" mode while the Note List is open and has focus;
+    /// otherwise it's in "capture" mode (writing).
+    private var isInNotesMode: Bool {
+        !noteListItem.isCollapsed && panel.firstResponder === noteList.tableView
+    }
+
+    /// Capture Hotkey: hidden → new Draft; visible but not key → front, content
+    /// kept; key → hide, or a new Draft if the Note List had focus.
     func toggleCapture() {
         if panel.isKeyWindow {
-            hide()
+            if isInNotesMode { showNewDraft() } else { hide() }
         } else if panel.isVisible {
             show()
         } else {
             showNewDraft()
+        }
+    }
+
+    /// Search Hotkey: hidden → Note List with the most recent Note; visible but
+    /// not key → front with the list focused; key → hide, or the list if writing.
+    func toggleNotes() {
+        if panel.isKeyWindow, isInNotesMode {
+            hide()
+        } else {
+            showNotes()
         }
     }
 
@@ -105,9 +122,12 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         show()
     }
 
-    /// Shows the panel with the Note List expanded and focused.
+    /// Shows the panel with the Note List expanded and focused. From hidden, the
+    /// editor shows the most recently modified Note (a Draft if there are none).
     @objc func showNotes() {
-        if !panel.isVisible { showNewDraft() }
+        if !panel.isVisible {
+            if let recent = (try? folder.notes())?.first { open(recent.url) } else { showNewDraft() }
+        }
         reloadNoteList(evenIfCollapsed: true)
         noteListItem.isCollapsed = false
         show()
@@ -314,8 +334,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     }
 
     /// Undoable and autosaved like typing. The new text gets the plain attributes
-    /// up front, so it doesn't inherit the Title's font until the next restyle
-    /// (which made the caret oversized after Return on the Title line).
+    /// up front, so it doesn't inherit e.g. a heading's font until the next restyle
+    /// (which made the caret oversized after Return).
     private func apply(_ edit: TextEdit) {
         guard textView.shouldChangeText(in: edit.range, replacementString: edit.replacement),
               let storage = textView.textStorage else { return }

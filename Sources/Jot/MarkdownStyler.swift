@@ -2,15 +2,14 @@ import AppKit
 import JotCore
 
 /// Styles the editor's text as Markdown without changing a character: markers
-/// stay visible but dimmed. Restyles only the lines an edit touched, plus the
-/// Title line (which moves when lines above it change) and, if it changed,
-/// everything (frontmatter shifts every line below it).
+/// stay visible but dimmed. Restyles only the lines an edit touched (plus the
+/// next one), the frontmatter block, and everything when frontmatter appears
+/// or disappears. The Title line gets no special look: only `#` makes a heading.
 ///
 /// Colours are dynamic system colours, so light/dark switching needs no code.
 final class MarkdownStyler: NSObject, NSTextStorageDelegate {
     var baseSize: CGFloat = 14
 
-    private var lastTitle: NSRange?
     private var lastFrontmatter: NSRange?
 
     var baseAttributes: [NSAttributedString.Key: Any] {
@@ -26,37 +25,28 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
         guard editedMask.contains(.editedCharacters) else { return }
         let text = storage.string
         let length = (text as NSString).length
-        let title = MarkdownEditing.titleLineRange(in: text)
         let frontmatter = MarkdownEditing.frontmatterRange(in: text)
 
         var target = editedRange
         if (frontmatter == nil) != (lastFrontmatter == nil) {
             // A block appeared or disappeared: every line's role may have changed.
             target = NSRange(location: 0, length: length)
-        } else {
-            if let frontmatter { target = NSUnionRange(target, frontmatter) }
-            if var old = lastTitle {
-                if old.location >= editedRange.location { old.location += delta }
-                target = NSUnionRange(target, clamp(old, to: length))
-            }
-            if let title { target = NSUnionRange(target, title) }
+        } else if let frontmatter {
+            target = NSUnionRange(target, frontmatter)
         }
-        lastTitle = title
         lastFrontmatter = frontmatter
-        style(storage, range: clamp(target, to: length), title: title, frontmatter: frontmatter)
+        style(storage, range: clamp(target, to: length), frontmatter: frontmatter)
     }
 
     /// Restyles everything, e.g. after the font size changed.
     func restyleAll(_ storage: NSTextStorage) {
-        let text = storage.string
-        lastTitle = MarkdownEditing.titleLineRange(in: text)
-        lastFrontmatter = MarkdownEditing.frontmatterRange(in: text)
-        style(storage, range: NSRange(location: 0, length: storage.length), title: lastTitle, frontmatter: lastFrontmatter)
+        lastFrontmatter = MarkdownEditing.frontmatterRange(in: storage.string)
+        style(storage, range: NSRange(location: 0, length: storage.length), frontmatter: lastFrontmatter)
     }
 
     // MARK: Styling
 
-    private func style(_ storage: NSTextStorage, range: NSRange, title: NSRange?, frontmatter: NSRange?) {
+    private func style(_ storage: NSTextStorage, range: NSRange, frontmatter: NSRange?) {
         let ns = storage.string as NSString
         var lines = ns.lineRange(for: range)
         // A blank line's gap styling depends on the line before it, so the line
@@ -70,15 +60,11 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
         let isInFrontmatter = { (r: NSRange) in frontmatter.map { NSIntersectionRange($0, r).length > 0 } ?? false }
         let spans = MarkdownStyle.spans(in: storage.string, range: lines).filter { !isInFrontmatter($0.range) }
 
-        // Line size first (headings, Title), then traits, then markers on top.
+        // Line size first (headings), then traits, then markers on top.
         for span in spans {
             if case .heading(let level) = span.kind {
                 storage.addAttribute(.font, value: NSFont.systemFont(ofSize: headingSize(level), weight: .bold), range: span.range)
             }
-        }
-        if let title, NSIntersectionRange(title, lines).length > 0 {
-            let current = (storage.attribute(.font, at: title.location, effectiveRange: nil) as? NSFont)?.pointSize ?? baseSize
-            storage.addAttribute(.font, value: NSFont.systemFont(ofSize: max(current, baseSize * 1.5), weight: .bold), range: title)
         }
         for span in spans {
             switch span.kind {

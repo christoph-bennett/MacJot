@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var panel: CapturePanelController?
     private var captureHotkey: GlobalHotkey?
+    private var searchHotkey: GlobalHotkey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let folder: NotesFolder
@@ -23,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.panel = panel
         NSApp.mainMenu = MainMenu.make(newNoteTarget: panel)
         statusItem = makeStatusItem()
-        registerCaptureHotkey()
+        registerHotkeys()
         registerLaunchAtLoginOnFirstRun()
     }
 
@@ -57,14 +58,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Hotkeys
 
-    private func registerCaptureHotkey() {
+    private func registerHotkeys() {
+        // Failures are reported in Settings once hotkeys are configurable (ticket 13).
         do {
-            captureHotkey = try GlobalHotkey(.defaultCapture) { [weak self] in
-                self?.panel?.toggleCapture()
-            }
+            captureHotkey = try GlobalHotkey(.defaultCapture) { [weak self] in self?.panel?.toggleCapture() }
         } catch {
-            // Reported in Settings once hotkeys are configurable (ticket 13).
             NSLog("Jot: couldn't register the Capture Hotkey: \(error)")
+        }
+        do {
+            searchHotkey = try GlobalHotkey(.defaultSearch) { [weak self] in self?.panel?.toggleNotes() }
+        } catch {
+            NSLog("Jot: couldn't register the Search Hotkey: \(error)")
         }
     }
 
