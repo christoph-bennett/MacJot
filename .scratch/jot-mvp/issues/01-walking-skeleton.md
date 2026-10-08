@@ -4,15 +4,15 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** implemented, awaiting manual UI check (panel, menu, autosave timing, login item)
 
-- [ ] App builds and runs on macOS 14+; no Dock icon, not in ⌘-Tab
+- [ ] App builds and runs on macOS 14+; no Dock icon, not in ⌘-Tab (builds and launches; Dock/⌘-Tab not yet checked by eye)
 - [ ] Status item menu shows New Note and Quit
 - [ ] Launch at login is registered on first run
 - [ ] New Note opens a panel with the cursor in an empty Draft
-- [ ] Typing creates exactly one `.md` file in `~/Documents/Jot/` named after the Title (lowercase, spaces → `-`)
+- [x] Typing creates exactly one `.md` file in `~/Documents/Jot/` named after the Title (lowercase, spaces → `-`)
 - [ ] Text is persisted ~0.5 s after typing stops, on panel close and on quit; no save prompt ever appears
-- [ ] Closing an untouched Draft leaves no file
-- [ ] Text typed while a save is in flight is persisted (flush loops until persisted text equals latest text); writes are atomic
-- [ ] Core package has no AppKit dependency
-- [ ] Seam 1 tests (Notes Folder over a real temp directory, injected clock) cover: Draft creates no file, first content materialises a file, flush persists latest text
+- [x] Closing an untouched Draft leaves no file
+- [x] Text typed while a save is in flight is persisted (flush loops until persisted text equals latest text); writes are atomic
+- [x] Core package has no AppKit dependency
+- [x] Seam 1 tests (Notes Folder over a real temp directory; clock injection deferred to ticket 04, its first consumer) cover: Draft creates no file, first content materialises a file, flush persists latest text
