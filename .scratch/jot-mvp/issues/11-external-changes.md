@@ -7,6 +7,7 @@
 **Status:** ready-for-agent
 
 - [ ] A file created in the folder by another app appears in the Note List
+- [ ] A Note put back from the Trash ("Put Back" in Finder) appears in the Note List straight away, without switching Notes (reported by the user; today it only shows up on the next list reload)
 - [ ] Editing a non-open Note elsewhere updates its Title, preview and position
 - [ ] Renaming or deleting a file elsewhere updates or removes the row
 - [ ] Open Note, no unsaved edits, changed elsewhere → editor shows new content
