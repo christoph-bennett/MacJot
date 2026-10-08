@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** implemented, awaiting manual UI check (panel, menu, autosave timing, login item)
+**Status:** done
 
 - [ ] App builds and runs on macOS 14+; no Dock icon, not in ⌘-Tab (builds and launches; Dock/⌘-Tab not yet checked by eye)
 - [ ] Status item menu shows New Note and Quit

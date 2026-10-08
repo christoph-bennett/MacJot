@@ -544,6 +544,88 @@ final class NotesFolderTests {
         #expect(folder.lastLeftNoteURL == nil)  // a blank Draft leaves no Note behind
     }
 
+    // MARK: Search
+
+    private func search(_ query: String) throws -> [NoteSummary] {
+        try makeFolder().notes().compactMap { $0.matching(query) }
+    }
+
+    @Test func searchIgnoresCaseAndDiacritics() throws {
+        try writeNote("uber.md", "# Über den Plan\n\nText")
+        try writeNote("meeting.md", "meeting notes\n\nAgenda")
+        try writeNote("other.md", "Shopping\n\nmilk")
+        #expect(try search("uber").map(\.title) == ["Über den Plan"])
+        #expect(try search("MEETING").map(\.title) == ["meeting notes"])
+        #expect(try search("ÜBER").map(\.title) == ["Über den Plan"])
+    }
+
+    @Test func emptyQueryListsEveryNoteUnchanged() throws {
+        try writeNote("a.md", "Alpha\n\nfirst")
+        try writeNote("b.md", "Beta\n\nsecond")
+        let notes = try makeFolder().notes()
+        #expect(notes.compactMap { $0.matching("  ") } == notes)
+    }
+
+    @Test func bodyMatchShowsTheMatchingLineAsPreview() throws {
+        try writeNote("trip.md", "Trip\n\nFlights booked\nPack the *passport* and charger")
+        let note = try #require(try search("passport").first)
+        #expect(note.title == "Trip")
+        #expect(note.preview == "Pack the passport and charger")
+    }
+
+    @Test func titleOnlyMatchKeepsTheUsualPreview() throws {
+        try writeNote("trip.md", "Trip to Vienna\n\nFlights booked")
+        #expect(try search("vienna").map(\.preview) == ["Flights booked"])
+    }
+
+    @Test func bodyMatchIsPreferredOverTitleMatchForThePreview() throws {
+        try writeNote("plan.md", "Plan\n\nFirst line\nThe plan is simple")
+        #expect(try search("plan").map(\.preview) == ["The plan is simple"])
+    }
+
+    @Test func notesWithoutTheQueryAreLeftOut() throws {
+        try writeNote("a.md", "Alpha\n\nfirst")
+        #expect(try search("gamma").isEmpty)
+    }
+
+    @Test func markdownIsIgnoredWhenMatching() throws {
+        try writeNote("a.md", "Notes\n\n- [ ] call **Über** plan")
+        #expect(try search("uber plan").map(\.preview) == ["call Über plan"])
+        #expect(try search("[ ]").isEmpty)
+    }
+
+    @Test func frontmatterIsNotSearched() throws {
+        try writeNote("a.md", "---\ntags: [secret]\n---\nTitle\n\nBody")
+        #expect(try search("secret").isEmpty)
+    }
+
+    @Test func snippetOfALongLineStartsNearTheMatch() throws {
+        try writeNote("a.md", "Zoo\n\nThis is a long introduction sentence before the word Zebra and after.")
+        #expect(try search("zebra").map(\.preview) == ["…before the word Zebra and after."])
+    }
+
+    @Test func draftTextIsMatchedLikeANote() {
+        #expect(NoteSummary.matches("idee", text: "Neue Idée\n\nmore"))
+        #expect(NoteSummary.matches("more", text: "Neue Idée\n\nmore"))
+        #expect(!NoteSummary.matches("plan", text: "Neue Idée\n\nmore"))
+        #expect(NoteSummary.matches("", text: ""))
+    }
+
+    @Test func untitledPlaceholderIsNotSearched() throws {
+        try writeNote("fm.md", "---\ntags: [x]\n---\n")
+        #expect(try search("untitled").isEmpty)
+        #expect(!NoteSummary.matches("unt", text: ""))
+        #expect(!NoteSummary.matches("unt", text: "  \n"))
+    }
+
+    @Test func editedNoteIsSearchedWithItsNewText() throws {
+        let folder = try makeFolder()
+        try writeNote("a.md", "Alpha\n\nold words", modified: Date(timeIntervalSince1970: 1_000))
+        #expect(try folder.notes().compactMap { $0.matching("new") }.isEmpty)
+        try writeNote("a.md", "Alpha\n\nnew words", modified: Date(timeIntervalSince1970: 2_000))
+        #expect(try folder.notes().compactMap { $0.matching("new") }.map(\.preview) == ["new words"])
+    }
+
     // MARK: Trashing from the Note List
 
     @Test func trashingTheOpenNoteClosesItWithoutSaving() throws {

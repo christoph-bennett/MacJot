@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** implemented, awaiting manual UI check
+**Status:** done
 
 - [ ] `⌃⌥N` from any app (incl. full-screen) shows the panel with a new Draft, cursor ready
 - [ ] No Accessibility permission prompt

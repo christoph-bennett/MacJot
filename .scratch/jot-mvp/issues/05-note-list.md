@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** implemented, awaiting manual UI check
+**Status:** done
 
 - [ ] `⌃⌘S` toggles the sidebar; collapsed when opened via New Note
 - [ ] Notes sorted newest-modified first; editing a Note moves it to the top

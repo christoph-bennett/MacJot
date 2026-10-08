@@ -49,6 +49,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         noteList.onOpen = { [weak self] in self?.open($0) }
         noteList.onDelete = { [weak self] note, next in self?.trashFromList(note, thenOpen: next) }
         noteList.menuItems = { [weak self] in self?.actions(for: $0) ?? [] }
+        noteList.onReturn = { [weak self] in self?.focusEditor() }
+        noteList.onCancel = { [weak self] in self?.hide() }
         noteListItem.minimumThickness = 180
         noteListItem.maximumThickness = 320
         noteListItem.isCollapsed = true
@@ -67,7 +69,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         panel.contentViewController = split
         panel.initialFirstResponder = textView
         panel.delegate = self
-        panel.onCancel = { [weak self] in self?.hide() }
+        panel.onCancel = { [weak self] in self?.cancel() }
         panel.onShortcut = { [weak self] in self?.handleShortcut($0) ?? false }
         // Setting the content view controller resized the panel; restore the remembered frame.
         if !panel.setFrameUsingName(Self.frameAutosaveName) {
@@ -79,10 +81,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     // MARK: Showing and hiding
 
-    /// The panel is in "notes" mode while the Note List is open and has focus;
-    /// otherwise it's in "capture" mode (writing).
+    /// The panel is in "notes" mode while the Note List is open and it or its
+    /// search field has focus; otherwise it's in "capture" mode (writing).
     private var isInNotesMode: Bool {
-        !noteListItem.isCollapsed && panel.firstResponder === noteList.tableView
+        !noteListItem.isCollapsed && noteList.hasFocus
     }
 
     /// Capture Hotkey: hidden → new Draft; visible but not key → front, content
@@ -98,7 +100,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     }
 
     /// Search Hotkey: hidden → Note List with the most recent Note; visible but
-    /// not key → front with the list focused; key → hide, or the list if writing.
+    /// not key → front with search focused; key → hide, or search if writing.
     func toggleNotes() {
         if panel.isKeyWindow, isInNotesMode {
             hide()
@@ -126,8 +128,9 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         show()
     }
 
-    /// Shows the panel with the Note List expanded and focused. From hidden, the
-    /// editor shows the most recently modified Note (a Draft if there are none).
+    /// Shows the panel with the Note List expanded and its search field focused
+    /// (the query selected, so typing replaces it). From hidden, the editor shows
+    /// the most recently modified Note (a Draft if there are none).
     @objc func showNotes() {
         if !panel.isVisible {
             if let recent = (try? folder.notes())?.first { open(recent.url) } else { showNewDraft() }
@@ -135,7 +138,18 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         reloadNoteList(evenIfCollapsed: true)
         noteListItem.isCollapsed = false
         show()
-        panel.makeFirstResponder(noteList.tableView)
+        panel.makeFirstResponder(noteList.searchField)
+    }
+
+    /// Return in the Note List: go on writing in the Note it shows.
+    private func focusEditor() {
+        panel.makeFirstResponder(textView)
+    }
+
+    /// `Esc` that reached the panel (e.g. from the Note List's table): clears a
+    /// search first, then closes.
+    private func cancel() {
+        if noteListItem.isCollapsed || !noteList.cancelSearch() { hide() }
     }
 
     /// Matched by physical key: with Control held, the reported characters vary by
@@ -154,7 +168,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         let willShow = noteListItem.isCollapsed
         if willShow {
             reloadNoteList(evenIfCollapsed: true)
-        } else if panel.firstResponder === noteList.tableView {
+        } else if noteList.hasFocus {
             panel.makeFirstResponder(textView)  // don't leave typing aimed at a hidden list
         }
         noteListItem.animator().isCollapsed = !willShow
@@ -235,14 +249,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         guard evenIfCollapsed || !noteListItem.isCollapsed else { return }
         do {
             noteList.show(try folder.notes(), selecting: folder.currentNoteURL, keepingOrder: keepingOrder,
-                          draftTitle: folder.isDraft ? draftTitle : nil)
+                          draftText: folder.isDraft ? textView.string : nil)
         } catch {
             NSLog("Jot: couldn't list notes: \(error)")
         }
-    }
-
-    private var draftTitle: String {
-        NoteSummary.displayTitle(of: textView.string) ?? "New Note"
     }
 
     /// Replaces the editor's text (no undo across Notes) and places the cursor.
@@ -311,7 +321,9 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         }
     }
 
+    /// The next summon starts without a stale search.
     func windowWillClose(_ notification: Notification) {
+        noteList.cancelSearch()
         cancelAutosave()
         save { folder in try leavingCurrentNote { try folder.leave() } }
     }
@@ -320,7 +332,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     func textDidChange(_ notification: Notification) {
         folder.update(text: textView.string)
-        if folder.isDraft, !noteListItem.isCollapsed { noteList.updateDraftTitle(draftTitle) }
+        if folder.isDraft, !noteListItem.isCollapsed { noteList.updateDraft(textView.string) }
         cancelAutosave()
         autosave = Task { [weak self] in
             try? await Task.sleep(for: Self.autosaveDelay)

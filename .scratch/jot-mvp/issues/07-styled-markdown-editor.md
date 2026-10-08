@@ -6,7 +6,7 @@
 
 **Blocked by:** 01
 
-**Status:** implemented, awaiting manual UI check (styling verified in an offscreen render, light and dark)
+**Status:** done
 
 - [ ] Each supported construct renders styled with dimmed markers
 - [x] ~~Title line emphasised~~ dropped: the first line is styled like any other line

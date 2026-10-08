@@ -13,12 +13,12 @@
 
 **Blocked by:** 02, 05
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Typing in search filters live; `uber` matches `Über`, `MEETING` matches `meeting`
-- [ ] Matches in body (not only Title) are found; preview shows the match snippet
-- [ ] Arrow keys move selection; Return opens the Note
-- [ ] `Esc` clears search first, then closes the panel
-- [ ] `⌃⌥F` from any app opens the panel in search mode with the most recent Note shown
-- [ ] Every cell of the state matrix behaves as specified (verified manually)
-- [ ] Seam 1 tests cover search matching (case/diacritics, body vs Title) and snippets
+- [x] Typing in search filters live; `uber` matches `Über`, `MEETING` matches `meeting`
+- [x] Matches in body (not only Title) are found; preview shows the match snippet
+- [x] Arrow keys move selection; Return opens the Note
+- [x] `Esc` clears search first, then closes the panel
+- [x] `⌃⌥F` from any app opens the panel in search mode with the most recent Note shown
+- [x] Every cell of the state matrix behaves as specified (verified manually)
+- [x] Seam 1 tests cover search matching (case/diacritics, body vs Title) and snippets

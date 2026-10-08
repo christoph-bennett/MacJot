@@ -112,18 +112,27 @@ public final class NotesFolder {
     // MARK: Note List
 
     /// All Notes in the folder (visible `.md` files), most recently modified first.
+    /// Files unchanged since the last call aren't read again: the list reloads on
+    /// every autosave, and summarising every line of every Note each time adds up.
     public func notes() throws -> [NoteSummary] {
         let files = try FileManager.default.contentsOfDirectory(
             at: url, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles])
-        return files
+        let notes = files
             .filter { $0.pathExtension.lowercased() == "md" }
             .compactMap { file -> NoteSummary? in
-                guard let text = try? String(contentsOf: file, encoding: .utf8) else { return nil }
                 let modified = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
-                return NoteSummary(url: file, text: text, modified: modified ?? .distantPast)
+                    ?? .distantPast
+                if let cached = summaries[file], cached.modified == modified { return cached }
+                guard let text = try? String(contentsOf: file, encoding: .utf8) else { return nil }
+                return NoteSummary(url: file, text: text, modified: modified)
             }
             .sorted { $0.modified > $1.modified }
+        summaries = Dictionary(notes.map { ($0.url, $0) }, uniquingKeysWith: { a, _ in a })
+        return notes
     }
+
+    /// The last `notes()`, by file.
+    private var summaries: [URL: NoteSummary] = [:]
 
     /// Leaves the current Note and opens an existing one, returning its text.
     /// Its name is taken as matching its Title, so leaving it unchanged never
