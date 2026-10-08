@@ -6,12 +6,12 @@
 
 **Status:** done
 
-- [ ] App builds and runs on macOS 14+; no Dock icon, not in ⌘-Tab (builds and launches; Dock/⌘-Tab not yet checked by eye)
-- [ ] Status item menu shows New Note and Quit
-- [ ] Launch at login is registered on first run
-- [ ] New Note opens a panel with the cursor in an empty Draft
+- [x] App builds and runs on macOS 14+; no Dock icon, not in ⌘-Tab
+- [x] Status item menu shows New Note and Quit
+- [x] Launch at login is registered on first run
+- [x] New Note opens a panel with the cursor in an empty Draft
 - [x] Typing creates exactly one `.md` file in `~/Documents/Jot/` named after the Title (lowercase, spaces → `-`)
-- [ ] Text is persisted ~0.5 s after typing stops, on panel close and on quit; no save prompt ever appears
+- [x] Text is persisted ~0.5 s after typing stops, on panel close and on quit; no save prompt ever appears
 - [x] Closing an untouched Draft leaves no file
 - [x] Text typed while a save is in flight is persisted (flush loops until persisted text equals latest text); writes are atomic
 - [x] Core package has no AppKit dependency
