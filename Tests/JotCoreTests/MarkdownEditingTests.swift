@@ -149,6 +149,37 @@ struct MarkdownEditingTests {
         #expect(MarkdownEditing.deleteBackward(in: "a\n\nb", selection: NSRange(location: 1, length: 2)) == nil)
     }
 
+    // MARK: Checkboxes
+
+    /// Clicks the character at `at` in `text`; renders the result, or `nil` if it wasn't a box.
+    private func click(_ text: String, at location: Int, selection: NSRange = NSRange(location: 0, length: 0)) -> String? {
+        guard let edit = MarkdownEditing.toggleCheckbox(in: text, at: location, selection: selection) else { return nil }
+        #expect(edit.selection == selection)  // the cursor and selection stay where they were
+        return (text as NSString).replacingCharacters(in: edit.range, with: edit.replacement)
+    }
+
+    @Test(arguments: [2, 3, 4])  // `[`, the space, `]`
+    func clickingAnUncheckedBoxChecksIt(location: Int) {
+        #expect(click("- [ ] milk", at: location) == "- [x] milk")
+    }
+
+    @Test func clickingACheckedBoxUnchecksIt() {
+        #expect(click("- [x] milk", at: 3, selection: NSRange(location: 7, length: 2)) == "- [ ] milk")
+        #expect(click("- [X] milk", at: 3) == "- [ ] milk")
+    }
+
+    @Test func boxesAnywhereInTheNote() {
+        #expect(click("Shopping\n  * [ ] nested", at: 14) == "Shopping\n  * [x] nested")
+        #expect(click("- [ ]", at: 3) == "- [x]")                 // an empty item
+    }
+
+    @Test(arguments: [("- [ ] milk", 0), ("- [ ] milk", 6), ("[ ] not a list", 1), ("- item [ ] later", 8), ("", 0),
+                      ("1. [ ] numbered", 4),          // checklists are bullet items, as for Return and the toolbar
+                      ("```\n- [ ] code\n```", 7)])  // code is literal
+    func clickingElsewhereIsNotAToggle(text: String, location: Int) {
+        #expect(click(text, at: location) == nil)
+    }
+
     @Test func returnInATableRowIsASingleLineBreak() {
         let text = "| a | b |"
         let edit = MarkdownEditing.newline(in: text, selection: NSRange(location: 9, length: 0), soft: false)

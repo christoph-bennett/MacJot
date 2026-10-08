@@ -54,7 +54,11 @@ struct MarkdownStyleTests {
     @Test func listQuoteAndTaskMarkers() {
         #expect(spans("- item") == ["marker:- "])
         #expect(spans("12. item") == ["marker:12. "])
-        #expect(spans("- [x] done") == ["marker:- ", "marker:[x] "])
+        #expect(spans("- [x] done") == ["marker:- ", "checkbox(checked: true):[x]", "completedTask:done"])
+        #expect(spans("- [ ] todo") == ["marker:- ", "checkbox(checked: false):[ ]"])
+        #expect(spans("* [X]") == ["marker:* ", "checkbox(checked: true):[X]"])  // nothing to strike through
+        #expect(spans("- [x]   two words  ") == ["marker:- ", "checkbox(checked: true):[x]", "completedTask:two words"])
+        #expect(spans("1. [ ] x") == ["marker:1. "])
         #expect(spans("> quoted") == ["quote:> quoted", "marker:> "])
     }
 

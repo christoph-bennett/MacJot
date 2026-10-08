@@ -89,6 +89,23 @@ public enum MarkdownEditing {
                         selection: NSRange(location: location - 2, length: 0))
     }
 
+    /// Ticks or unticks the checklist box at `location` (any of its `[`, mark or
+    /// `]`): `[ ]` ↔ `[x]`. The selection is passed through unchanged, so a click
+    /// doesn't move the cursor. `nil` if there's no box there: boxes are exactly
+    /// where the editor draws them (`MarkdownStyle`'s checkbox spans).
+    public static func toggleCheckbox(in text: String, at location: Int, selection: NSRange) -> TextEdit? {
+        let ns = text as NSString
+        guard location < ns.length else { return nil }
+        let line = ns.lineRange(for: NSRange(location: location, length: 0))
+        guard !isInCodeFence(ns, throughLine: line) else { return nil }  // code is literal
+        for span in MarkdownStyle.spans(in: text, range: line) {
+            guard case .checkbox(let checked) = span.kind, NSLocationInRange(location, span.range) else { continue }
+            return TextEdit(range: NSRange(location: span.range.location + 1, length: 1),
+                            replacement: checked ? " " : "x", selection: selection)
+        }
+        return nil
+    }
+
     /// The UTF-16 range of the Title line (without its line break), if there is a Title.
     public static func titleLineRange(in text: String) -> NSRange? {
         NoteStructure(text as NSString).titleLine

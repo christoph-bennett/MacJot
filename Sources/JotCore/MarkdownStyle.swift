@@ -16,12 +16,24 @@ public enum MarkdownStyle {
             case link
             /// Syntax characters, shown dimmed.
             case marker
+            /// A checklist item's `[ ]` or `[x]`, drawn as a clickable box.
+            case checkbox(checked: Bool)
+            /// A checked item's text (after the box), shown struck through.
+            case completedTask
             /// The first blank line after a paragraph, shown as spacing rather than a full line.
             case paragraphGap
         }
 
         public var range: NSRange
         public var kind: Kind
+
+        /// Markdown syntax rather than content: left out of plain-text previews.
+        public var isSyntax: Bool {
+            switch kind {
+            case .marker, .checkbox: true
+            default: false
+            }
+        }
     }
 
     /// Spans in the lines touching `range` (expanded to whole lines), in order:
@@ -43,7 +55,7 @@ public enum MarkdownStyle {
     private static let rule = regex(#"^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$"#)
     private static let quote = regex(#"^[ \t]*>[ \t]?"#)
     private static let listItem = regex(#"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+"#)
-    private static let task = regex(#"\G\[[ xX]\][ \t]+"#)
+    private static let task = regex(#"\G\[([ xX])\](?=[ \t]|$)"#)
 
     private static func lineSpans(_ ns: NSString, line: NSRange, into spans: inout [Span]) {
         if line.length == 0 || ns.substring(with: line).trimmingCharacters(in: .whitespaces).isEmpty {
@@ -69,10 +81,25 @@ public enum MarkdownStyle {
         if let match = listItem.firstMatch(in: ns as String, range: line) {
             spans.append(Span(range: match.range, kind: .marker))
             let rest = NSRange(location: NSMaxRange(match.range), length: NSMaxRange(line) - NSMaxRange(match.range))
-            if let box = task.firstMatch(in: ns as String, range: rest) {
-                spans.append(Span(range: box.range, kind: .marker))
+            // Bullet items only: `1. [ ]` isn't a checklist for Return or the toolbar either.
+            let isBullet = "-*+".contains(ns.substring(with: match.range).trimmingCharacters(in: .whitespaces).prefix(1))
+            if isBullet, let box = task.firstMatch(in: ns as String, range: rest) {
+                let checked = ns.substring(with: box.range(at: 1)) != " "
+                spans.append(Span(range: box.range, kind: .checkbox(checked: checked)))
+                if checked, let text = trimmed(NSRange(location: NSMaxRange(box.range),
+                                                       length: NSMaxRange(line) - NSMaxRange(box.range)), in: ns) {
+                    spans.append(Span(range: text, kind: .completedTask))
+                }
             }
         }
+    }
+
+    /// `range` without the spaces and tabs at either end; `nil` if nothing is left.
+    private static func trimmed(_ range: NSRange, in ns: NSString) -> NSRange? {
+        var start = range.location, end = NSMaxRange(range)
+        while start < end, [0x20, 0x09].contains(ns.character(at: start)) { start += 1 }
+        while end > start, [0x20, 0x09].contains(ns.character(at: end - 1)) { end -= 1 }
+        return end > start ? NSRange(location: start, length: end - start) : nil
     }
 
     /// Whether a cursor at `location` would sit on a paragraph gap: the small

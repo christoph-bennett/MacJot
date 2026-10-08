@@ -114,7 +114,7 @@ public struct NoteSummary: Equatable {
     private static func plain(_ ns: NSString, line: NSRange) -> String {
         let text = ns as String
         let markers = MarkdownStyle.spans(in: text, range: line)
-            .filter { $0.kind == .marker }
+            .filter(\.isSyntax)
             .map(\.range)
             .sorted { $0.location > $1.location }
         let plain = NSMutableString(string: ns.substring(with: line))

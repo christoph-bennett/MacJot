@@ -43,6 +43,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
         configure(textView)
         textView.delegate = self
+        (textView as? EditorTextView)?.onCheckboxClick = { [weak self] in self?.toggleCheckbox(at: $0) }
 
         let editor = EditorViewController(scrollView: scrollView)
         editor.onFormat = { [weak self] in self?.format($0) }
@@ -452,8 +453,28 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     /// paragraph above or the start of the one below, by direction.
     func textView(_ textView: NSTextView, willChangeSelectionFromCharacterRange old: NSRange,
                   toCharacterRange new: NSRange) -> NSRange {
+        guard new.length == 0 else { return new }
+        // Inside a box's hidden `[ ]` or the spaces after it: to the far side, by
+        // direction (before the box, or where the item's text starts).
+        if let zone = checkboxZone(around: new.location), new.location > zone.box.location, new.location < zone.textStart {
+            return NSRange(location: new.location < old.location ? zone.box.location : zone.textStart, length: 0)
+        }
         guard !isMovingVertically, isOnParagraphGap(new) else { return new }
         return NSRange(location: new.location < old.location ? new.location - 1 : new.location + 1, length: 0)
+    }
+
+    /// The checklist box at or just before `location` (spaces apart), and where
+    /// the item's text starts after it.
+    private func checkboxZone(around location: Int) -> (box: NSRange, textStart: Int)? {
+        guard let storage = textView.textStorage else { return nil }
+        let ns = storage.string as NSString
+        let isSpace = { (i: Int) in i >= 0 && i < ns.length && [0x20, 0x09].contains(ns.character(at: i)) }
+        var before = location - 1
+        while isSpace(before) { before -= 1 }
+        guard let box = storage.checkboxRange(at: location) ?? storage.checkboxRange(at: before) else { return nil }
+        var textStart = NSMaxRange(box)
+        while isSpace(textStart) { textStart += 1 }
+        return (box, textStart)
     }
 
     /// ↑/↓ skip the gap themselves, keeping the column; don't redirect them halfway.
@@ -486,6 +507,22 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         panel.makeFirstResponder(textView)
     }
 
+    /// Ticks or unticks a clicked box, autosaved like typing. The cursor and
+    /// selection stay where they were, also on undo: rather than the text view's
+    /// own undo (which selects the changed text, inside the hidden brackets), undo
+    /// toggles the box again, and that registers the redo.
+    private func toggleCheckbox(at location: Int) {
+        guard let edit = MarkdownEditing.toggleCheckbox(in: textView.string, at: location,
+                                                        selection: textView.selectedRange()),
+              let storage = textView.textStorage else { return }
+        textView.breakUndoCoalescing()
+        storage.replaceCharacters(in: edit.range, with: edit.replacement)
+        textView.didChangeText()
+        textView.setSelectedRange(edit.selection)
+        textView.undoManager?.registerUndo(withTarget: self) { $0.toggleCheckbox(at: location) }
+        textView.undoManager?.setActionName("Checkbox")
+    }
+
     /// Undoable and autosaved like typing. The new text gets the plain attributes
     /// up front, so it doesn't inherit e.g. a heading's font until the next restyle
     /// (which made the caret oversized after Return).
@@ -503,7 +540,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     /// a Note the cursor sat lower than the text typed there would. TextKit 1 also
     /// gives the glyph positions clickable checkboxes and line numbers need.
     private static func makeEditorScrollView() -> NSScrollView {
-        let textView = NSTextView(usingTextLayoutManager: false)
+        let textView = EditorTextView(usingTextLayoutManager: false)
+        textView.textContainer?.replaceLayoutManager(EditorLayoutManager())
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]

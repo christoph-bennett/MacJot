@@ -74,7 +74,7 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
                 addTraits(.bold, to: storage, range: span.range)
             case .italic:
                 addTraits(.italic, to: storage, range: span.range)
-            case .strikethrough:
+            case .strikethrough, .completedTask:
                 storage.addAttributes([.strikethroughStyle: NSUnderlineStyle.single.rawValue,
                                        .foregroundColor: NSColor.secondaryLabelColor], range: span.range)
             case .code:
@@ -84,6 +84,11 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
                 storage.addAttribute(.foregroundColor, value: NSColor.linkColor, range: span.range)
             case .paragraphGap:
                 storage.addAttribute(.font, value: NSFont.systemFont(ofSize: baseSize * 0.5), range: span.range)
+            case .checkbox(let checked):
+                // The characters stay (they're the file's text) but are invisible:
+                // `EditorLayoutManager` draws a box over them.
+                setMonospaced(storage, range: span.range)
+                storage.addAttributes([.foregroundColor: NSColor.clear, .checkbox: checked], range: span.range)
             case .heading, .marker:
                 break
             }
