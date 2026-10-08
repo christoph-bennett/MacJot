@@ -15,6 +15,11 @@ public final class NotesFolder {
     private var latestText = ""
     private var persistedText = ""
 
+    /// The open Note is a Draft with nothing in it yet: closing it would leave no trace.
+    public var isBlankDraft: Bool {
+        isOpen && currentNoteURL == nil && Title.of(latestText) == nil
+    }
+
     public init(url: URL) throws {
         self.url = url
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

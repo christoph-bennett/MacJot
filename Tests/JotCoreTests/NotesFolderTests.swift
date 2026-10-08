@@ -117,6 +117,22 @@ final class NotesFolderTests {
         #expect(try files() == ["clean.md"])
     }
 
+    @Test func isBlankDraftOnlyWhileTheDraftHasNoContent() throws {
+        let folder = try NotesFolder(url: root)
+        #expect(!folder.isBlankDraft)  // nothing open yet
+        try folder.startDraft()
+        #expect(folder.isBlankDraft)
+        folder.update(text: "  \n")
+        #expect(folder.isBlankDraft)
+        folder.update(text: "Something")
+        #expect(!folder.isBlankDraft)  // has content, even before it's saved
+        try folder.flush()
+        folder.update(text: "")
+        #expect(!folder.isBlankDraft)  // a saved Note emptied is not a Draft
+        try folder.leave()
+        #expect(!folder.isBlankDraft)
+    }
+
     // MARK: Saving
 
     @Test func flushReportsWhetherItWrote() throws {
