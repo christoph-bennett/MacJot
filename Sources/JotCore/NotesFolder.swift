@@ -23,7 +23,12 @@ public final class NotesFolder {
     public var usesDatePrefix: Bool
 
     /// File of the open Note; `nil` while it is still a Draft or after leaving.
-    public private(set) var currentNoteURL: URL?
+    public private(set) var currentNoteURL: URL? {
+        didSet { rememberFileIdentity() }
+    }
+    /// The open Note's file on disk (device and inode), to recognise it when it's
+    /// renamed elsewhere. Changes with each of Jot's atomic writes.
+    private var currentFileIdentity: [Int]?
     /// Where the Note left last ended up: after a rename, or the file a Draft got
     /// on leaving. `nil` if it left nothing behind (blank Draft, trashed Note).
     public private(set) var lastLeftNoteURL: URL?
@@ -116,10 +121,7 @@ public final class NotesFolder {
                 left = nil
             }
         }
-        isOpen = false
-        currentNoteURL = nil
-        currentSlug = nil
-        currentPrefix = ""
+        close()
         lastLeftNoteURL = left
         leaveCount += 1
         return wrote
@@ -183,11 +185,90 @@ public final class NotesFolder {
     public func trash(_ note: URL) throws {
         try moveToTrash(note)
         if let current = currentNoteURL, current.standardizedFileURL == note.standardizedFileURL {
-            isOpen = false
-            currentNoteURL = nil
-            currentSlug = nil
-            currentPrefix = ""
+            close()
         }
+    }
+
+    /// Forgets the open Note, without saving.
+    private func close() {
+        isOpen = false
+        currentNoteURL = nil
+        currentSlug = nil
+        currentPrefix = ""
+    }
+
+    // MARK: External changes
+
+    /// What `reconcileOpenNote()` did with the open Note.
+    public enum OpenNoteChange: Equatable {
+        /// Nothing to do: no change, Jot's own write, or the open Note is a Draft.
+        case unchanged
+        /// Changed elsewhere with no local edits: show this text instead.
+        case reloaded(String)
+        /// Changed or deleted elsewhere, but the local edits win; the next flush
+        /// writes them.
+        case keptLocal
+        /// Moved or renamed elsewhere; the Note now lives at this URL.
+        case renamed(URL)
+        /// Deleted elsewhere with no local edits: the Note is closed.
+        case deleted
+    }
+
+    /// Brings the open Note in line with its file after something changed in the
+    /// folder (the shell's file-system watcher calls this). Jot's own writes match
+    /// what it last wrote, so they never cause a reload.
+    public func reconcileOpenNote() throws -> OpenNoteChange {
+        guard isOpen, let file = currentNoteURL else { return .unchanged }
+        let hasLocalEdits = latestText != persistedText
+
+        guard FileManager.default.fileExists(atPath: file.path) else {
+            if let moved = try sameFileElsewhere() {
+                currentNoteURL = moved
+                currentPrefix = DatePrefix.of(fileName: moved.lastPathComponent, titleSlug: currentSlug ?? "") ?? ""
+                return .renamed(moved)
+            }
+            if hasLocalEdits { return .keptLocal }
+            close()
+            return .deleted
+        }
+
+        guard let text = try? String(contentsOf: file, encoding: .utf8), text != persistedText else {
+            return .unchanged
+        }
+        persistedText = text  // what's on disk now, so a flush writes local edits over it
+        rememberFileIdentity()
+        if hasLocalEdits { return latestText == text ? .unchanged : .keptLocal }
+        latestText = text
+        let slug = Title.slug(Title.of(text) ?? "")
+        currentSlug = slug  // like opening it: its name is taken as matching its Title
+        currentPrefix = DatePrefix.of(fileName: file.lastPathComponent, titleSlug: slug) ?? currentPrefix
+        return .reloaded(text)
+    }
+
+    /// The open Note's file under another name: same device and inode. A copy
+    /// with the same text is a different file, so it isn't mistaken for it.
+    private func sameFileElsewhere() throws -> URL? {
+        guard let identity = currentFileIdentity else { return nil }
+        return try noteFiles().first { Self.identity(of: $0) == identity }
+    }
+
+    private func rememberFileIdentity() {
+        currentFileIdentity = currentNoteURL.flatMap(Self.identity)
+    }
+
+    private static func identity(of file: URL) -> [Int]? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: file.path),
+              let device = attributes[.systemNumber] as? Int, let inode = attributes[.systemFileNumber] as? Int
+        else { return nil }
+        return [device, inode]
+    }
+
+    /// The visible `.md` files, spelled like the folder's own URL (a listing may
+    /// resolve `/var` to `/private/var`).
+    private func noteFiles() throws -> [URL] {
+        try FileManager.default.contentsOfDirectory(atPath: url.path)
+            .filter { !$0.hasPrefix(".") && ($0 as NSString).pathExtension.lowercased() == "md" }
+            .map { url.appendingPathComponent($0) }
     }
 
     // MARK: Persisting
@@ -202,6 +283,7 @@ public final class NotesFolder {
             guard text != persistedText, !Title.isBlank(text) else { return false }
             try Data(text.utf8).write(to: file, options: .atomic)
             persistedText = text
+            rememberFileIdentity()
             return true
         }
 
@@ -251,10 +333,7 @@ public final class NotesFolder {
     }
 
     private func hasNote(identicalTo data: Data) throws -> Bool {
-        let names = try FileManager.default.contentsOfDirectory(atPath: url.path)
-        return names.contains { name in
-            name.hasSuffix(".md") && (try? Data(contentsOf: url.appendingPathComponent(name))) == data
-        }
+        try noteFiles().contains { (try? Data(contentsOf: $0)) == data }
     }
 
     private func discardRecoveryCopy() throws {

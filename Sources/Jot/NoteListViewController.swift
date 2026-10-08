@@ -15,7 +15,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     /// Context menu items for a Note.
     var menuItems: (URL) -> [NSMenuItem] = { _ in [] }
     /// The Delete key was pressed on a Note; `next` is the Note to show afterwards.
-    var onDelete: (_ note: URL, _ next: URL?) -> Void = { _, _ in }
+    var onDelete: (URL) -> Void = { _ in }
 
     let tableView = NoteTableView()
     let searchField = NSSearchField()
@@ -161,9 +161,17 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
 
     /// The Draft row has no file, so there's nothing to delete.
     private func deleteSelected() {
-        let row = tableView.selectedRow
-        guard let selected = note(at: row) else { return }
-        onDelete(selected.url, (note(at: row + 1) ?? note(at: row - 1))?.url)
+        guard let selected = note(at: tableView.selectedRow) else { return }
+        onDelete(selected.url)
+    }
+
+    /// The Note to show once `note` is gone, like Mail: the row below it, else
+    /// the one above. `nil` if it isn't listed or is the only Note.
+    func neighbour(of note: URL) -> URL? {
+        guard let row = rows.firstIndex(where: {
+            if case .note(let n) = $0 { n.url.standardizedFileURL == note.standardizedFileURL } else { false }
+        }) else { return nil }
+        return (self.note(at: row + 1) ?? self.note(at: row - 1))?.url
     }
 
     // MARK: Search field

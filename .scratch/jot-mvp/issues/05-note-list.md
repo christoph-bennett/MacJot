@@ -14,3 +14,5 @@
 - [ ] Move to Trash uses the system Trash, no dialog, and the row disappears
 - [ ] Show Notes opens the panel with the sidebar expanded
 - [x] Seam 1 tests cover Note List ordering, Title and preview derivation
+
+**Amended in ticket 11 (after the user tried it):** trashing the open Note, by Delete key, context menu or ⋯ menu, moves on to its neighbour in the list (else the most recent Note) instead of a new blank Draft, and focus stays where it was, so the Delete key keeps working. A Draft appears only when no Notes are left.

@@ -4,13 +4,13 @@
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A file created in the folder by another app appears in the Note List
-- [ ] A Note put back from the Trash ("Put Back" in Finder) appears in the Note List straight away, without switching Notes (reported by the user; today it only shows up on the next list reload)
-- [ ] Editing a non-open Note elsewhere updates its Title, preview and position
-- [ ] Renaming or deleting a file elsewhere updates or removes the row
-- [ ] Open Note, no unsaved edits, changed elsewhere → editor shows new content
-- [ ] Open Note with unsaved edits, changed elsewhere → local text kept and written on next flush
-- [ ] Jot's own saves and rename-on-leave don't trigger a reload
-- [ ] Seam 1 tests cover each case with a manually driven event source
+- [x] A file created in the folder by another app appears in the Note List
+- [x] A Note put back from the Trash ("Put Back" in Finder) appears in the Note List straight away, without switching Notes (reported by the user; today it only shows up on the next list reload)
+- [x] Editing a non-open Note elsewhere updates its Title, preview and position
+- [x] Renaming or deleting a file elsewhere updates or removes the row
+- [x] Open Note, no unsaved edits, changed elsewhere → editor shows new content
+- [x] Open Note with unsaved edits, changed elsewhere → local text kept and written on next flush
+- [x] Jot's own saves and rename-on-leave don't trigger a reload
+- [x] Seam 1 tests cover each case with a manually driven event source

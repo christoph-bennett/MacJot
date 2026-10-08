@@ -19,6 +19,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private let noteListItem: NSSplitViewItem
     private let cursors = CursorPositions()
     private var autosave: Task<Void, Never>?
+    private var watcher: FolderWatcher?
     private var isShowingSaveError = false
     /// ⌘, in the panel.
     var onShowSettings: () -> Void = {}
@@ -50,7 +51,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             return actions(for: note)
         }
         noteList.onOpen = { [weak self] in self?.open($0) }
-        noteList.onDelete = { [weak self] note, next in self?.trashFromList(note, thenOpen: next) }
+        noteList.onDelete = { [weak self] note in self?.confirmTrash(note) { self?.trash(note) } }
         noteList.menuItems = { [weak self] in self?.actions(for: $0) ?? [] }
         noteList.onReturn = { [weak self] in self?.focusEditor() }
         noteList.onCancel = { [weak self] in self?.hide() }
@@ -80,6 +81,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             panel.center()
         }
         panel.setFrameAutosaveName(Self.frameAutosaveName)
+        watcher = FolderWatcher(folder.url) { [weak self] in self?.folderDidChange() }
     }
 
     // MARK: Showing and hiding
@@ -221,8 +223,14 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     static let confirmTrashKey = "confirmBeforeMovingToTrash"
 
+    /// Trashes `note`. If it was open, the editor moves on to its neighbour in the
+    /// list (or the most recent Note), like Mail, rather than to a blank Draft;
+    /// a Draft only when no Notes are left. Focus stays where it was, so the
+    /// Delete key keeps working in the list.
     private func trash(_ note: URL) {
         let wasOpen = folder.currentNoteURL?.standardizedFileURL == note.standardizedFileURL
+        let next = noteListItem.isCollapsed ? nil : noteList.neighbour(of: note)
+        let listHadFocus = noteList.hasFocus
         do {
             try folder.trash(note)
         } catch {
@@ -230,22 +238,19 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             return
         }
         cursors.forget(note)
-        if wasOpen { showNewDraft() }
+        if wasOpen { openNextOrDraft(next) }
         reloadNoteList()
+        if listHadFocus { panel.makeFirstResponder(noteList.tableView) }
     }
 
-    /// Delete key in the Note List: trash the selected Note and, like Mail, move on
-    /// to the next one, keeping focus in the list.
-    private func trashFromList(_ note: URL, thenOpen next: URL?) {
-        confirmTrash(note) { [weak self] in
-            guard let self else { return }
-            trash(note)
-            if let next {
-                open(next)
-            } else if folder.currentNoteURL == nil {
-                showNewDraft()
-            }
-            panel.makeFirstResponder(noteList.tableView)
+    /// After the open Note went away: `preferred`, else the most recent Note,
+    /// else a new Draft.
+    private func openNextOrDraft(_ preferred: URL?) {
+        if let next = preferred ?? (try? folder.notes())?.first?.url {
+            open(next)
+        } else {
+            try? folder.startDraft()
+            display("", cursor: 0)
         }
     }
 
@@ -255,6 +260,35 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             prepare: { [weak self] in self?.save { try $0.flush() } },
             trash: { [weak self] note in self?.confirmTrash(note) { self?.trash(note) } }
         )
+    }
+
+    /// Something in the Notes Folder changed, here or elsewhere: bring the open
+    /// Note and the Note List up to date.
+    /// Also how the list catches up with Jot's own saves and renames.
+    private func folderDidChange() {
+        let before = folder.currentNoteURL
+        do {
+            switch try folder.reconcileOpenNote() {
+            case .reloaded(let text):
+                cancelAutosave()
+                display(text, cursor: textView.selectedRange().location)  // clamped to the new text
+            case .deleted:
+                // Its file is gone (e.g. moved to the Trash in Finder): move on, as when trashed in Jot.
+                if let before { cursors.forget(before) }
+                openNextOrDraft(before.flatMap(noteList.neighbour))
+            case .renamed(let note):
+                if let before {
+                    cursors.remember(cursors.position(for: before), for: note)
+                    cursors.forget(before)
+                }
+            case .unchanged, .keptLocal:
+                break  // the editor already shows the right text
+            }
+        } catch {
+            NSLog("Jot: couldn't check the open note against its file: \(error)")
+        }
+        // While the user moves through the list, rows stay put (as when opening a Note).
+        reloadNoteList(keepingOrder: noteList.hasFocus)
     }
 
     /// Skipped while collapsed: autosave calls this, and reading every Note for a
@@ -351,8 +385,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         autosave = Task { [weak self] in
             try? await Task.sleep(for: Self.autosaveDelay)
             guard !Task.isCancelled, let self else { return }
-            // Only a write to a Note's file changes the list, not one to the Recovery Copy.
-            if save({ try $0.flush() }), folder.currentNoteURL != nil { reloadNoteList() }
+            save { try $0.flush() }  // the folder watcher updates the list
         }
     }
 

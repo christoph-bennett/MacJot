@@ -836,6 +836,155 @@ final class NotesFolderTests {
     }
 }
 
+
+extension NotesFolderTests {
+    // MARK: External changes
+
+    /// Changes a file as another app would, with a later modification date.
+    private func externally(_ name: String, _ text: String) throws {
+        try writeNote(name, text, modified: Date().addingTimeInterval(60))
+    }
+
+    @Test func openNoteChangedElsewhereWithoutLocalEditsIsReloaded() throws {
+        let url = try writeNote("plan.md", "Plan\n\nold")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        try externally("plan.md", "Plan\n\nnew")
+        #expect(try folder.reconcileOpenNote() == .reloaded("Plan\n\nnew"))
+        try folder.leave()
+        #expect(try contents("plan.md") == "Plan\n\nnew")
+    }
+
+    @Test func reloadedTitleChangeDoesNotRenameOnLeave() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        try externally("plan.md", "Budget")
+        _ = try folder.reconcileOpenNote()
+        try folder.leave()
+        #expect(try files() == ["plan.md"])  // like opening it: its name is taken as matching
+    }
+
+    @Test func localEditsWinOverAChangeElsewhere() throws {
+        let url = try writeNote("plan.md", "Plan\n\nold")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        folder.update(text: "Plan\n\nmine")
+        try externally("plan.md", "Plan\n\ntheirs")
+        #expect(try folder.reconcileOpenNote() == .keptLocal)
+        try folder.flush()
+        #expect(try contents("plan.md") == "Plan\n\nmine")
+    }
+
+    @Test func localTextEqualToTheChangeElsewhereIsStillUpToDate() throws {
+        let url = try writeNote("plan.md", "Plan\n\nold")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        folder.update(text: "Plan\n\nsame")
+        try externally("plan.md", "Plan\n\nsame")
+        #expect(try folder.reconcileOpenNote() == .unchanged)
+        #expect(try folder.flush() == false)
+    }
+
+    @Test func ownSavesAreNotExternalChanges() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Idea\n")
+        try folder.flush()  // materialises idea.md
+        #expect(try folder.reconcileOpenNote() == .unchanged)
+        folder.update(text: "Idea\nmore")
+        try folder.flush()
+        #expect(try folder.reconcileOpenNote() == .unchanged)
+    }
+
+    @Test func draftIsUnaffected() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Unfinished")
+        try writeNote("other.md", "Other")
+        #expect(try folder.reconcileOpenNote() == .unchanged)
+        #expect(folder.isDraft)
+    }
+
+    @Test func openNoteDeletedElsewhereIsClosed() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        try FileManager.default.removeItem(at: url)
+        #expect(try folder.reconcileOpenNote() == .deleted)
+        #expect(folder.currentNoteURL == nil)
+        try folder.leave()
+        #expect(try files().isEmpty)  // not brought back
+    }
+
+    @Test func openNoteWithLocalEditsDeletedElsewhereIsWrittenAgain() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        folder.update(text: "Plan\nmine")
+        try FileManager.default.removeItem(at: url)
+        #expect(try folder.reconcileOpenNote() == .keptLocal)
+        try folder.flush()
+        #expect(try contents("plan.md") == "Plan\nmine")
+    }
+
+    @Test func openNoteRenamedElsewhereIsFollowed() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        let moved = root.appendingPathComponent("renamed.md")
+        try FileManager.default.moveItem(at: url, to: moved)
+        #expect(try folder.reconcileOpenNote() == .renamed(moved))
+        #expect(folder.currentNoteURL == moved)
+        folder.update(text: "Plan\nmore")
+        try folder.leave()
+        #expect(try files() == ["renamed.md"])
+        #expect(try contents("renamed.md") == "Plan\nmore")
+    }
+
+    @Test func aDuplicateIsNotMistakenForTheDeletedOpenNote() throws {
+        let url = try writeNote("plan.md", "Plan")
+        try writeNote("plan copy.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        try FileManager.default.removeItem(at: url)
+        #expect(try folder.reconcileOpenNote() == .deleted)
+    }
+
+    @Test func noteRenamedElsewhereAfterJotSavedItIsFollowed() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        folder.update(text: "Plan\nsaved")
+        try folder.flush()  // an atomic write: a new file under the same name
+        let moved = root.appendingPathComponent("moved.md")
+        try FileManager.default.moveItem(at: url, to: moved)
+        #expect(try folder.reconcileOpenNote() == .renamed(moved))
+    }
+
+    @Test func datePrefixGivenElsewhereIsKeptOnRetitling() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        try FileManager.default.moveItem(at: url, to: root.appendingPathComponent("2026-10-08-plan.md"))
+        _ = try folder.reconcileOpenNote()
+        folder.update(text: "Budget")
+        try folder.leave()
+        #expect(try files() == ["2026-10-08-budget.md"])
+    }
+
+    @Test func notesAddedEditedAndDeletedElsewhereShowInTheList() throws {
+        let folder = try makeFolder()
+        try writeNote("a.md", "Alpha", modified: Date(timeIntervalSince1970: 1_000))
+        try writeNote("b.md", "Beta", modified: Date(timeIntervalSince1970: 2_000))
+        #expect(try folder.notes().map(\.title) == ["Beta", "Alpha"])
+        try writeNote("a.md", "Alpha edited", modified: Date(timeIntervalSince1970: 3_000))
+        try writeNote("c.md", "Gamma", modified: Date(timeIntervalSince1970: 500))
+        try FileManager.default.removeItem(at: root.appendingPathComponent("b.md"))
+        #expect(try folder.notes().map(\.title) == ["Alpha edited", "Gamma"])
+    }
+}
+
 /// A local time on a given day, as the clock would report it.
 private func day(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12, minute: Int = 0) -> Date {
     Calendar.current.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!

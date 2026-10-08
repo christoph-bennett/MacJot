@@ -14,11 +14,11 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 08 | [Formatting Toolbar: inline formats](08-toolbar-inline-formats.md) | 01 | done |
 | 09 | [Formatting Toolbar: line formats and list continuation](09-toolbar-line-formats-and-lists.md) | 08 | ready-for-agent |
 | 10 | [Clickable checkboxes](10-clickable-checkboxes.md) | 07, 09 | ready-for-agent |
-| 11 | [External changes](11-external-changes.md) | 05 | ready-for-agent |
+| 11 | [External changes](11-external-changes.md) | 05 | done |
 | 12 | [Choose the Notes Folder](12-choose-notes-folder.md) | 04, 05 | ready-for-agent |
 | 13 | [Hotkey settings](13-hotkey-settings.md) | 04, 06 | ready-for-agent |
 | 14 | [Remaining settings and first launch](14-remaining-settings-and-first-launch.md) | 04, 05, 06, 07 | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
-Planned order for the rest: 09 → 10 → 11, then 12–14.
+Planned order for the rest: 09 → 10, then 12–14.
