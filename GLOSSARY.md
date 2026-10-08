@@ -37,8 +37,12 @@ The collapsible sidebar of the Capture Panel listing Notes by Title, filterable 
 _Avoid_: Library, browser, index
 
 **Draft**:
-A Note that has been opened in the Capture Panel but has no content yet, so no file exists for it.
+A Note opened in the Capture Panel that has no file in the Notes Folder yet, because it is blank or its Title isn't finished.
 _Avoid_: Empty note, unsaved note
+
+**Recovery Copy**:
+A hidden backup of a Draft's text, kept outside the Notes Folder until the Draft gets its file, so a crash never loses it.
+_Avoid_: Temp file, autosave file, backup
 
 **Formatting Toolbar**:
 The row of controls that applies Markdown formatting to the selection, for users who don't type the syntax.
