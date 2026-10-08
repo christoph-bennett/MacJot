@@ -1,0 +1,3 @@
+# Filenames follow the Title, renamed at rest
+
+A Note's filename is a slug of its Title (lowercase ASCII, accents transliterated, `untitled` fallback, `-2` on collision), optionally preceded by a Date Prefix fixed at creation. When the Title changes, the file is renamed only at rest (panel close or switching notes), never while typing, and the Date Prefix is preserved. We chose readable filenames over immutable timestamp names (as in Stik) because the notes are meant to be browsed in Finder and other Markdown tools; the cost is that the app must tolerate renames in its own folder watcher and other tools may briefly see the old path.
