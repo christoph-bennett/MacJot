@@ -44,6 +44,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.delegate = self
 
         let editor = EditorViewController(scrollView: scrollView)
+        editor.onFormat = { [weak self] in self?.format($0) }
         editor.menuItems = { [weak self] in
             guard let self, let note = folder.currentNoteURL else { return [] }
             return actions(for: note)
@@ -154,10 +155,20 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         if noteListItem.isCollapsed || !noteList.cancelSearch() { hide() }
     }
 
-    /// Matched by physical key: with Control held, the reported characters vary by
+    /// Formatting shortcuts match the typed character, as menus do. The others
+    /// match the physical key: with Control held, the reported characters vary by
     /// keyboard layout. (S, N and the comma sit in the same place on QWERTY and QWERTZ.)
     private func handleShortcut(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        // Not while an input method is composing: the edit would cut through it.
+        if panel.firstResponder === textView, !textView.hasMarkedText() {
+            switch (modifiers, event.charactersIgnoringModifiers?.lowercased()) {
+            case ([.command], "b"): format(.inline(.bold)); return true
+            case ([.command], "i"): format(.inline(.italic)); return true
+            case ([.command, .shift], "x"): format(.inline(.strikethrough)); return true
+            default: break
+            }
+        }
         switch (modifiers, Int(event.keyCode)) {
         case ([.control, .command], kVK_ANSI_S): toggleNoteList()
         case ([.command], kVK_ANSI_N): showNewDraft()
@@ -398,6 +409,18 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         toAttributes newTypingAttributes: [NSAttributedString.Key: Any]
     ) -> [NSAttributedString.Key: Any] {
         styler.baseAttributes
+    }
+
+    /// A Formatting Toolbar command on the editor's text and selection; the
+    /// typing goes on in the editor.
+    private func format(_ command: FormatCommand) {
+        let text = textView.string, selection = textView.selectedRange()
+        textView.breakUndoCoalescing()  // its own undo step, separate from the typing before it
+        switch command {
+        case .inline(let format): apply(MarkdownEditing.toggle(format, in: text, selection: selection))
+        case .link: apply(MarkdownEditing.toggleLink(in: text, selection: selection))
+        }
+        panel.makeFirstResponder(textView)
     }
 
     /// Undoable and autosaved like typing. The new text gets the plain attributes

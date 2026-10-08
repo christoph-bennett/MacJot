@@ -4,12 +4,12 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Toolbar shows B, I, S, inline code, link
-- [ ] Each control applies to the selection, or the word at the cursor when nothing is selected
-- [ ] Applying a format twice restores the original text and selection
-- [ ] `⌘B`, `⌘I`, `⌘⇧X` match their toolbar buttons
-- [ ] Link leaves the URL placeholder selected
-- [ ] Undo reverts a toolbar action in one step
-- [ ] Seam 2 table-driven tests cover every inline command and its inverse
+- [x] Toolbar shows B, I, S, inline code, link (two segmented groups, as in TextEdit)
+- [x] Each control applies to the selection, or the word at the cursor when nothing is selected
+- [x] Applying a format twice restores the original text and selection
+- [x] `⌘B`, `⌘I`, `⌘⇧X` match their toolbar buttons
+- [x] Link leaves the URL placeholder selected
+- [x] Undo reverts a toolbar action in one step
+- [x] Seam 2 table-driven tests cover every inline command and its inverse
