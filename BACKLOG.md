@@ -11,6 +11,10 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 - **Trash an emptied Note with its full contents, even when deleted slowly.** The Trash gets the last autosaved version; deleting with pauses autosaves shrinking versions, so in the worst case only a few characters end up there (select-all + Delete is fine). Fix: trash the longest version saved since the Note was opened, or the version it was opened with.
 - **Emptied paragraph grows a few pixels.** Return, type a new paragraph, then Backspace until it's empty: that line gets taller (the cursor looks bigger too) and pushes everything below it down a little. Reported 2026-10-08 after the switch to TextKit 1; minor.
 - **Setting: word wrap on/off** (on by default). Off: long lines run on and the editor scrolls horizontally, useful for tables and code. On TextKit 1 this is `isHorizontallyResizable`, the text container not tracking the view's width, and a horizontal scroller. Seen in STTextView (github.com/krzyzanowskim/STTextView, GPL: ideas only, no code).
+- **Find and replace in the editor** (⌘F): the standard macOS find bar, which NSTextView offers on TextKit 1 (`usesFindBar`, incremental search). The panel's shortcuts go through `CapturePanel.sendEvent`, so ⌘F, ⌘G and ⌘⇧G must be added there.
+- **Highlight the current line**: a faint background behind the line with the cursor, following light/dark; maybe a Settings toggle.
+- **Setting: line height** (spacing between lines), next to font size; the paragraph gap and line numbers have to follow it.
+- **Show invisible characters**: spaces, tabs and line breaks as faint symbols, e.g. to check Markdown line breaks; toggle in Settings or the View menu.
 - **Final app name and bundle ID** before the first public release ("Jot" and `com.onethingwell.jot` are working names; the bundle ID can't change afterwards without losing user settings and permissions).
 
 ## MVP
