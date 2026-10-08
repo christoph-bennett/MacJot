@@ -1,0 +1,22 @@
+# 06: Search and the Search Hotkey
+
+**What to build:** The Note List gets a search field that filters live by Title and body, case- and diacritic-insensitive, held in memory. While searching, each row's preview shows the snippet around the match. Arrow keys move the selection and Return opens the selected Note. `Esc` clears a non-empty search; a second `Esc` closes the panel. The **Search Hotkey** (`⌃⌥F`, fixed default for now) summons the panel with the sidebar open, search focused and the most recently modified Note in the editor. The full hotkey state matrix applies:
+
+| Panel state | Capture Hotkey | Search Hotkey |
+|---|---|---|
+| Hidden | Show panel with a new Draft | Show panel, Note List open, search focused |
+| Visible, not key | Bring to front, keep content | Bring to front, focus search |
+| Key, same mode | Hide | Hide |
+| Key, other mode | Switch to new Draft | Switch to search |
+
+**Blocked by:** 02, 05
+
+**Status:** ready-for-agent
+
+- [ ] Typing in search filters live; `uber` matches `Über`, `MEETING` matches `meeting`
+- [ ] Matches in body (not only Title) are found; preview shows the match snippet
+- [ ] Arrow keys move selection; Return opens the Note
+- [ ] `Esc` clears search first, then closes the panel
+- [ ] `⌃⌥F` from any app opens the panel in search mode with the most recent Note shown
+- [ ] Every cell of the state matrix behaves as specified (verified manually)
+- [ ] Seam 1 tests cover search matching (case/diacritics, body vs Title) and snippets
