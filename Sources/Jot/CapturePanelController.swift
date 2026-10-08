@@ -27,7 +27,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     init(folder: NotesFolder) {
         self.folder = folder
 
-        let scrollView = NSTextView.scrollableTextView()
+        let scrollView = Self.makeEditorScrollView()
         textView = scrollView.documentView as! NSTextView
         noteListItem = NSSplitViewItem(sidebarWithViewController: noteList)
         panel = CapturePanel(
@@ -426,12 +426,41 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             // Return starts a paragraph; Shift-Return is a single line break (ADR 0004).
             let soft = NSApp.currentEvent?.modifierFlags.contains(.shift) ?? false
             apply(MarkdownEditing.newline(in: textView.string, selection: textView.selectedRange(), soft: soft))
+        case #selector(NSResponder.moveUp(_:)), #selector(NSResponder.moveDown(_:)):
+            // Over a paragraph gap in one step, keeping the column (consecutive
+            // vertical moves remember it).
+            // Called directly: `doCommand(by:)` would ask this delegate again.
+            let move = { selector == #selector(NSResponder.moveUp(_:)) ? textView.moveUp(nil) : textView.moveDown(nil) }
+            isMovingVertically = true
+            defer { isMovingVertically = false }
+            move()
+            if isOnParagraphGap(textView.selectedRange()) { move() }
+        case #selector(NSResponder.deleteBackward(_:)):
+            guard let edit = MarkdownEditing.deleteBackward(in: textView.string, selection: textView.selectedRange())
+            else { return false }
+            apply(edit)
         case #selector(NSResponder.insertLineBreak(_:)), #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:)):
             apply(MarkdownEditing.newline(in: textView.string, selection: textView.selectedRange(), soft: true))
         default:
             return false
         }
         return true
+    }
+
+    /// The cursor never rests on a paragraph gap: that spacer line is drawn half
+    /// size, and so would the cursor be. ←/→ and clicks land at the end of the
+    /// paragraph above or the start of the one below, by direction.
+    func textView(_ textView: NSTextView, willChangeSelectionFromCharacterRange old: NSRange,
+                  toCharacterRange new: NSRange) -> NSRange {
+        guard !isMovingVertically, isOnParagraphGap(new) else { return new }
+        return NSRange(location: new.location < old.location ? new.location - 1 : new.location + 1, length: 0)
+    }
+
+    /// ↑/↓ skip the gap themselves, keeping the column; don't redirect them halfway.
+    private var isMovingVertically = false
+
+    private func isOnParagraphGap(_ selection: NSRange) -> Bool {
+        selection.length == 0 && MarkdownStyle.isParagraphGap(at: selection.location, in: textView.string)
     }
 
     /// Typing always starts plain; the styler restyles right after. Otherwise the
@@ -451,6 +480,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.breakUndoCoalescing()  // its own undo step, separate from the typing before it
         switch command {
         case .inline(let format): apply(MarkdownEditing.toggle(format, in: text, selection: selection))
+        case .line(let format): apply(MarkdownEditing.toggle(format, in: text, selection: selection))
         case .link: apply(MarkdownEditing.toggleLink(in: text, selection: selection))
         }
         panel.makeFirstResponder(textView)
@@ -466,6 +496,24 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.didChangeText()
         textView.setSelectedRange(edit.selection)
         textView.typingAttributes = styler.baseAttributes
+    }
+
+    /// The editor runs on TextKit 1. TextKit 2 lays out an empty last line as if
+    /// the paragraph gap above it had full height, so after Return at the end of
+    /// a Note the cursor sat lower than the text typed there would. TextKit 1 also
+    /// gives the glyph positions clickable checkboxes and line numbers need.
+    private static func makeEditorScrollView() -> NSScrollView {
+        let textView = NSTextView(usingTextLayoutManager: false)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.documentView = textView
+        return scrollView
     }
 
     private func configure(_ textView: NSTextView) {

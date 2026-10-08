@@ -15,17 +15,37 @@ public enum MarkdownEditing {
     /// It inserts a single line break instead when `soft` (Shift-Return), when the
     /// cursor is at the start of a line or on a blank line, and where blank lines
     /// would change the meaning: list items, quotes, frontmatter, code, tables.
+    /// In a list item Return continues the list (next number, unchecked box), and
+    /// on an empty item it removes the marker, ending the list.
     public static func newline(in text: String, selection: NSRange, soft: Bool) -> TextEdit {
         let ns = text as NSString
         let line = ns.lineRange(for: NSRange(location: selection.location, length: 0))
         let beforeCursor = ns.substring(with: NSRange(location: line.location, length: selection.location - line.location))
 
+        let inCodeOrFrontmatter = isInFrontmatter(ns, location: selection.location) || isInCodeFence(ns, throughLine: line)
+        let lineText = ns.substring(with: NSRange(location: line.location, length: lineContentEnd(ns, line) - line.location))
+        let prefix = LinePrefix(lineText)
+        let isListItem = prefix.continuation != nil && !isIndentedCode(ns, line: line, prefix: prefix)
+
+        // In a list item (with the cursor past its marker), Return continues the
+        // list; on an empty item it ends it.
+        if !soft, !inCodeOrFrontmatter, isListItem, selection.location - line.location >= prefix.length,
+           let continuation = prefix.continuation {
+            let item = (lineText as NSString).substring(from: prefix.length)
+            if item.trimmingCharacters(in: .whitespaces).isEmpty, selection.length == 0 {
+                return TextEdit(range: NSRange(location: line.location, length: (lineText as NSString).length),
+                                replacement: "", selection: NSRange(location: line.location, length: 0))
+            }
+            return TextEdit(range: selection, replacement: "\n" + continuation,
+                            selection: NSRange(location: selection.location + 1 + (continuation as NSString).length, length: 0))
+        }
+
         let single = soft
             || beforeCursor.trimmingCharacters(in: .whitespaces).isEmpty
-            || beforeCursor.prefixMatch(of: /^\s*(?:>|[-*+]\s|\d+[.)]\s|\|)/) != nil  // list, quote, table
+            || isListItem
+            || beforeCursor.prefixMatch(of: /^\s*(?:>|\|)/) != nil  // quote, table
             || beforeCursor.hasPrefix("    ") || beforeCursor.hasPrefix("\t")         // indented code
-            || isInFrontmatter(ns, location: selection.location)
-            || isInCodeFence(ns, throughLine: line)
+            || inCodeOrFrontmatter
         if single {
             return TextEdit(range: selection, replacement: "\n",
                             selection: NSRange(location: selection.location + 1, length: 0))
@@ -49,6 +69,26 @@ public enum MarkdownEditing {
                         selection: NSRange(location: range.location + 2, length: 0))
     }
 
+    /// Backspace right after a paragraph break (ADR 0004) removes the whole break,
+    /// so Return then Backspace leaves the text as it was, and Backspace at the
+    /// start of a paragraph joins it to the one above. `nil` where the text view's
+    /// own deletion applies: a selection, single line breaks, further blank lines,
+    /// code and frontmatter.
+    public static func deleteBackward(in text: String, selection: NSRange) -> TextEdit? {
+        let ns = text as NSString
+        let location = selection.location
+        guard selection.length == 0, location >= 3,
+              ns.character(at: location - 1) == 0x0A, ns.character(at: location - 2) == 0x0A,
+              ns.character(at: location - 3) != 0x0A,
+              !isInFrontmatter(ns, location: location),
+              !isInCodeFence(ns, throughLine: ns.lineRange(for: NSRange(location: location, length: 0)))
+        else { return nil }
+        let above = ns.lineRange(for: NSRange(location: location - 2, length: 0))
+        guard !ns.substring(with: above).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return TextEdit(range: NSRange(location: location - 2, length: 2), replacement: "",
+                        selection: NSRange(location: location - 2, length: 0))
+    }
+
     /// The UTF-16 range of the Title line (without its line break), if there is a Title.
     public static func titleLineRange(in text: String) -> NSRange? {
         NoteStructure(text as NSString).titleLine
@@ -61,6 +101,16 @@ public enum MarkdownEditing {
     }
 
     // MARK: Helpers
+
+    /// A line indented by a tab or four spaces is code, unless it continues a
+    /// list on the line above (a nested item).
+    private static func isIndentedCode(_ ns: NSString, line: NSRange, prefix: LinePrefix) -> Bool {
+        guard prefix.indent.hasPrefix("\t") || prefix.indent.hasPrefix("    ") else { return false }
+        guard line.location > 0 else { return true }
+        let above = ns.lineRange(for: NSRange(location: line.location - 1, length: 0))
+        let aboveText = ns.substring(with: NSRange(location: above.location, length: lineContentEnd(ns, above) - above.location))
+        return LinePrefix(aboveText).continuation == nil
+    }
 
     private static func isInFrontmatter(_ ns: NSString, location: Int) -> Bool {
         switch NoteStructure(ns).frontmatter {

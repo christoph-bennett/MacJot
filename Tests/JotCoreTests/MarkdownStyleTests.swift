@@ -58,8 +58,26 @@ struct MarkdownStyleTests {
         #expect(spans("> quoted") == ["quote:> quoted", "marker:> "])
     }
 
+    @Test(arguments: ["***", "* * *", "---", "- - -", "___"])
+    func horizontalRuleIsDimmedAsAWhole(rule: String) {
+        #expect(spans(rule) == ["marker:\(rule)"])
+    }
+
     @Test func blankLineBetweenParagraphs() {
         #expect(spans("a\n\nb") == ["paragraphGap:\n"])
+    }
+
+    @Test(arguments: [
+        ("a\n\nb", 2, true),            // the spacer between two paragraphs
+        ("a\n\nb", 1, false),           // end of the paragraph above
+        ("a\n\nb", 3, false),           // start of the paragraph below
+        ("a\n\n\nb", 3, false),         // a further blank line has full height
+        ("\nb", 0, false),              // a blank first line isn't a gap
+        ("a\n\n", 2, true),
+        ("a\n\n", 3, false),            // the new paragraph after Return
+    ])
+    func paragraphGapAtACursorPosition(text: String, location: Int, isGap: Bool) {
+        #expect(MarkdownStyle.isParagraphGap(at: location, in: text) == isGap)
     }
 
     @Test func spansStayWithinTheRequestedRange() {

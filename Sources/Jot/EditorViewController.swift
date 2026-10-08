@@ -4,6 +4,7 @@ import JotCore
 /// What a Formatting Toolbar button does.
 enum FormatCommand {
     case inline(InlineFormat)
+    case line(LineFormat)
     case link
 }
 
@@ -18,12 +19,20 @@ final class EditorViewController: NSViewController {
 
     private let scrollView: NSScrollView
     private let moreButton = NSButton()
-    /// Grouped like TextEdit's and Pages' format bars: text styles, then code and link.
+    /// Grouped like TextEdit's and Pages' format bars: after the heading menu,
+    /// text styles, lists and quote, then code and link.
+    private static let headings = [("Heading 1", 1), ("Heading 2", 2), ("Heading 3", 3), ("Plain Text", 0)]
     private static let toolbar: [[(symbol: String, help: String, command: FormatCommand)]] = [
         [
             ("bold", "Bold (⌘B)", .inline(.bold)),
             ("italic", "Italic (⌘I)", .inline(.italic)),
             ("strikethrough", "Strikethrough (⌘⇧X)", .inline(.strikethrough)),
+        ],
+        [
+            ("list.bullet", "Bulleted List", .line(.bullet)),
+            ("list.number", "Numbered List", .line(.numbered)),
+            ("checklist", "Checklist", .line(.checklist)),
+            ("text.quote", "Quote", .line(.quote)),
         ],
         [
             ("chevron.left.forwardslash.chevron.right", "Inline Code", .inline(.code)),
@@ -56,7 +65,7 @@ final class EditorViewController: NSViewController {
             control.tag = index
             return control
         }
-        let toolbar = NSStackView(views: groups)
+        let toolbar = NSStackView(views: [makeHeadingMenu()] + groups)
         toolbar.spacing = 8
         toolbar.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(toolbar)
@@ -81,6 +90,37 @@ final class EditorViewController: NSViewController {
             toolbar.trailingAnchor.constraint(lessThanOrEqualTo: moreButton.leadingAnchor, constant: -8),
         ])
         view = container
+    }
+
+    /// A pull-down of H1–H3 and plain text, with ⌘1–⌘3 and ⌘0 as its key
+    /// equivalents. (A panel key equivalent reaches the window's controls before
+    /// `CapturePanel.sendEvent`, so the menu, not the panel, handles them.)
+    private func makeHeadingMenu() -> NSPopUpButton {
+        let button = NSPopUpButton(frame: .zero, pullsDown: true)
+        button.addItem(withTitle: "")  // a pull-down's first item is its face
+        button.item(at: 0)?.image = NSImage(systemSymbolName: "textformat.size", accessibilityDescription: "Heading")
+        for (title, level) in Self.headings {
+            let item = NSMenuItem(title: title, action: #selector(heading(_:)), keyEquivalent: "\(level)")
+            item.keyEquivalentModifierMask = .command
+            item.tag = level
+            item.target = self
+            button.menu?.addItem(item)
+        }
+        button.toolTip = "Heading"
+        button.refusesFirstResponder = true
+        button.widthAnchor.constraint(equalToConstant: 56).isActive = true
+        return button
+    }
+
+    @objc private func heading(_ sender: NSMenuItem) {
+        // ⌘0–⌘3 arrive here as the menu's key equivalents, before the panel sees
+        // them: apply them only while the editor has focus (not, say, in the search
+        // field). Choosing an item in the open menu, by mouse or keyboard, always works.
+        if let event = NSApp.currentEvent, event.type == .keyDown, event.modifierFlags.contains(.command),
+           view.window?.firstResponder !== scrollView.documentView {
+            return
+        }
+        onFormat(.line(.heading(sender.tag)))
     }
 
     @objc private func format(_ sender: NSSegmentedControl) {

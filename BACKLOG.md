@@ -9,6 +9,7 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 - **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings.
 - **Hint while a Note is empty**: a dimmed placeholder in the editor such as "Leave this note empty to move it to the Trash", so emptying a Note isn't a surprise. Chosen over a confirmation dialog: trashing happens on leave (panel close, switching Notes, quit), where a dialog would block or arrive in a closing panel, and nothing is lost (⌘Z while open, Finder's Trash afterwards).
 - **Trash an emptied Note with its full contents, even when deleted slowly.** The Trash gets the last autosaved version; deleting with pauses autosaves shrinking versions, so in the worst case only a few characters end up there (select-all + Delete is fine). Fix: trash the longest version saved since the Note was opened, or the version it was opened with.
+- **Emptied paragraph grows a few pixels.** Return, type a new paragraph, then Backspace until it's empty: that line gets taller (the cursor looks bigger too) and pushes everything below it down a little. Reported 2026-10-08 after the switch to TextKit 1; minor.
 - **Final app name and bundle ID** before the first public release ("Jot" and `com.onethingwell.jot` are working names; the bundle ID can't change afterwards without losing user settings and permissions).
 
 ## MVP

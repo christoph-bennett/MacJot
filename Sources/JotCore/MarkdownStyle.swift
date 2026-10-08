@@ -40,6 +40,7 @@ public enum MarkdownStyle {
     // MARK: Line constructs
 
     private static let heading = regex(#"^(#{1,6})[ \t]+"#)
+    private static let rule = regex(#"^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$"#)
     private static let quote = regex(#"^[ \t]*>[ \t]?"#)
     private static let listItem = regex(#"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+"#)
     private static let task = regex(#"\G\[[ xX]\][ \t]+"#)
@@ -49,6 +50,10 @@ public enum MarkdownStyle {
             if isParagraphGap(ns, blankLine: line) {
                 spans.append(Span(range: ns.lineRange(for: line), kind: .paragraphGap))
             }
+            return
+        }
+        if rule.firstMatch(in: ns as String, range: line) != nil {
+            spans.append(Span(range: line, kind: .marker))  // a horizontal rule: all syntax
             return
         }
         if let match = heading.firstMatch(in: ns as String, range: line) {
@@ -68,6 +73,16 @@ public enum MarkdownStyle {
                 spans.append(Span(range: box.range, kind: .marker))
             }
         }
+    }
+
+    /// Whether a cursor at `location` would sit on a paragraph gap: the small
+    /// spacer line between two paragraphs, which is no place to type.
+    public static func isParagraphGap(at location: Int, in text: String) -> Bool {
+        let ns = text as NSString
+        guard location < ns.length else { return false }  // the empty last line
+        let line = ns.lineRange(for: NSRange(location: location, length: 0))
+        let blank = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return blank && isParagraphGap(ns, blankLine: line)
     }
 
     /// A blank line directly after a non-blank one. Further blank lines keep

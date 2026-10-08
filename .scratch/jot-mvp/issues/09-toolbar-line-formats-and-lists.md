@@ -4,11 +4,15 @@
 
 **Blocked by:** 08
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Heading menu and `⌘0`–`⌘3` set the line's heading level
-- [ ] Bullet, numbered, checklist and quote toggle on/off for all selected lines
-- [ ] Heading on `- item` → `# item` (prefix replaced, not stacked); list on `## x` → `- x`
-- [ ] Return in `3. foo` → new line `4. `; in `- [x] done` → `- [ ] `
-- [ ] Return on an empty list item removes the marker and ends the list
-- [ ] Seam 2 table-driven tests cover each command, prefix replacement, continuation and termination
+- [x] Heading menu and `⌘0`–`⌘3` set the line's heading level
+- [x] Bullet, numbered, checklist and quote toggle on/off for all selected lines
+- [x] Heading on `- item` → `# item` (prefix replaced, not stacked); list on `## x` → `- x`
+- [x] Return in `3. foo` → new line `4. `; in `- [x] done` → `- [ ] `
+- [x] Return on an empty list item removes the marker and ends the list
+- [x] Seam 2 table-driven tests cover each command, prefix replacement, continuation and termination
+
+**Changed after the user tried it:** making a list from paragraphs drops the blank lines between them (a tight list), and removing a list makes its items paragraphs again. ⌘0–⌘3 are the heading menu's key equivalents (a panel key equivalent reaches its controls before `CapturePanel.sendEvent`), applied only while the editor has focus.
+
+**Editor fixes made along the way:** the cursor never rests on a paragraph gap (↑/↓ skip it keeping the column, ←/→ and clicks step off it); Backspace right after a paragraph break removes the whole break; horizontal rules are styled as syntax, not as list items; the editor runs on TextKit 1, because TextKit 2 placed an empty last line too low after Return at the end of a Note.

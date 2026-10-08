@@ -40,9 +40,6 @@ struct MarkdownEditingTests {
     @Test(arguments: [
         ("Para\n\n|", "Para\n\n\n|"),                  // already on a blank line
         ("Para\n|Next", "Para\n\n|Next"),              // at the start of a line
-        ("- item|", "- item\n|"),                      // bullet list
-        ("1. item|", "1. item\n|"),                    // numbered list
-        ("- [ ] task|", "- [ ] task\n|"),              // checklist
         ("> quoted|", "> quoted\n|"),                  // quote
         ("---\ntags: x|\n---\nTitle", "---\ntags: x\n|\n---\nTitle"),  // inside frontmatter
         ("---|", "---\n|"),                            // opening fence of frontmatter
@@ -51,6 +48,105 @@ struct MarkdownEditingTests {
     ])
     func returnInsertsASingleLineBreakWhereParagraphsDontApply(before: String, after: String) {
         #expect(pressReturn(before) == after)
+    }
+
+    // MARK: Lists continue on Return
+
+    @Test(arguments: [
+        ("- item|", "- item\n- |"),
+        ("* item|", "* item\n* |"),
+        ("1. item|", "1. item\n2. |"),
+        ("3. foo|", "3. foo\n4. |"),                  // the next number
+        ("9) x|", "9) x\n10) |"),
+        ("- [x] done|", "- [x] done\n- [ ] |"),       // a new item is unchecked
+        ("- [ ] task|", "- [ ] task\n- [ ] |"),
+        ("  - nested|", "  - nested\n  - |"),          // at the same indentation
+        ("- fo|o", "- fo\n- |o"),                     // splits the item
+    ])
+    func returnContinuesAList(before: String, after: String) {
+        #expect(pressReturn(before) == after)
+    }
+
+    @Test(arguments: [
+        ("- |", "|"),
+        ("a\n- |", "a\n|"),
+        ("1. |", "|"),
+        ("- [ ] |", "|"),
+        ("  - |", "|"),
+    ])
+    func returnOnAnEmptyItemEndsTheList(before: String, after: String) {
+        #expect(pressReturn(before) == after)
+    }
+
+    @Test(arguments: [
+        ("- item|", "- item\n|"),                     // Shift-Return: a line break within the item
+        ("> quoted|", "> quoted\n|"),
+    ])
+    func noContinuation(before: String, after: String) {
+        #expect(pressReturn(before, soft: before.hasPrefix("-")) == after)
+    }
+
+    @Test(arguments: [
+        ("-| item", "-\n| item"),                       // cursor inside the marker: a plain line break
+        ("1|. item", "1\n|. item"),
+        ("* * *|", "* * *\n\n|"),                       // a horizontal rule isn't a list
+        ("***|", "***\n\n|"),
+        ("a\n\n***|", "a\n\n***\n\n|"),
+        ("- - -|", "- - -\n\n|"),
+        ("text\n\n    - x|", "text\n\n    - x\n|"),     // indented code that looks like a list
+        ("\t1. step|", "\t1. step\n|"),
+        ("- a\n    - nested|", "- a\n    - nested\n    - |"),  // a nested list does continue
+    ])
+    func returnDoesNotContinueWhatIsNotAListItem(before: String, after: String) {
+        #expect(pressReturn(before) == after)
+    }
+
+    @Test func returnOnAnEmptyItemWithASelectionReplacesIt() {
+        let text = "- \nmore"
+        let edit = MarkdownEditing.newline(in: text, selection: NSRange(location: 2, length: 5), soft: false)
+        let after = (text as NSString).replacingCharacters(in: edit.range, with: edit.replacement)
+        #expect(after == "- \n- ")
+    }
+
+    @Test func listsInsideCodeAndFrontmatterDontContinue() {
+        #expect(pressReturn("```\n- x|\n```") == "```\n- x\n|\n```")
+        #expect(pressReturn("---\ntags:\n- a|\n---\nT") == "---\ntags:\n- a\n|\n---\nT")
+    }
+
+    // MARK: Backspace after a paragraph break
+
+    /// Applies Backspace at the `|` in `before`; `nil` if the text view's own deletion applies.
+    private func pressBackspace(_ before: String) -> String? {
+        let cursor = (before as NSString).range(of: "|")
+        let text = (before as NSString).replacingCharacters(in: cursor, with: "")
+        guard let edit = MarkdownEditing.deleteBackward(in: text, selection: NSRange(location: cursor.location, length: 0))
+        else { return nil }
+        let after = (text as NSString).replacingCharacters(in: edit.range, with: edit.replacement)
+        return (after as NSString).replacingCharacters(in: edit.selection, with: "|")
+    }
+
+    @Test(arguments: [
+        ("a\n\n|", "a|"),                    // Return then Backspace: back where you were
+        ("a\n\n|b", "a|b"),                  // joins the paragraphs, like a word processor
+        ("# Title\n\n|Body", "# Title|Body"),
+    ])
+    func backspaceRemovesAWholeParagraphBreak(before: String, after: String) {
+        #expect(pressBackspace(before) == after)
+    }
+
+    @Test(arguments: [
+        "a\n|",                              // a single line break
+        "a\n\n\n|",                          // after a further blank line, which has full height
+        "\n\n|",                             // blank lines only
+        "a|b",
+        "```\na\n\n|b\n```",                 // blank lines in code are literal
+    ])
+    func backspaceElsewhereIsTheTextViewsOwn(before: String) {
+        #expect(pressBackspace(before) == nil)
+    }
+
+    @Test func backspaceWithASelectionIsTheTextViewsOwn() {
+        #expect(MarkdownEditing.deleteBackward(in: "a\n\nb", selection: NSRange(location: 1, length: 2)) == nil)
     }
 
     @Test func returnInATableRowIsASingleLineBreak() {
