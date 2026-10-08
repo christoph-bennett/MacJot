@@ -5,15 +5,32 @@ import Testing
 /// Seam 1: the Notes Folder, exercised over a real temporary directory.
 final class NotesFolderTests {
     let root: URL
+    let support: URL
+    var trashed: [String] = []
+    var trashedContents: [String] = []
 
     init() throws {
-        root = FileManager.default.temporaryDirectory
+        let base = FileManager.default.temporaryDirectory
             .appendingPathComponent("JotCoreTests-\(UUID().uuidString)", isDirectory: true)
+        root = base.appendingPathComponent("Notes", isDirectory: true)
+        support = base.appendingPathComponent("Support", isDirectory: true)
     }
 
     deinit {
+        let base = root.deletingLastPathComponent()
         try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: root.path)
-        try? FileManager.default.removeItem(at: root)
+        try? FileManager.default.removeItem(at: base)
+    }
+
+    private var recoveryURL: URL { support.appendingPathComponent("recovery.md") }
+
+    /// Records trashed filenames and removes the file, as the system Trash would.
+    private func makeFolder() throws -> NotesFolder {
+        try NotesFolder(url: root, recoveryURL: recoveryURL) { [unowned self] url in
+            trashed.append(url.lastPathComponent)
+            trashedContents.append(try String(contentsOf: url, encoding: .utf8))
+            try FileManager.default.removeItem(at: url)
+        }
     }
 
     private func files() throws -> [String] {
@@ -24,10 +41,23 @@ final class NotesFolderTests {
         try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
     }
 
+    private func recoveryContents() -> String? {
+        try? String(contentsOf: recoveryURL, encoding: .utf8)
+    }
+
+    /// Writes `text` as a new Note and leaves it; returns the resulting filename.
+    private func noteName(for text: String) throws -> String? {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: text)
+        try folder.leave()
+        return try files().first
+    }
+
     // MARK: Folder
 
     @Test func createsNotesFolderIfMissing() throws {
-        _ = try NotesFolder(url: root)
+        _ = try makeFolder()
         var isDirectory: ObjCBool = false
         #expect(FileManager.default.fileExists(atPath: root.path, isDirectory: &isDirectory))
         #expect(isDirectory.boolValue)
@@ -36,15 +66,16 @@ final class NotesFolderTests {
     // MARK: Draft lifecycle
 
     @Test func untouchedDraftCreatesNoFile() throws {
-        let folder = try NotesFolder(url: root)
+        let folder = try makeFolder()
         try folder.startDraft()
         try folder.flush()
         try folder.leave()
         #expect(try files().isEmpty)
+        #expect(recoveryContents() == nil)
     }
 
     @Test func whitespaceOnlyDraftCreatesNoFile() throws {
-        let folder = try NotesFolder(url: root)
+        let folder = try makeFolder()
         try folder.startDraft()
         folder.update(text: "  \n\t\n ")
         try folder.flush()
@@ -52,8 +83,16 @@ final class NotesFolderTests {
         #expect(try files().isEmpty)
     }
 
-    @Test func firstContentMaterialisesFileNamedAfterTitle() throws {
-        let folder = try NotesFolder(url: root)
+    @Test func draftOfOnlyLineBreaksCreatesNoFile() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "  \r\n \u{2028} \r\n")
+        try folder.leave()
+        #expect(try files().isEmpty)
+    }
+
+    @Test func finishedTitleMaterialisesFileNamedAfterIt() throws {
+        let folder = try makeFolder()
         try folder.startDraft()
         folder.update(text: "Hello World\nsecond line")
         try folder.flush()
@@ -62,63 +101,8 @@ final class NotesFolderTests {
         #expect(folder.currentNoteURL?.lastPathComponent == "hello-world.md")
     }
 
-    @Test func titleIsFirstNonBlankLine() throws {
-        let folder = try NotesFolder(url: root)
-        try folder.startDraft()
-        folder.update(text: "\n   \nShopping List\nmilk")
-        try folder.flush()
-        #expect(try files() == ["shopping-list.md"])
-    }
-
-    @Test func titleWithoutUsableCharactersIsUntitled() throws {
-        let folder = try NotesFolder(url: root)
-        try folder.startDraft()
-        folder.update(text: "///")
-        try folder.flush()
-        #expect(try files() == ["untitled.md"])
-    }
-
-    @Test func windowsLineEndingsSeparateTheTitle() throws {
-        let folder = try NotesFolder(url: root)
-        try folder.startDraft()
-        folder.update(text: "\r\nHello\r\nWorld\r\n")
-        try folder.flush()
-        #expect(try files() == ["hello.md"])
-    }
-
-    @Test func draftOfOnlyLineBreaksCreatesNoFile() throws {
-        let folder = try NotesFolder(url: root)
-        try folder.startDraft()
-        folder.update(text: "  \r\n \u{2028} \r\n")
-        try folder.leave()
-        #expect(try files().isEmpty)
-    }
-
-    @Test func longTitlesAreCutAtAWordBoundary() throws {
-        let folder = try NotesFolder(url: root)
-        try folder.startDraft()
-        folder.update(text: String(repeating: "lorem ipsum ", count: 30))
-        try folder.flush()
-        let name = try #require(try files().first)
-        let stem = String(name.dropLast(3))
-        #expect(stem.count <= 60)
-        #expect(stem.hasPrefix("lorem-ipsum-lorem"))
-        #expect(!stem.hasSuffix("-"))
-        #expect(stem.hasSuffix("lorem") || stem.hasSuffix("ipsum"))
-    }
-
-    @Test func savingLeavesNoTemporaryFilesBehind() throws {
-        let folder = try NotesFolder(url: root)
-        try folder.startDraft()
-        folder.update(text: "Clean")
-        try folder.flush()
-        folder.update(text: "Clean\nmore")
-        try folder.leave()
-        #expect(try files() == ["clean.md"])
-    }
-
     @Test func isBlankDraftOnlyWhileTheDraftHasNoContent() throws {
-        let folder = try NotesFolder(url: root)
+        let folder = try makeFolder()
         #expect(!folder.isBlankDraft)  // nothing open yet
         try folder.startDraft()
         #expect(folder.isBlankDraft)
@@ -126,6 +110,7 @@ final class NotesFolderTests {
         #expect(folder.isBlankDraft)
         folder.update(text: "Something")
         #expect(!folder.isBlankDraft)  // has content, even before it's saved
+        folder.update(text: "Something\n")
         try folder.flush()
         folder.update(text: "")
         #expect(!folder.isBlankDraft)  // a saved Note emptied is not a Draft
@@ -133,49 +118,152 @@ final class NotesFolderTests {
         #expect(!folder.isBlankDraft)
     }
 
-    // MARK: Saving
+    // MARK: Title-finished creation and the Recovery Copy
 
-    @Test func flushReportsWhetherItWrote() throws {
-        let folder = try NotesFolder(url: root)
+    @Test func unfinishedTitleIsKeptInTheRecoveryCopyOnly() throws {
+        let folder = try makeFolder()
         try folder.startDraft()
-        #expect(try folder.flush() == false)
-        folder.update(text: "Written")
-        #expect(try folder.flush() == true)
-        #expect(try folder.flush() == false)
-    }
-
-    @Test func flushPersistsLatestTextToTheSameFile() throws {
-        let folder = try NotesFolder(url: root)
-        try folder.startDraft()
-        folder.update(text: "Plan")
+        folder.update(text: "Meeting wi")
         try folder.flush()
-        folder.update(text: "Plan\n- step one")
-        try folder.flush()
-        #expect(try files() == ["plan.md"])
-        #expect(try contents("plan.md") == "Plan\n- step one")
-    }
-
-    @Test func leavePersistsUnflushedText() throws {
-        let folder = try NotesFolder(url: root)
-        try folder.startDraft()
-        folder.update(text: "Idea")
-        try folder.leave()
-        #expect(try contents("idea.md") == "Idea")
+        #expect(try files().isEmpty)
+        #expect(recoveryContents() == "Meeting wi")
         #expect(folder.currentNoteURL == nil)
     }
 
-    @Test func startingANewDraftSavesThePreviousNote() throws {
-        let folder = try NotesFolder(url: root)
+    @Test func pausingMidTitleCreatesOnlyTheFinishedName() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Meeting wi")
+        try folder.flush()
+        folder.update(text: "Meeting with Anna\n")
+        try folder.flush()
+        #expect(try files() == ["meeting-with-anna.md"])
+    }
+
+    @Test func materialisingDeletesTheRecoveryCopy() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Idea")
+        try folder.flush()
+        #expect(recoveryContents() == "Idea")
+        folder.update(text: "Idea\n")
+        try folder.flush()
+        #expect(recoveryContents() == nil)
+    }
+
+    @Test func singleLineDraftIsMaterialisedOnLeave() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Idea")
+        try folder.flush()
+        try folder.leave()
+        #expect(try contents("idea.md") == "Idea")
+        #expect(recoveryContents() == nil)
+        #expect(folder.currentNoteURL == nil)
+    }
+
+    @Test func startingANewDraftMaterialisesThePreviousOne() throws {
+        let folder = try makeFolder()
         try folder.startDraft()
         folder.update(text: "First")
         try folder.startDraft()
-        try folder.flush()
         #expect(try files() == ["first.md"])
         #expect(folder.currentNoteURL == nil)
     }
 
+    @Test func clearingAnUnfinishedDraftRemovesTheRecoveryCopy() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Oops")
+        try folder.flush()
+        folder.update(text: "")
+        try folder.flush()
+        #expect(recoveryContents() == nil)
+        try folder.leave()
+        #expect(try files().isEmpty)
+    }
+
+    @Test func recoveryCopyFromACrashBecomesANote() throws {
+        try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        try "Lost thought\nmore".write(to: recoveryURL, atomically: true, encoding: .utf8)
+        _ = try makeFolder()
+        #expect(try files() == ["lost-thought.md"])
+        #expect(try contents("lost-thought.md") == "Lost thought\nmore")
+        #expect(recoveryContents() == nil)
+    }
+
+    @Test func recoveryCopyMatchingAnExistingNoteIsNotDuplicated() throws {
+        // Crash after the Note's file was created but before the copy was removed.
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        try "Idea\nbody".write(to: root.appendingPathComponent("idea.md"), atomically: true, encoding: .utf8)
+        try "Idea\nbody".write(to: recoveryURL, atomically: true, encoding: .utf8)
+        _ = try makeFolder()
+        #expect(try files() == ["idea.md"])
+        #expect(recoveryContents() == nil)
+    }
+
+    @Test func unreadableRecoveryCopyIsReportedNotOverwritten() throws {
+        try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        try "Precious".write(to: recoveryURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: recoveryURL.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: recoveryURL.path) }
+        #expect(throws: (any Error).self) { _ = try self.makeFolder() }
+    }
+
+    @Test func blankRecoveryCopyIsDiscarded() throws {
+        try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        try " \n".write(to: recoveryURL, atomically: true, encoding: .utf8)
+        _ = try makeFolder()
+        #expect(try files().isEmpty)
+        #expect(recoveryContents() == nil)
+    }
+
+    // MARK: Filenames
+
+    @Test func accentsAreTransliteratedAndHeadingMarkersIgnored() throws {
+        #expect(try noteName(for: "# Über Änderungen!\nbody") == "uber-anderungen.md")
+    }
+
+    @Test func sharpSIsSpelledOut() throws {
+        #expect(try noteName(for: "Straße") == "strasse.md")
+    }
+
+    @Test func taskMarkerIsIgnored() throws {
+        #expect(try noteName(for: "- [ ] Call Anna") == "call-anna.md")
+        try FileManager.default.removeItem(at: root)
+        #expect(try noteName(for: "- [x] Call Ben") == "call-ben.md")
+    }
+
+    @Test func listAndQuoteMarkersAreIgnored() throws {
+        #expect(try noteName(for: "> 1. **Plan** for Q4") == "plan-for-q4.md")
+    }
+
+    @Test func titleWithoutUsableCharactersIsUntitled() throws {
+        #expect(try noteName(for: "🎉🎉") == "untitled.md")
+        try FileManager.default.removeItem(at: root)
+        #expect(try noteName(for: "日本語のメモ") == "untitled.md")
+    }
+
+    @Test func titleIsFirstNonBlankLine() throws {
+        #expect(try noteName(for: "\n   \nShopping List\nmilk") == "shopping-list.md")
+    }
+
+    @Test func windowsLineEndingsSeparateTheTitle() throws {
+        #expect(try noteName(for: "\r\nHello\r\nWorld\r\n") == "hello.md")
+    }
+
+    @Test func longTitlesAreCutAtAWordBoundary() throws {
+        let name = try #require(try noteName(for: String(repeating: "lorem ipsum ", count: 30)))
+        let stem = String(name.dropLast(3))
+        #expect(stem.count <= 60)
+        #expect(stem.hasPrefix("lorem-ipsum-lorem"))
+        #expect(!stem.hasSuffix("-"))
+        #expect(stem.hasSuffix("lorem") || stem.hasSuffix("ipsum"))
+    }
+
     @Test func notesWithTheSameTitleNeverOverwriteEachOther() throws {
-        let folder = try NotesFolder(url: root)
+        let folder = try makeFolder()
         try folder.startDraft()
         folder.update(text: "Meeting\nA")
         try folder.leave()
@@ -187,8 +275,158 @@ final class NotesFolderTests {
         #expect(try contents("meeting-2.md") == "Meeting\nB")
     }
 
+    @Test func frontmatterOnlyNoteIsContentNotBlank() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "---\ntags: [work]\n---\n")
+        #expect(!folder.isBlankDraft)
+        try folder.leave()
+        #expect(try files() == ["untitled.md"])
+    }
+
+    @Test func openingFrontmatterFenceIsNotAFinishedTitle() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "---\n")
+        try folder.flush()
+        folder.update(text: "---\ntags: [work]\n")
+        try folder.flush()
+        #expect(try files().isEmpty)
+        folder.update(text: "---\ntags: [work]\n---\nReal Title\n")
+        try folder.flush()
+        #expect(try files() == ["real-title.md"])
+    }
+
+    @Test func frontmatterIsKeptAndSkippedForTheTitle() throws {
+        let text = "---\ntags: [work]\n---\n\nReal Title\nbody"
+        #expect(try noteName(for: text) == "real-title.md")
+        #expect(try contents("real-title.md") == text)
+    }
+
+    // MARK: Rename on leave
+
+    @Test func retitlingRenamesOnLeaveNotWhileTyping() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Draft plan\nbody")
+        try folder.flush()
+        folder.update(text: "Final plan\nbody")
+        try folder.flush()
+        #expect(try files() == ["draft-plan.md"])
+        #expect(try contents("draft-plan.md") == "Final plan\nbody")
+        try folder.leave()
+        #expect(try files() == ["final-plan.md"])
+        #expect(try contents("final-plan.md") == "Final plan\nbody")
+    }
+
+    @Test func renameAvoidsExistingNames() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Meeting\nA")
+        try folder.leave()
+        try folder.startDraft()
+        folder.update(text: "Other\nB")
+        try folder.flush()
+        folder.update(text: "Meeting\nB")
+        try folder.leave()
+        #expect(try files() == ["meeting-2.md", "meeting.md"])
+        #expect(try contents("meeting-2.md") == "Meeting\nB")
+    }
+
+    @Test func suffixedNameIsKeptWhenTheTitleIsUnchanged() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Meeting\nA")
+        try folder.leave()
+        try folder.startDraft()
+        folder.update(text: "Meeting\nB")
+        try folder.flush()
+        folder.update(text: "Meeting\nB edited")
+        try folder.leave()
+        #expect(try files() == ["meeting-2.md", "meeting.md"])
+    }
+
+    @Test func retitlingToAPrefixOfTheOldNameRenames() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Plan 1\nbody")
+        try folder.flush()
+        folder.update(text: "Plan\nbody")
+        try folder.leave()
+        #expect(try files() == ["plan.md"])
+    }
+
+    @Test func emptiedNoteGoesToTheTrashWithItsLastContent() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Long note\nwith content")
+        try folder.flush()
+        folder.update(text: "")
+        try folder.flush()  // autosave of the emptied text
+        try folder.leave()
+        #expect(trashed == ["long-note.md"])
+        #expect(trashedContents == ["Long note\nwith content"])
+    }
+
+    @Test func emptiedNoteWhoseFileIsGoneCanStillBeLeft() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Gone\nsoon")
+        try folder.flush()
+        folder.update(text: "")
+        try folder.flush()
+        try FileManager.default.removeItem(at: root.appendingPathComponent("gone.md"))
+        try folder.leave()
+        try folder.startDraft()
+        #expect(trashed.isEmpty)
+    }
+
+    @Test func emptiedNoteIsTrashedOnLeave() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Temporary\nthing")
+        try folder.flush()
+        folder.update(text: " \n")
+        try folder.flush()
+        try folder.leave()
+        #expect(trashed == ["temporary.md"])
+        #expect(try files().isEmpty)
+    }
+
+    // MARK: Saving
+
+    @Test func flushReportsWhetherItWrote() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        #expect(try folder.flush() == false)
+        folder.update(text: "Written")
+        #expect(try folder.flush() == true)
+        #expect(try folder.flush() == false)
+    }
+
+    @Test func flushPersistsLatestTextToTheSameFile() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Plan\n")
+        try folder.flush()
+        folder.update(text: "Plan\n- step one")
+        try folder.flush()
+        #expect(try files() == ["plan.md"])
+        #expect(try contents("plan.md") == "Plan\n- step one")
+    }
+
+    @Test func savingLeavesNoTemporaryFilesBehind() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Clean\n")
+        try folder.flush()
+        folder.update(text: "Clean\nmore")
+        try folder.leave()
+        #expect(try files() == ["clean.md"])
+    }
+
     @Test func failedSaveKeepsTheNoteOpenWithItsText() throws {
-        let folder = try NotesFolder(url: root)
+        let folder = try makeFolder()
         try folder.startDraft()
         folder.update(text: "Keep me")
         try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: root.path)
@@ -197,7 +435,7 @@ final class NotesFolderTests {
         #expect(throws: (any Error).self) { try folder.leave() }
 
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: root.path)
-        try folder.flush()
+        try folder.leave()
         #expect(try contents("keep-me.md") == "Keep me")
     }
 }

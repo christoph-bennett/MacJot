@@ -6,20 +6,20 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `# Über Änderungen!` → `uber-anderungen.md`
-- [ ] `- [ ] Call Anna` → `call-anna.md`
-- [ ] `🎉🎉` → `untitled.md`
-- [ ] Two Notes titled `Meeting` → `meeting.md`, `meeting-2.md`
-- [ ] Title preceded by blank lines → slug of the first non-blank line
-- [ ] Long Titles are cut to ≤ 60 chars at a word boundary
-- [ ] Retitling renames the file on leave, not while typing; the open Note keeps saving to its current path until then
-- [ ] Typing `Meeting wi`, pausing past the autosave delay, then finishing `Meeting with Anna` + Return creates only `meeting-with-anna.md` (no intermediate file in the Notes Folder)
-- [ ] Before the Title is finished, autosave writes the Recovery Copy and nothing in the Notes Folder
-- [ ] A single-line Draft is materialised when the Note is left (close, `⌘N`, quit)
-- [ ] Materialising the Note deletes the Recovery Copy
-- [ ] Constructing the Notes Folder with a Recovery Copy present turns it into a Note; a blank Recovery Copy is just removed
-- [ ] Emptying a Note and leaving it moves the file to the system Trash
-- [ ] A file with frontmatter keeps it byte-for-byte; Title comes from the first non-blank line after it
-- [ ] All of the above covered by Seam 1 tests asserting resulting filenames on disk (recording trash injected)
+- [x] `# Über Änderungen!` → `uber-anderungen.md`
+- [x] `- [ ] Call Anna` → `call-anna.md`
+- [x] `🎉🎉` → `untitled.md`
+- [x] Two Notes titled `Meeting` → `meeting.md`, `meeting-2.md`
+- [x] Title preceded by blank lines → slug of the first non-blank line
+- [x] Long Titles are cut to ≤ 60 chars at a word boundary
+- [x] Retitling renames the file on leave, not while typing; the open Note keeps saving to its current path until then
+- [x] Typing `Meeting wi`, pausing past the autosave delay, then finishing `Meeting with Anna` + Return creates only `meeting-with-anna.md` (no intermediate file in the Notes Folder)
+- [x] Before the Title is finished, autosave writes the Recovery Copy and nothing in the Notes Folder
+- [x] A single-line Draft is materialised when the Note is left (close, `⌘N`, quit)
+- [x] Materialising the Note deletes the Recovery Copy
+- [x] Constructing the Notes Folder with a Recovery Copy present turns it into a Note; a blank Recovery Copy is just removed
+- [x] Emptying a Note and leaving it moves the file to the system Trash
+- [x] A file with frontmatter keeps it byte-for-byte; Title comes from the first non-blank line after it
+- [x] All of the above covered by Seam 1 tests asserting resulting filenames on disk (recording trash injected)

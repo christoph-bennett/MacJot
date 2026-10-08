@@ -11,9 +11,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let folder: NotesFolder
         do {
-            folder = try NotesFolder(url: Self.defaultNotesFolderURL)
+            folder = try NotesFolder(url: Self.defaultNotesFolderURL, recoveryURL: Self.recoveryURL) { url in
+                try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+            }
         } catch {
-            ErrorAlert.show("Jot couldn't create its Notes Folder.", error: error)
+            ErrorAlert.show("Jot couldn’t open its Notes Folder.", error: error)
             NSApp.terminate(nil)
             return
         }
@@ -77,6 +79,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             NSLog("Jot: couldn't register launch at login: \(error)")
         }
+    }
+
+    /// Holds a Draft's text until its Title is finished; outside the Notes Folder on purpose.
+    private static var recoveryURL: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Jot", isDirectory: true)
+            .appendingPathComponent("recovery.md")
     }
 
     private static var defaultNotesFolderURL: URL {
