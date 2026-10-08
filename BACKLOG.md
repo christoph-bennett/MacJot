@@ -25,6 +25,7 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 - Copy a Note as rich text.
 - Conflict-resolution UI for concurrent external edits (MVP: local unsaved edits win).
 - App Store / sandboxed build.
+- **Open `.md` files from Finder in Jot** ("Open With", or as the default app for Markdown). Open question: a file outside the Notes Folder is edited in place in the Capture Panel, or copied into the Notes Folder? In place fits ADR 0001; rename-on-leave and the Note List would then need to handle files outside the folder.
 
 ## Not planned
 
