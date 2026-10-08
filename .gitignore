@@ -21,3 +21,6 @@ build/
 *.xcarchive
 *.app
 *.dmg
+
+# Session handoff for Claude Code (local only, rewritten by /handoff)
+docs/jot-handoff.md
