@@ -397,6 +397,160 @@ final class NotesFolderTests {
         #expect(try files().isEmpty)
     }
 
+    // MARK: Note List
+
+    /// Writes a Note file directly, as another tool would, with a given modification date.
+    @discardableResult
+    private func writeNote(_ name: String, _ text: String, modified: Date = Date()) throws -> URL {
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let url = root.appendingPathComponent(name)
+        try text.write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: modified], ofItemAtPath: url.path)
+        return url
+    }
+
+    @Test func notesAreListedNewestFirst() throws {
+        try writeNote("old.md", "Old", modified: Date(timeIntervalSinceNow: -3600))
+        try writeNote("new.md", "New", modified: Date())
+        try writeNote("mid.md", "Mid", modified: Date(timeIntervalSinceNow: -60))
+        let folder = try makeFolder()
+        #expect(try folder.notes().map(\.title) == ["New", "Mid", "Old"])
+    }
+
+    @Test func summaryShowsTitleWithoutMarkdownAndTheNextLine() throws {
+        try writeNote("a.md", "\n# Über **Änderungen**\n\n- [ ] milk and *eggs*\nmore")
+        let note = try #require(try makeFolder().notes().first)
+        #expect(note.title == "Über Änderungen")
+        #expect(note.preview == "milk and eggs")
+        #expect(note.url.lastPathComponent == "a.md")
+    }
+
+    @Test func noteWithoutTitleIsListedAsUntitled() throws {
+        try writeNote("fm.md", "---\ntags: [x]\n---\n")
+        let note = try #require(try makeFolder().notes().first)
+        #expect(note.title == "Untitled")
+        #expect(note.preview == "")
+    }
+
+    @Test func onlyVisibleMarkdownFilesAreListed() throws {
+        try writeNote("note.md", "Note")
+        try writeNote(".hidden.md", "Hidden")
+        try writeNote(".jot-1234.tmp", "Temp")
+        try writeNote("other.txt", "Text")
+        #expect(try makeFolder().notes().map(\.title) == ["Note"])
+    }
+
+    // MARK: Opening existing Notes
+
+    @Test func openingAnExistingNoteReturnsItsTextAndSavesToIt() throws {
+        let url = try writeNote("plan.md", "Plan\nold")
+        let folder = try makeFolder()
+        #expect(try folder.open(url) == "Plan\nold")
+        #expect(folder.currentNoteURL == url)
+        #expect(!folder.isBlankDraft)
+        folder.update(text: "Plan\nnew")
+        try folder.leave()
+        #expect(try contents("plan.md") == "Plan\nnew")
+    }
+
+    @Test func openingAndLeavingUnchangedNeverRenames() throws {
+        let url = try writeNote("My Note From Elsewhere.md", "Shopping\nmilk")
+        let suffixed = try writeNote("meeting-2.md", "Meeting\nB")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        _ = try folder.open(suffixed)
+        try folder.leave()
+        #expect(try files() == ["My Note From Elsewhere.md", "meeting-2.md"])
+    }
+
+    @Test func retitlingAnOpenedNoteRenamesItOnLeave() throws {
+        let url = try writeNote("My Note From Elsewhere.md", "Shopping\nmilk")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        folder.update(text: "Groceries\nmilk")
+        try folder.leave()
+        #expect(try files() == ["groceries.md"])
+    }
+
+    @Test func openingAnotherNoteLeavesTheCurrentDraft() throws {
+        let url = try writeNote("other.md", "Other")
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Unfinished thought")
+        _ = try folder.open(url)
+        #expect(try files() == ["other.md", "unfinished-thought.md"])
+        #expect(folder.currentNoteURL == url)
+    }
+
+    @Test func openingTheOpenNoteKeepsItsUnsavedText() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        folder.update(text: "Plan\nunsaved")
+        #expect(try folder.open(url) == "Plan\nunsaved")
+    }
+
+    @Test func openingAMissingNoteKeepsTheCurrentOneOpen() throws {
+        let current = try writeNote("current.md", "Current")
+        let folder = try makeFolder()
+        _ = try folder.open(current)
+        folder.update(text: "Current\nedited")
+        #expect(throws: (any Error).self) { _ = try folder.open(self.root.appendingPathComponent("gone.md")) }
+        #expect(folder.currentNoteURL == current)
+        folder.update(text: "Current\nedited more")
+        try folder.leave()
+        #expect(try contents("current.md") == "Current\nedited more")
+    }
+
+    @Test func openingAnEmptyFileAndLeavingItKeepsIt() throws {
+        let url = try writeNote("todo.md", "")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        try folder.leave()
+        #expect(trashed.isEmpty)
+        #expect(try files() == ["todo.md"])
+    }
+
+    @Test func leftNoteURLFollowsRenamesAndNewFiles() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        folder.update(text: "Roadmap")
+        try folder.startDraft()
+        #expect(folder.lastLeftNoteURL?.lastPathComponent == "roadmap.md")
+        folder.update(text: "Single line idea")
+        try folder.leave()
+        #expect(folder.lastLeftNoteURL?.lastPathComponent == "single-line-idea.md")
+        try folder.startDraft()
+        try folder.leave()
+        #expect(folder.lastLeftNoteURL == nil)  // a blank Draft leaves no Note behind
+    }
+
+    // MARK: Trashing from the Note List
+
+    @Test func trashingTheOpenNoteClosesItWithoutSaving() throws {
+        let url = try writeNote("plan.md", "Plan")
+        let folder = try makeFolder()
+        _ = try folder.open(url)
+        folder.update(text: "Plan\nedited")
+        try folder.trash(url)
+        #expect(trashed == ["plan.md"])
+        #expect(trashedContents == ["Plan"])
+        #expect(folder.currentNoteURL == nil)
+        try folder.leave()
+        #expect(try files().isEmpty)
+    }
+
+    @Test func trashingAnotherNoteKeepsTheOpenOne() throws {
+        let open = try writeNote("open.md", "Open")
+        let other = try writeNote("other.md", "Other")
+        let folder = try makeFolder()
+        _ = try folder.open(open)
+        try folder.trash(other)
+        #expect(trashed == ["other.md"])
+        #expect(folder.currentNoteURL == open)
+    }
+
     // MARK: Saving
 
     @Test func flushReportsWhetherItWrote() throws {

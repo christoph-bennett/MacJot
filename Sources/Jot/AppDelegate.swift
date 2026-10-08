@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Show Notes", action: #selector(showNotes), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Jot", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu
@@ -48,6 +49,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func newNote() {
         panel?.showNewDraft()
+    }
+
+    @objc private func showNotes() {
+        panel?.showNotes()
     }
 
     // MARK: Hotkeys

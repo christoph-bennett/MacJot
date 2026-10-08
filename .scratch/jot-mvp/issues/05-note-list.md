@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** implemented, awaiting manual UI check
 
 - [ ] `⌘\` toggles the sidebar; collapsed when opened via New Note
 - [ ] Notes sorted newest-modified first; editing a Note moves it to the top
@@ -13,4 +13,4 @@
 - [ ] Reveal in Finder, Open in Default App, Copy as Markdown, Move to Trash work from both the context menu and `⋯`
 - [ ] Move to Trash uses the system Trash, no dialog, and the row disappears
 - [ ] Show Notes opens the panel with the sidebar expanded
-- [ ] Seam 1 tests cover Note List ordering, Title and preview derivation
+- [x] Seam 1 tests cover Note List ordering, Title and preview derivation

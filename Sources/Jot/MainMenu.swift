@@ -1,7 +1,7 @@
 import AppKit
 
 /// Jot never shows a menu bar of its own, but the main menu is what routes
-/// ⌘N, ⌘C, ⌘V, ⌘Z, ⌘A, ⌘W and ⌘Q to the panel and text view.
+/// ⌘N, ⌘\\, ⌘C, ⌘V, ⌘Z, ⌘A, ⌘W and ⌘Q to the panel and text view.
 @MainActor
 enum MainMenu {
     static func make(newNoteTarget: CapturePanelController) -> NSMenu {
@@ -16,6 +16,11 @@ enum MainMenu {
             .target = newNoteTarget
         file.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         main.addItem(submenu: file, title: "File")
+
+        let view = NSMenu(title: "View")
+        view.addItem(withTitle: "Toggle Note List", action: #selector(CapturePanelController.toggleNoteList), keyEquivalent: "\\")
+            .target = newNoteTarget
+        main.addItem(submenu: view, title: "View")
 
         let edit = NSMenu(title: "Edit")
         edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")

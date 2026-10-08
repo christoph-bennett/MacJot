@@ -15,10 +15,16 @@ public final class NotesFolder {
 
     public let url: URL
     private let recoveryURL: URL
-    private let trash: Trash
+    private let moveToTrash: Trash
 
     /// File of the open Note; `nil` while it is still a Draft or after leaving.
     public private(set) var currentNoteURL: URL?
+    /// Where the Note left last ended up: after a rename, or the file a Draft got
+    /// on leaving. `nil` if it left nothing behind (blank Draft, trashed Note).
+    public private(set) var lastLeftNoteURL: URL?
+    /// Increases each time a Note is actually left, so callers can tell whether an
+    /// operation (`open`, `startDraft`) left one.
+    public private(set) var leaveCount = 0
     /// The slug the open Note's file was named from (its name may carry a `-2` suffix).
     private var currentSlug: String?
 
@@ -38,7 +44,7 @@ public final class NotesFolder {
     public init(url: URL, recoveryURL: URL, trash: @escaping Trash) throws {
         self.url = url
         self.recoveryURL = recoveryURL
-        self.trash = trash
+        self.moveToTrash = trash
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(
             at: recoveryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -73,20 +79,74 @@ public final class NotesFolder {
     /// Returns whether anything was written.
     @discardableResult
     public func leave() throws -> Bool {
+        guard isOpen else { return false }
         var wrote = try persist(materialising: true)
+        var left = currentNoteURL
         if let file = currentNoteURL {
             if !Title.isBlank(latestText) {
                 wrote = try renameIfNeeded(file) || wrote
-            } else if FileManager.default.fileExists(atPath: file.path) {
-                // Its last non-blank content goes to the Trash, so it can be restored.
-                try trash(file)
-                wrote = true
+                left = currentNoteURL
+            } else if !Title.isBlank(persistedText) {
+                // Emptied by the user: its last non-blank content goes to the Trash,
+                // so it can be restored. A file that was blank when opened stays.
+                if FileManager.default.fileExists(atPath: file.path) {
+                    try moveToTrash(file)
+                    wrote = true
+                }
+                left = nil
             }
         }
         isOpen = false
         currentNoteURL = nil
         currentSlug = nil
+        lastLeftNoteURL = left
+        leaveCount += 1
         return wrote
+    }
+
+    // MARK: Note List
+
+    /// All Notes in the folder (visible `.md` files), most recently modified first.
+    public func notes() throws -> [NoteSummary] {
+        let files = try FileManager.default.contentsOfDirectory(
+            at: url, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles])
+        return files
+            .filter { $0.pathExtension.lowercased() == "md" }
+            .compactMap { file -> NoteSummary? in
+                guard let text = try? String(contentsOf: file, encoding: .utf8) else { return nil }
+                let modified = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+                return NoteSummary(url: file, text: text, modified: modified ?? .distantPast)
+            }
+            .sorted { $0.modified > $1.modified }
+    }
+
+    /// Leaves the current Note and opens an existing one, returning its text.
+    /// Its name is taken as matching its Title, so leaving it unchanged never
+    /// renames it, whatever the file is called; changing the Title does.
+    public func open(_ note: URL) throws -> String {
+        if isOpen, let current = currentNoteURL, current.standardizedFileURL == note.standardizedFileURL {
+            return latestText
+        }
+        // Read first: if the file is gone or unreadable, the current Note stays open.
+        let text = try String(contentsOf: note, encoding: .utf8)
+        try leave()
+        isOpen = true
+        latestText = text
+        persistedText = text
+        isInRecovery = false
+        currentNoteURL = note
+        currentSlug = Title.slug(Title.of(text) ?? "")
+        return text
+    }
+
+    /// Moves a Note to the Trash. If it's the open Note, it's closed without saving.
+    public func trash(_ note: URL) throws {
+        try moveToTrash(note)
+        if let current = currentNoteURL, current.standardizedFileURL == note.standardizedFileURL {
+            isOpen = false
+            currentNoteURL = nil
+            currentSlug = nil
+        }
     }
 
     // MARK: Persisting

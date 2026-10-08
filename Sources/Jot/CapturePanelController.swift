@@ -1,18 +1,22 @@
 import AppKit
 import JotCore
 
-/// The Capture Panel: a floating plain text editor bound to the Notes Folder's open Note.
-/// Saving is invisible: ~0.5 s after typing stops, and when the panel closes.
+/// The Capture Panel: a floating Markdown editor bound to the Notes Folder's open
+/// Note, with the Note List as a collapsible sidebar. Saving is invisible: ~0.5 s
+/// after typing stops, and when the Note is left (panel closed, another Note opened).
 @MainActor
 final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelegate {
     private static let autosaveDelay: Duration = .milliseconds(500)
     private static let frameAutosaveName = "CapturePanel"
-    private static let defaultSize = NSSize(width: 480, height: 360)
+    private static let defaultSize = NSSize(width: 640, height: 420)
 
     private let folder: NotesFolder
-    private let panel: NSPanel
+    private let panel: CapturePanel
     private let textView: NSTextView
     private let styler = MarkdownStyler()
+    private let noteList = NoteListViewController()
+    private let noteListItem: NSSplitViewItem
+    private let cursors = CursorPositions()
     private var autosave: Task<Void, Never>?
     private var isShowingSaveError = false
 
@@ -21,7 +25,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
         let scrollView = NSTextView.scrollableTextView()
         textView = scrollView.documentView as! NSTextView
-        panel = NSPanel(
+        noteListItem = NSSplitViewItem(sidebarWithViewController: noteList)
+        panel = CapturePanel(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
             // Non-activating: the panel takes keyboard focus without activating Jot,
             // like Spotlight. Activation can be refused on macOS 14+, and the app
@@ -35,6 +40,20 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         configure(textView)
         textView.delegate = self
 
+        let editor = EditorViewController(scrollView: scrollView)
+        editor.menuItems = { [weak self] in
+            guard let self, let note = folder.currentNoteURL else { return [] }
+            return actions(for: note)
+        }
+        noteList.onOpen = { [weak self] in self?.open($0) }
+        noteList.menuItems = { [weak self] in self?.actions(for: $0) ?? [] }
+        noteListItem.minimumThickness = 180
+        noteListItem.maximumThickness = 320
+        noteListItem.isCollapsed = true
+        let split = NSSplitViewController()
+        split.addSplitViewItem(noteListItem)
+        split.addSplitViewItem(NSSplitViewItem(viewController: editor))
+
         panel.title = "Jot"
         panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
@@ -43,10 +62,13 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         // including over full-screen apps.
         panel.level = .floating
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-        panel.contentView = scrollView
+        panel.contentViewController = split
         panel.initialFirstResponder = textView
         panel.delegate = self
+        panel.onCancel = { [weak self] in self?.hide() }
+        // Setting the content view controller resized the panel; restore the remembered frame.
         if !panel.setFrameUsingName(Self.frameAutosaveName) {
+            panel.setContentSize(Self.defaultSize)
             panel.center()
         }
         panel.setFrameAutosaveName(Self.frameAutosaveName)
@@ -65,11 +87,13 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         }
     }
 
-    /// Leaves the current Note and shows the panel with an empty Draft.
+    /// Leaves the current Note and shows the panel with an empty Draft. Summoned
+    /// from hidden, the Note List starts collapsed: capturing is the point.
     @objc func showNewDraft() {
+        if !panel.isVisible { noteListItem.isCollapsed = true }
         cancelAutosave()
         do {
-            try folder.startDraft()
+            try leavingCurrentNote { try folder.startDraft() }
         } catch {
             // Previous Note couldn't be saved: keep it on screen instead of replacing it.
             reportSaveError(error)
@@ -77,10 +101,103 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             return
         }
         isShowingSaveError = false  // the previous Note was saved, so its failure streak is over
-        textView.string = ""
+        display("", cursor: 0)
+        show()
+    }
+
+    /// Shows the panel with the Note List expanded and focused.
+    @objc func showNotes() {
+        if !panel.isVisible { showNewDraft() }
+        reloadNoteList(evenIfCollapsed: true)
+        noteListItem.isCollapsed = false
+        show()
+        panel.makeFirstResponder(noteList.tableView)
+    }
+
+    @objc func toggleNoteList() {
+        let willShow = noteListItem.isCollapsed
+        if willShow {
+            reloadNoteList(evenIfCollapsed: true)
+        } else if panel.firstResponder === noteList.tableView {
+            panel.makeFirstResponder(textView)  // don't leave typing aimed at a hidden list
+        }
+        noteListItem.animator().isCollapsed = !willShow
+    }
+
+    // MARK: Notes
+
+    /// Leaves the current Note and opens `note` where the user last left it.
+    private func open(_ note: URL) {
+        cancelAutosave()
+        let text: String
+        do {
+            text = try leavingCurrentNote { try folder.open(note) }
+        } catch {
+            ErrorAlert.show("Jot couldn't open this note.", error: error)
+            reloadNoteList()
+            return
+        }
+        display(text, cursor: cursors.position(for: note))
+        // Keep the rows where they are while the user moves through the list.
+        reloadNoteList(keepingOrder: true)
+    }
+
+    private func trash(_ note: URL) {
+        let wasOpen = folder.currentNoteURL?.standardizedFileURL == note.standardizedFileURL
+        do {
+            try folder.trash(note)
+        } catch {
+            ErrorAlert.show("Jot couldn't move this note to the Trash.", error: error)
+            return
+        }
+        cursors.forget(note)
+        if wasOpen { showNewDraft() }
+        reloadNoteList()
+    }
+
+    private func actions(for note: URL) -> [NSMenuItem] {
+        NoteActions.items(
+            for: note,
+            prepare: { [weak self] in self?.save { try $0.flush() } },
+            trash: { [weak self] in self?.trash($0) }
+        )
+    }
+
+    /// Skipped while collapsed: autosave calls this, and reading every Note for a
+    /// hidden list would be wasted.
+    private func reloadNoteList(evenIfCollapsed: Bool = false, keepingOrder: Bool = false) {
+        guard evenIfCollapsed || !noteListItem.isCollapsed else { return }
+        do {
+            noteList.show(try folder.notes(), selecting: folder.currentNoteURL, keepingOrder: keepingOrder)
+        } catch {
+            NSLog("Jot: couldn't list notes: \(error)")
+        }
+    }
+
+    /// Replaces the editor's text (no undo across Notes) and places the cursor.
+    private func display(_ text: String, cursor: Int) {
+        textView.string = text
+        if let storage = textView.textStorage { styler.restyleAll(storage) }
         textView.typingAttributes = styler.baseAttributes
         textView.undoManager?.removeAllActions()
-        show()
+        let location = min(cursor, (text as NSString).length)
+        textView.setSelectedRange(NSRange(location: location, length: 0))
+        textView.scrollRangeToVisible(NSRange(location: location, length: 0))
+    }
+
+    /// Runs an operation that may leave the open Note, then remembers the cursor
+    /// under the name the Note ended up with (it may have been renamed, or a Draft
+    /// may only now have got its file).
+    private func leavingCurrentNote<T>(_ operation: () throws -> T) rethrows -> T {
+        let cursor = textView.selectedRange().location
+        let before = folder.currentNoteURL
+        let leaves = folder.leaveCount
+        let result = try operation()
+        if folder.leaveCount != leaves {
+            if let before, before != folder.lastLeftNoteURL { cursors.forget(before) }
+            if let left = folder.lastLeftNoteURL { cursors.remember(cursor, for: left) }
+        }
+        return result
     }
 
     func saveBeforeQuit() {
@@ -125,7 +242,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     func windowWillClose(_ notification: Notification) {
         cancelAutosave()
-        save { try $0.leave() }
+        save { folder in try leavingCurrentNote { try folder.leave() } }
     }
 
     // MARK: Saving
@@ -135,8 +252,9 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         cancelAutosave()
         autosave = Task { [weak self] in
             try? await Task.sleep(for: Self.autosaveDelay)
-            guard !Task.isCancelled else { return }
-            self?.save { try $0.flush() }
+            guard !Task.isCancelled, let self else { return }
+            // Only a write to a Note's file changes the list, not one to the Recovery Copy.
+            if save({ try $0.flush() }), folder.currentNoteURL != nil { reloadNoteList() }
         }
     }
 
@@ -146,11 +264,16 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     }
 
     /// Only a save that actually wrote ends a failure streak; a no-op proves nothing.
-    private func save(_ operation: (NotesFolder) throws -> Bool) {
+    /// Returns whether it wrote.
+    @discardableResult
+    private func save(_ operation: (NotesFolder) throws -> Bool) -> Bool {
         do {
-            if try operation(folder) { isShowingSaveError = false }
+            let wrote = try operation(folder)
+            if wrote { isShowingSaveError = false }
+            return wrote
         } catch {
             reportSaveError(error)
+            return false
         }
     }
 
@@ -218,5 +341,46 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         // Return bypassed the paragraph handling above and wrote a single line break.
         textView.inlinePredictionType = .no
         textView.isAutomaticTextCompletionEnabled = false
+    }
+}
+
+/// Sends `Esc` that no view handled (e.g. in the Note List) to the controller.
+final class CapturePanel: NSPanel {
+    var onCancel: () -> Void = {}
+
+    override func cancelOperation(_ sender: Any?) {
+        onCancel()
+    }
+}
+
+/// Where the user left the cursor in each Note: an app preference, never in the
+/// file. Keeps the most recently used `limit` entries.
+@MainActor
+final class CursorPositions {
+    private static let key = "cursorPositions.v2"
+    private static let limit = 500
+
+    /// path → [position, last used (seconds since 1970)]
+    private var entries: [String: [Double]] {
+        get { UserDefaults.standard.dictionary(forKey: Self.key) as? [String: [Double]] ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: Self.key) }
+    }
+
+    func position(for note: URL) -> Int {
+        entries[note.path].flatMap { $0.first }.map { Int($0) } ?? 0
+    }
+
+    func remember(_ position: Int, for note: URL) {
+        var entries = entries
+        entries[note.path] = [Double(position), Date().timeIntervalSince1970]
+        while entries.count > Self.limit,
+              let oldest = entries.min(by: { ($0.value.last ?? 0) < ($1.value.last ?? 0) })?.key {
+            entries[oldest] = nil
+        }
+        self.entries = entries
+    }
+
+    func forget(_ note: URL) {
+        entries[note.path] = nil
     }
 }
