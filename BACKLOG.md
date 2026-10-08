@@ -4,7 +4,6 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## Inbox
 
-- **Line numbers in the editor**, on by default, with a Settings option to turn them off.
 - **Keep macOS inline predictions in the editor.** They are off because Return with a prediction showing bypassed the paragraph handling (ADR 0004). Would need handling line breaks the input system inserts itself.
 - **Register Jot on the services dashboard and in `~/services/SERVICES.md`**, including the Recovery Copy location (`~/Library/Application Support/Jot/recovery.md`), once Jot runs from a stable path like `~/Applications/Jot.app`.
 - **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings.
@@ -12,7 +11,7 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## MVP
 
-_Nothing beyond the existing tickets 01–14._
+- **Line numbers in the editor**, on by default, with a Settings option to turn them off → ticket 14.
 
 ## Later
 
