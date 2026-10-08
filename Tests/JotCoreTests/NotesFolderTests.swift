@@ -284,6 +284,10 @@ final class NotesFolderTests {
         #expect(try files() == ["untitled.md"])
     }
 
+    @Test func unclosedFenceEndedByABlankLineIsARule() throws {
+        #expect(try noteName(for: "---\n\nAfter a rule\nbody") == "after-a-rule.md")
+    }
+
     @Test func openingFrontmatterFenceIsNotAFinishedTitle() throws {
         let folder = try makeFolder()
         try folder.startDraft()

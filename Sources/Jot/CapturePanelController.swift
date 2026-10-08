@@ -12,6 +12,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private let folder: NotesFolder
     private let panel: NSPanel
     private let textView: NSTextView
+    private let styler = MarkdownStyler()
     private var autosave: Task<Void, Never>?
     private var isShowingSaveError = false
 
@@ -77,6 +78,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         }
         isShowingSaveError = false  // the previous Note was saved, so its failure streak is over
         textView.string = ""
+        textView.typingAttributes = styler.baseAttributes
         textView.undoManager?.removeAllActions()
         show()
     }
@@ -161,17 +163,45 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     // MARK: Editor
 
-    /// `Esc` closes the panel. NSTextView would otherwise treat it as "complete word".
     func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-        guard selector == #selector(NSResponder.cancelOperation(_:)) else { return false }
-        hide()
+        switch selector {
+        case #selector(NSResponder.cancelOperation(_:)):
+            // `Esc` closes the panel. NSTextView would otherwise treat it as "complete word".
+            hide()
+        case #selector(NSResponder.insertNewline(_:)):
+            // Return starts a paragraph; Shift-Return is a single line break (ADR 0004).
+            let soft = NSApp.currentEvent?.modifierFlags.contains(.shift) ?? false
+            apply(MarkdownEditing.newline(in: textView.string, selection: textView.selectedRange(), soft: soft))
+        case #selector(NSResponder.insertLineBreak(_:)), #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:)):
+            apply(MarkdownEditing.newline(in: textView.string, selection: textView.selectedRange(), soft: true))
+        default:
+            return false
+        }
         return true
+    }
+
+    /// Typing always starts plain; the styler restyles right after. Otherwise the
+    /// attributes of the character before the caret leak in (e.g. a paragraph
+    /// gap's small font makes the caret tiny on a new paragraph).
+    func textView(
+        _ textView: NSTextView, shouldChangeTypingAttributes oldTypingAttributes: [String: Any],
+        toAttributes newTypingAttributes: [NSAttributedString.Key: Any]
+    ) -> [NSAttributedString.Key: Any] {
+        styler.baseAttributes
+    }
+
+    /// Goes through the normal text input path, so it's undoable and autosaves.
+    private func apply(_ edit: TextEdit) {
+        textView.insertText(edit.replacement, replacementRange: edit.range)
+        textView.setSelectedRange(edit.selection)
     }
 
     private func configure(_ textView: NSTextView) {
         textView.isRichText = false
         textView.allowsUndo = true
-        textView.font = .systemFont(ofSize: 14)
+        textView.usesFontPanel = false
+        textView.textStorage?.delegate = styler
+        textView.typingAttributes = styler.baseAttributes
         textView.textContainerInset = NSSize(width: 12, height: 12)
         // Markdown is plain text: no smart quotes, dashes or replacements.
         textView.isAutomaticQuoteSubstitutionEnabled = false

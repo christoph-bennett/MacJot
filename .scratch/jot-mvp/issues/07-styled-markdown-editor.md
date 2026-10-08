@@ -6,7 +6,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** implemented, awaiting manual UI check (styling verified in an offscreen render, light and dark)
 
 - [ ] Each supported construct renders styled with dimmed markers
 - [ ] Title line emphasised with and without `#`; blank leading lines are skipped
@@ -14,10 +14,10 @@
 - [ ] Switching system light/dark updates the editor live
 - [ ] Saved file content is byte-identical to the typed text
 - [ ] Styling stays responsive while typing in a Note of a few thousand lines
-- [ ] Return at the end of a paragraph or heading (incl. the Title line) inserts `\n\n` with the cursor on the new paragraph
-- [ ] Return in the middle of a paragraph splits it into two paragraphs separated by a blank line
-- [ ] Shift-Return inserts a single `\n`
-- [ ] Return on a blank line, in a list item, in a quote or inside frontmatter inserts a single `\n`
+- [x] Return at the end of a paragraph or heading (incl. the Title line) inserts `\n\n` with the cursor on the new paragraph
+- [x] Return in the middle of a paragraph splits it into two paragraphs separated by a blank line
+- [x] Shift-Return inserts a single `\n`
+- [x] Return on a blank line, in a list item, in a quote or inside frontmatter inserts a single `\n`
 - [ ] Blank lines between paragraphs are shown as paragraph spacing, not as a full empty line
 - [ ] A Note typed as `Biggie Smalls is the illest` Return `Biggie Biggie Biggie` previews as two separate lines in FluxMarkdown Quick Look
-- [ ] Seam 2 tests cover Title-line detection (incl. leading blank lines and frontmatter) and the Return command cases above
+- [x] Seam 2 tests cover Title-line detection (incl. leading blank lines and frontmatter) and the Return command cases above

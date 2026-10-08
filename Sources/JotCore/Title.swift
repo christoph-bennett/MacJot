@@ -12,15 +12,14 @@ enum Title {
 
     /// The first non-blank line after any frontmatter, trimmed; `nil` if there is none.
     static func of(_ text: String) -> String? {
-        let lines = bodyLines(of: text)
-        return lines.firstIndex(where: isNonBlank).map { trimmed(lines[$0]) }
+        let ns = text as NSString
+        return NoteStructure(ns).titleLine.map { ns.substring(with: $0).trimmingCharacters(in: .whitespaces) }
     }
 
     /// Whether the Title line is complete, i.e. a line break follows it.
     static func isFinished(_ text: String) -> Bool {
-        let lines = bodyLines(of: text)
-        guard let index = lines.firstIndex(where: isNonBlank) else { return false }
-        return index < lines.index(before: lines.endIndex)
+        let ns = text as NSString
+        return NoteStructure(ns).titleLine.map { NSMaxRange($0) < ns.length } ?? false
     }
 
     /// Filename stem derived from a Title: leading Markdown ignored, Latin
@@ -67,22 +66,59 @@ enum Title {
         }
         return rest
     }
+}
 
-    /// The text's lines after a leading YAML frontmatter block, if there is one.
-    /// The last element is the unterminated final line (empty if the text ends
-    /// with a line break). While the frontmatter is still open (no closing fence
-    /// yet) there are no body lines, so no Title.
-    private static func bodyLines(of text: String) -> ArraySlice<Substring> {
-        let lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
-        guard let first = lines.first, trimmed(first) == "---" else { return lines[...] }
-        guard let close = lines.dropFirst().firstIndex(where: { ["---", "..."].contains(trimmed($0)) })
-        else { return [] }
-        return lines[(close + 1)...]
+/// How a Note's text is laid out: its frontmatter and its Title line. The one
+/// place these rules live; `Title`, the editing commands and the styler all use it.
+/// Ranges are UTF-16, line ranges exclude the line break.
+struct NoteStructure {
+    enum Frontmatter: Equatable {
+        case none
+        /// `---` on the first line, no closing fence and no blank line yet: still being typed.
+        case open(NSRange)
+        /// From the opening fence to the end of the closing `---` (or `...`).
+        case closed(NSRange)
     }
 
-    private static func isNonBlank(_ line: Substring) -> Bool { !trimmed(line).isEmpty }
+    let frontmatter: Frontmatter
+    let titleLine: NSRange?
 
-    private static func trimmed(_ line: Substring) -> String {
-        line.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// A `---` first line that a blank line ends before any closing fence is a
+    /// horizontal rule, not frontmatter; the Title is then sought after that line.
+    init(_ ns: NSString) {
+        var frontmatter = Frontmatter.none
+        var titleLine: NSRange?
+        var lineIndex = 0
+        var inFence = false
+        ns.enumerateSubstrings(in: NSRange(location: 0, length: ns.length), options: .byLines) { line, range, _, stop in
+            defer { lineIndex += 1 }
+            let trimmed = (line ?? "").trimmingCharacters(in: .whitespaces)
+            if lineIndex == 0, trimmed == "---" {
+                inFence = true
+                frontmatter = .open(NSRange(location: 0, length: ns.length))
+                return
+            }
+            if inFence {
+                if trimmed == "---" || trimmed == "..." {
+                    frontmatter = .closed(NSRange(location: 0, length: NSMaxRange(range)))
+                    inFence = false
+                    titleLine = nil
+                } else if trimmed.isEmpty {
+                    // A rule after all: the lines after the `---` are the body.
+                    frontmatter = .none
+                    inFence = false
+                } else if titleLine == nil {
+                    titleLine = range  // only counts if the block turns out to be a rule
+                }
+                return
+            }
+            if !trimmed.isEmpty {
+                titleLine = titleLine ?? range
+                stop.pointee = true
+            }
+        }
+        if inFence { titleLine = nil }  // still open: no Title yet
+        self.frontmatter = frontmatter
+        self.titleLine = titleLine
     }
 }
