@@ -190,10 +190,16 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         styler.baseAttributes
     }
 
-    /// Goes through the normal text input path, so it's undoable and autosaves.
+    /// Undoable and autosaved like typing. The new text gets the plain attributes
+    /// up front, so it doesn't inherit the Title's font until the next restyle
+    /// (which made the caret oversized after Return on the Title line).
     private func apply(_ edit: TextEdit) {
-        textView.insertText(edit.replacement, replacementRange: edit.range)
+        guard textView.shouldChangeText(in: edit.range, replacementString: edit.replacement),
+              let storage = textView.textStorage else { return }
+        storage.replaceCharacters(in: edit.range, with: NSAttributedString(string: edit.replacement, attributes: styler.baseAttributes))
+        textView.didChangeText()
         textView.setSelectedRange(edit.selection)
+        textView.typingAttributes = styler.baseAttributes
     }
 
     private func configure(_ textView: NSTextView) {
@@ -208,5 +214,9 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
+        // Inline predictions and completion insert text themselves: with one showing,
+        // Return bypassed the paragraph handling above and wrote a single line break.
+        textView.inlinePredictionType = .no
+        textView.isAutomaticTextCompletionEnabled = false
     }
 }
