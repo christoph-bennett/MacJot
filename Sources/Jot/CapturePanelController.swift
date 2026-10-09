@@ -422,6 +422,32 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         panel.close()
     }
 
+    // MARK: Settings
+
+    /// The editor's text size (Settings > Editor); headings scale with it.
+    func setFontSize(_ size: CGFloat) {
+        guard size > 0, size != styler.baseSize else { return }
+        styler.baseSize = size
+        if let storage = textView.textStorage { styler.restyleAll(storage) }
+        textView.typingAttributes = styler.baseAttributes
+    }
+
+    /// The Note List's dates: "2h", "Mon", or the short date and time.
+    func setRelativeDates(_ on: Bool) {
+        noteList.showsRelativeDates = on
+    }
+
+    /// Settings > General: the default size, centred on the screen the panel is
+    /// on (or under the mouse while it's hidden). The next summon uses it too.
+    func resetFrame() {
+        let mouse = NSEvent.mouseLocation
+        let screen = panel.isVisible ? panel.screen : NSScreen.screens.first { $0.frame.contains(mouse) }
+        guard let visible = (screen ?? NSScreen.main)?.visibleFrame else { return }
+        let frame = panel.frameRect(forContentRect: NSRect(origin: .zero, size: Self.defaultSize))
+        panel.setFrame(NSRect(x: visible.midX - frame.width / 2, y: visible.midY - frame.height / 2,
+                              width: frame.width, height: frame.height), display: true, animate: panel.isVisible)
+    }
+
     /// The remembered frame may be on a screen that's no longer connected. If its
     /// title bar isn't on any screen, centre it on the screen under the mouse.
     private func keepOnScreen() {

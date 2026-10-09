@@ -1,16 +1,20 @@
 import Foundation
 
 /// Compact dates for the Note List: "now", "5m", "2h", a weekday for the last
-/// six calendar days, else the locale's short date. Keep one instance around:
-/// its date formatters are expensive to create.
+/// six calendar days, else the locale's short date. With `isRelative` off,
+/// always the locale's short date and time (`08.10.26, 07:15`). Keep one
+/// instance around: its date formatters are expensive to create.
 public final class RelativeDateFormatter {
+    /// The relative dates setting.
+    public var isRelative = true
     private let calendar: Calendar
     private let weekday = DateFormatter()
     private let shortDate = DateFormatter()
+    private let dateAndTime = DateFormatter()
 
     public init(calendar: Calendar = .current, locale: Locale = .current) {
         self.calendar = calendar
-        for formatter in [weekday, shortDate] {
+        for formatter in [weekday, shortDate, dateAndTime] {
             formatter.calendar = calendar
             formatter.timeZone = calendar.timeZone
             formatter.locale = locale
@@ -18,9 +22,12 @@ public final class RelativeDateFormatter {
         weekday.setLocalizedDateFormatFromTemplate("EEE")
         shortDate.dateStyle = .short
         shortDate.timeStyle = .none
+        dateAndTime.dateStyle = .short
+        dateAndTime.timeStyle = .short
     }
 
     public func string(for date: Date, now: Date = Date()) -> String {
+        guard isRelative else { return dateAndTime.string(from: date) }
         let seconds = now.timeIntervalSince(date)
         switch seconds {
         case ..<60: return "now"

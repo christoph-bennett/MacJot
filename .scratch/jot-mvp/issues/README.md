@@ -17,7 +17,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 11 | [External changes](11-external-changes.md) | 05 | done |
 | 12 | [Choose the Notes Folder](12-choose-notes-folder.md) | 04, 05 | done |
 | 13 | [Hotkey settings](13-hotkey-settings.md) | 04, 06 | ready-for-agent |
-| 14 | [Remaining settings and first launch](14-remaining-settings-and-first-launch.md) | 04, 05, 06, 07, 15 | ready-for-agent |
+| 14 | [Remaining settings and first launch](14-remaining-settings-and-first-launch.md) | 04, 05, 06, 07, 15 | done |
 | 15 | [Settings panes](15-settings-panes.md) | 12 | done |
 | 16 | [Line numbers](16-line-numbers.md) | 07, 14 | ready-for-agent |
 

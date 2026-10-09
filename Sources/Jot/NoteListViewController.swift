@@ -122,6 +122,19 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         }
     }
 
+    /// The rows' dates; one instance, as its formatters are expensive to create.
+    private let dates = RelativeDateFormatter()
+
+    /// The relative dates setting: "2h", "Mon", or the short date and time.
+    var showsRelativeDates: Bool {
+        get { dates.isRelative }
+        set {
+            guard newValue != dates.isRelative else { return }
+            dates.isRelative = newValue
+            tableView.reloadData()
+        }
+    }
+
     /// Follows the Draft's Title as it's typed, without reloading the list
     /// (re-filtering it while searching, as the Draft may start or stop matching).
     func updateDraft(_ text: String) {
@@ -149,7 +162,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         let cell = tableView.makeView(withIdentifier: NoteRowView.identifier, owner: self) as? NoteRowView ?? NoteRowView()
         switch rows[row] {
         case .draft(let title): cell.showDraft(title: title)
-        case .note(let note): cell.show(note)
+        case .note(let note): cell.show(note, dates: dates)
         }
         return cell
     }
@@ -248,7 +261,6 @@ final class NoteTableView: NSTableView {
 /// A Note List row: Title on top, relative date and preview below.
 private final class NoteRowView: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("NoteRow")
-    @MainActor private static let dates = RelativeDateFormatter()
 
     private let title = NSTextField(labelWithString: "")
     private let detail = NSTextField(labelWithString: "")
@@ -282,9 +294,9 @@ private final class NoteRowView: NSTableCellView {
         detail.stringValue = "New note"
     }
 
-    func show(_ note: NoteSummary) {
+    func show(_ note: NoteSummary, dates: RelativeDateFormatter) {
         title.stringValue = note.title
-        let date = Self.dates.string(for: note.modified)
+        let date = dates.string(for: note.modified)
         detail.stringValue = note.preview.isEmpty ? date : "\(date)  \(note.preview)"
     }
 }

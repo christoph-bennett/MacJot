@@ -1,22 +1,27 @@
 import AppKit
 import JotCore
-import ServiceManagement
+import SwiftUI
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem?
     private var panel: CapturePanelController?
     private let settings = SettingsWindowController()
     private var captureHotkey: GlobalHotkey?
     private var searchHotkey: GlobalHotkey?
     private var terminationSignal: DispatchSourceSignal?
+    private var firstLaunchHint: NSPopover?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let defaults = UserDefaults.standard
         defaults.register(defaults: [
             CapturePanelController.confirmTrashKey: true,
             SettingsWindowController.datePrefixKey: false,
+            SettingsWindowController.fontSizeKey: SettingsWindowController.defaultFontSize,
+            SettingsWindowController.relativeDatesKey: true,
         ])
+        // No preferences yet: opening the Notes Folder below saves the first one.
+        let isFirstLaunch = defaults.object(forKey: SavedNotesFolder.pathKey) == nil
         guard let folder = openNotesFolder() else {
             NSApp.terminate(nil)
             return
@@ -25,6 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let panel = CapturePanelController(folder: folder)
         panel.onShowSettings = { [weak self] in self?.showSettings() }
         panel.onFolderMoved = { [weak self] in self?.settings.refresh() }
+        panel.setFontSize(defaults.double(forKey: SettingsWindowController.fontSizeKey))
+        panel.setRelativeDates(defaults.bool(forKey: SettingsWindowController.relativeDatesKey))
+        settings.onFontSizeChange = { [weak panel] in panel?.setFontSize($0) }
+        settings.onRelativeDatesChange = { [weak panel] in panel?.setRelativeDates($0) }
+        settings.onResetPanel = { [weak panel] in panel?.resetFrame() }
         settings.notesFolderURL = { [weak folder] in folder?.url }
         settings.onNotesFolderChange = { [weak panel] url in
             guard let panel else { return false }
@@ -38,8 +48,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = MainMenu.make(newNoteTarget: panel, settingsTarget: self)
         statusItem = makeStatusItem()
         registerHotkeys()
-        registerLaunchAtLoginOnFirstRun()
+        LaunchAtLogin.turnOnOnFirstRun()
         quitNormallyOnTerminationSignal()
+        if isFirstLaunch {
+            showFirstLaunchHint()
+            panel.showNewDraft()  // after the hint, so typing goes to the Draft
+        }
+    }
+
+    /// No onboarding: on first launch a popover at the menu bar icon names both
+    /// hotkeys, next to a new Draft that's ready to type into. It closes when
+    /// the user clicks anywhere else.
+    func popoverDidClose(_ notification: Notification) {
+        firstLaunchHint = nil
+    }
+
+    private func showFirstLaunchHint() {
+        guard let button = statusItem?.button else { return }
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.contentViewController = NSHostingController(rootView: FirstLaunchHint(
+            capture: GlobalHotkey.Combination.defaultCapture.displayString,
+            search: GlobalHotkey.Combination.defaultSearch.displayString))
+        popover.delegate = self
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        firstLaunchHint = popover
     }
 
     /// `kill`/`pkill` (e.g. scripts/install.sh) send SIGTERM, which would end Jot
@@ -141,28 +174,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: Launch at login
-
-    private static let didRegisterLoginItemKey = "didRegisterLoginItem"
-
-    /// Launch at login is on by default: register once, then leave it to the user
-    /// (the toggle in Settings comes in a later ticket). Only possible from an app bundle.
-    private func registerLaunchAtLoginOnFirstRun() {
-        let defaults = UserDefaults.standard
-        guard Bundle.main.bundleURL.pathExtension == "app",
-              !defaults.bool(forKey: Self.didRegisterLoginItemKey) else { return }
-        do {
-            try SMAppService.mainApp.register()
-            defaults.set(true, forKey: Self.didRegisterLoginItemKey)
-        } catch {
-            NSLog("Jot: couldn't register launch at login: \(error)")
-        }
-    }
-
     /// Holds a Draft's text until its Title is finished; outside the Notes Folder on purpose.
     private static var recoveryURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Jot", isDirectory: true)
             .appendingPathComponent("recovery.md")
+    }
+}
+
+private struct FirstLaunchHint: View {
+    let capture: String
+    let search: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Jot lives here in the menu bar.")
+                .font(.headline)
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
+                GridRow {
+                    Text(capture).monospaced()
+                    Text("Write a new note, from any app")
+                }
+                GridRow {
+                    Text(search).monospaced()
+                    Text("Find a note")
+                }
+            }
+            Text("Settings are in this icon’s menu.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .fixedSize()
     }
 }

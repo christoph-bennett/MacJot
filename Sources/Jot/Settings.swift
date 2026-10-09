@@ -9,11 +9,19 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let datePrefixKey = "datePrefix"
+    static let fontSizeKey = "editorFontSize"
+    static let defaultFontSize = 14.0
+    static let relativeDatesKey = "relativeDates"
     private static let paneKey = "settingsPane"
     private static let switcherID = NSToolbarItem.Identifier("SettingsPanes")
 
     /// The Date Prefix toggle changed (on the main thread).
     var onDatePrefixChange: (Bool) -> Void = { _ in }
+    /// Settings > Editor changed (on the main thread).
+    var onFontSizeChange: (CGFloat) -> Void = { _ in }
+    var onRelativeDatesChange: (Bool) -> Void = { _ in }
+    /// Reset Size & Position was clicked.
+    var onResetPanel: () -> Void = {}
     /// The Notes Folder in use, shown in Settings.
     var notesFolderURL: () -> URL? = { nil }
     /// Switches to a newly chosen Notes Folder; throws if it couldn't, and then
@@ -63,6 +71,11 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         // The Capture Panel floats; at the same level, Settings opens on top of it.
         window.level = .floating
         window.isReleasedWhenClosed = false
+        // Back from System Settings (Login Items) or Finder: show what's true now.
+        NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window,
+                                               queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh() }
+        }
         self.window = window
         refresh()  // the first pane is sized with its real content
         let saved = UserDefaults.standard.string(forKey: Self.paneKey).flatMap(SettingsPane.init)
@@ -82,6 +95,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         // As the current keyboard layout labels the keys.
         state.captureHotkey = GlobalHotkey.Combination.defaultCapture.displayString
         state.searchHotkey = GlobalHotkey.Combination.defaultSearch.displayString
+        state.launchAtLogin = LaunchAtLogin.state
         // SwiftUI applies the new values on the next pass; the pane may have grown.
         DispatchQueue.main.async { [weak self] in self?.fitWindowToPane() }
     }
@@ -149,7 +163,15 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         case .general:
             view = AnyView(GeneralPane(state: state,
                                        onChooseNotesFolder: { [weak self] in self?.chooseNotesFolder() },
-                                       onDatePrefixChange: { [weak self] in self?.onDatePrefixChange($0) }))
+                                       onDatePrefixChange: { [weak self] in self?.onDatePrefixChange($0) },
+                                       onLaunchAtLoginChange: { [weak self] on in
+                                           LaunchAtLogin.set(on)
+                                           self?.state.launchAtLogin = LaunchAtLogin.state  // the real outcome
+                                       },
+                                       onResetPanel: { [weak self] in self?.onResetPanel() }))
+        case .editor:
+            view = AnyView(EditorPane(onFontSizeChange: { [weak self] in self?.onFontSizeChange($0) },
+                                      onRelativeDatesChange: { [weak self] in self?.onRelativeDatesChange($0) }))
         case .shortcuts:
             view = AnyView(ShortcutsPane(state: state))
         }
