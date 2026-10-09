@@ -16,6 +16,7 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 - **Setting: line height** (spacing between lines), next to font size; the paragraph gap and line numbers have to follow it.
 - **Show invisible characters**: spaces, tabs and line breaks as faint symbols, e.g. to check Markdown line breaks; toggle in Settings or the View menu.
 - **Final app name and bundle ID** before the first public release ("Jot" and `com.onethingwell.jot` are working names; the bundle ID can't change afterwards without losing user settings and permissions).
+- **Setting: custom Date Prefix format**, e.g. `20261009-` or `2026-10-09_` instead of the fixed `2026-10-09-`; next to the Date Prefix checkbox in Settings > General, with the live example showing the result. Jot also reads the prefix back (`DatePrefix.of`, `DatePrefix.day(of:)`) to keep it on rename and to date the Note List, so recognising Notes named with an earlier format has to keep working; the format may need limits (must contain year, month and day, only filename-safe characters).
 
 ## MVP
 
