@@ -25,7 +25,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 19 | [HIG audit of Settings and the Note List](19-hig-audit.md) | 17 | done |
 | 20 | [Settings spacing](20-settings-spacing.md) | 19 | done |
 | 21 | [Note List layout](21-note-list-layout.md) | 19 | done |
-| 22 | [Note List empty states](22-note-list-empty-states.md) | 19 | ready-for-agent |
+| 22 | [Note List empty states](22-note-list-empty-states.md) | 19 | done |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 

@@ -92,6 +92,12 @@ public struct NoteSummary: Equatable {
     }
 
     /// Whether a Draft's `text` matches `query`, as a Note with it would.
+    /// Whether the open Draft gets a row in the Note List: once it has text
+    /// (a blank one would hide "No Notes"), and while it matches the search.
+    public static func listsDraft(_ text: String, query: String) -> Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && matches(query, text: text)
+    }
+
     public static func matches(_ query: String, text: String) -> Bool {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         return query.isEmpty || Content(text).match(query) != nil

@@ -1,5 +1,6 @@
 import AppKit
 import JotCore
+import SwiftUI
 
 /// The Note List: the Capture Panel's sidebar of Notes, newest first, with a
 /// search field on top that filters it live.
@@ -8,6 +9,8 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     NSSearchFieldDelegate {
     /// The user picked a Note (click or arrow keys).
     var onOpen: (URL) -> Void = { _ in }
+    /// New Note under "No Notes": start writing (as ⌘N).
+    var onNewNote: () -> Void = {}
     /// Return in the search field or the list: go on writing in the selected Note.
     var onReturn: () -> Void = {}
     /// `Esc` in the search field with nothing left to clear.
@@ -19,7 +22,9 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
 
     let tableView = NoteTableView()
     let searchField = NSSearchField()
-    /// The open Draft, if any, is a row of its own on top, so a new Note shows up
+    /// Says why the list is empty (Apple's `ContentUnavailableView`), over it.
+    private let placeholder = NSHostingView(rootView: PlaceholderView(kind: nil, onNewNote: {}))
+    /// The open Draft, once it has text, is a row of its own on top, so a new Note shows up
     /// in the list straight away rather than once it gets its file.
     private enum Row {
         case draft(title: String)
@@ -61,7 +66,10 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         searchField.action = #selector(searchChanged)
 
         let container = NSView()
-        for subview in [searchField, scrollView] as [NSView] {
+        placeholder.isHidden = true
+        // Only its natural size: no required minimum while the sidebar collapses to nothing.
+        placeholder.sizingOptions = [.intrinsicContentSize]
+        for subview in [searchField, scrollView, placeholder] as [NSView] {
             subview.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(subview)
         }
@@ -75,8 +83,20 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            placeholder.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 10).withPriority(.defaultHigh),
+            placeholder.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -10).withPriority(.defaultHigh),
+            // Centred, but never over the search field in a short panel.
+            placeholder.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor).withPriority(.defaultHigh),
+            placeholder.topAnchor.constraint(greaterThanOrEqualTo: scrollView.topAnchor),
         ])
+        container.clipsToBounds = true
         view = container
+    }
+
+    private func showPlaceholder(_ kind: NoteListPlaceholder?) {
+        placeholder.isHidden = kind == nil
+        guard placeholder.rootView.kind != kind else { return }
+        placeholder.rootView = PlaceholderView(kind: kind) { [weak self] in self?.onNewNote() }
     }
 
     /// The search field or the list has keyboard focus.
@@ -108,8 +128,9 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     /// Rebuilds the rows for the current search and re-selects the open Note.
     private func filter() {
         let query = query
-        let draft = draftText.flatMap { NoteSummary.matches(query, text: $0) ? $0 : nil }
+        let draft = draftText.flatMap { NoteSummary.listsDraft($0, query: query) ? $0 : nil }
         rows = (draft.map { [Row.draft(title: Self.draftTitle($0))] } ?? []) + notes.compactMap { $0.matching(query) }.map(Row.note)
+        showPlaceholder(NoteListPlaceholder(query: query, rowCount: rows.count))
         isSelectingProgrammatically = true
         defer { isSelectingProgrammatically = false }
         tableView.reloadData()
@@ -142,7 +163,8 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     func updateDraft(_ text: String) {
         draftText = text
         if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return filter() }
-        guard case .draft = rows.first else { return }
+        // Its row comes with the first text and goes when it's blank again.
+        guard case .draft = rows.first, NoteSummary.listsDraft(text, query: "") else { return filter() }
         rows[0] = .draft(title: Self.draftTitle(text))
         tableView.reloadData(forRowIndexes: [0], columnIndexes: [0])
     }
@@ -314,5 +336,35 @@ private final class NoteRowView: NSTableCellView {
         title.stringValue = note.title
         let date = dates.string(for: note.modified)
         detail.stringValue = note.preview.isEmpty ? date : "\(date)  \(note.preview)"
+    }
+}
+
+/// Why the Note List is empty, in Apple's standard look. With no Notes at all,
+/// a button starts one: the search field has the focus there, not the editor.
+private struct PlaceholderView: View {
+    let kind: NoteListPlaceholder?
+    let onNewNote: () -> Void
+
+    var body: some View {
+        switch kind {
+        case .noResults(let query):
+            ContentUnavailableView.search(text: query)
+        case .noNotes:
+            ContentUnavailableView {
+                Label("No Notes", systemImage: "note.text")
+            } actions: {
+                Button("New Note", action: onNewNote)
+                    .help("Start writing a new note (⌘N)")
+            }
+        case nil:
+            EmptyView()
+        }
+    }
+}
+
+private extension NSLayoutConstraint {
+    func withPriority(_ priority: NSLayoutConstraint.Priority) -> NSLayoutConstraint {
+        self.priority = priority
+        return self
     }
 }
