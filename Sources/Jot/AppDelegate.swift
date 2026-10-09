@@ -1,5 +1,6 @@
 import AppKit
 import JotCore
+import KeyboardShortcuts
 import SwiftUI
 
 @MainActor
@@ -7,8 +8,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem?
     private var panel: CapturePanelController?
     private let settings = SettingsWindowController()
-    private var captureHotkey: GlobalHotkey?
-    private var searchHotkey: GlobalHotkey?
     private var terminationSignal: DispatchSourceSignal?
     private var firstLaunchHint: NSPopover?
 
@@ -71,8 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let popover = NSPopover()
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: FirstLaunchHint(
-            capture: GlobalHotkey.Combination.defaultCapture.displayString,
-            search: GlobalHotkey.Combination.defaultSearch.displayString))
+            capture: Hotkey.capture.displayString, search: Hotkey.search.displayString))
         popover.delegate = self
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         firstLaunchHint = popover
@@ -163,18 +161,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     // MARK: Hotkeys
 
+    /// KeyboardShortcuts re-registers a hotkey when Settings records a new combination.
     private func registerHotkeys() {
-        // Failures are reported in Settings once hotkeys are configurable (ticket 13).
-        do {
-            captureHotkey = try GlobalHotkey(.defaultCapture) { [weak self] in self?.panel?.toggleCapture() }
-        } catch {
-            NSLog("Jot: couldn't register the Capture Hotkey: \(error)")
-        }
-        do {
-            searchHotkey = try GlobalHotkey(.defaultSearch) { [weak self] in self?.panel?.toggleNotes() }
-        } catch {
-            NSLog("Jot: couldn't register the Search Hotkey: \(error)")
-        }
+        for hotkey in Hotkey.allCases { hotkey.checkAvailableBeforeRegistering() }
+        KeyboardShortcuts.onKeyDown(for: Hotkey.capture.name) { [weak self] in self?.panel?.toggleCapture() }
+        KeyboardShortcuts.onKeyDown(for: Hotkey.search.name) { [weak self] in self?.panel?.toggleNotes() }
     }
 
     /// Holds a Draft's text until its Title is finished; outside the Notes Folder on purpose.
@@ -186,22 +177,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 }
 
 private struct FirstLaunchHint: View {
-    let capture: String
-    let search: String
+    /// Nil if the user turned it off before (a reinstall keeps the hotkeys).
+    let capture: String?
+    let search: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Jot lives here in the menu bar.")
                 .font(.headline)
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-                GridRow {
-                    Text(capture).monospaced()
-                    Text("Write a new note, from any app")
+                if let capture {
+                    GridRow {
+                        Text(capture).monospaced()
+                        Text("Write a new note, from any app")
+                    }
                 }
-                GridRow {
-                    Text(search).monospaced()
-                    Text("Find a note")
+                if let search {
+                    GridRow {
+                        Text(search).monospaced()
+                        Text("Find a note")
+                    }
                 }
+            }
+            if capture == nil && search == nil {
+                Text("Set hotkeys for writing and finding notes in Settings, under Shortcuts.")
             }
             Text("Settings are in this icon’s menu.")
                 .font(.callout)

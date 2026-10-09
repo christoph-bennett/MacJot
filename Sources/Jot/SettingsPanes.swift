@@ -1,5 +1,6 @@
 import AppKit
 import JotCore
+import KeyboardShortcuts
 import Observation
 import SwiftUI
 
@@ -23,10 +24,9 @@ final class SettingsState {
     var notesFolderIcon: NSImage?
     /// For the Date Prefix example; updated each time Settings opens.
     var today = Date.now
-    /// The hotkeys as the current keyboard layout labels them, e.g. `⌃⌥N`.
-    var captureHotkey = ""
-    var searchHotkey = ""
     var launchAtLogin = LaunchAtLogin.State.off
+    /// See `Hotkey.unavailable`.
+    var unavailableHotkeys: Set<Hotkey> = []
 }
 
 /// All panes share this width, so the window only changes height between them.
@@ -187,25 +187,63 @@ struct EditorPane: View {
     }
 }
 
-/// Read-only until hotkeys can be recorded (ticket 13).
+/// A recorder per hotkey (KeyboardShortcuts, ADR 0005). It warns about
+/// combinations macOS uses and blocks ones in Jot's menus; `HotkeyCheck` adds
+/// "already the other hotkey" and "another app has it". A rejected combination
+/// isn't saved, so the previous hotkey stays active. Clearing one turns it off.
 struct ShortcutsPane: View {
     let state: SettingsState
+    let onRestoreDefaults: () -> Void
 
     var body: some View {
         Pane {
             LabeledContent("Capture:") {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(state.captureHotkey)
+                    recorder(for: .capture)
+                    unavailableNote(for: .capture)
                     Explanation(text: "Opens Jot with a new note, from any app.")
                 }
             }
             Divider()
             LabeledContent("Search:") {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(state.searchHotkey)
+                    recorder(for: .search)
+                    unavailableNote(for: .search)
                     Explanation(text: "Opens Jot with your notes and the search field, from any app.")
                 }
             }
+            Divider()
+            LabeledContent {
+                VStack(alignment: .leading, spacing: 4) {
+                    Button("Restore Defaults", action: onRestoreDefaults)
+                    Explanation(text: "Sets the hotkeys back to \(Hotkey.capture.defaultDisplayString) "
+                                + "and \(Hotkey.search.defaultDisplayString).")
+                        .padding(.top, blankLine / 2)
+                }
+            } label: {
+                Text("")
+            }
         }
+    }
+
+    @ViewBuilder
+    private func unavailableNote(for hotkey: Hotkey) -> some View {
+        if state.unavailableHotkeys.contains(hotkey) {
+            Text("Another app is using this combination, so it doesn’t work in Jot. Record a different one.")
+                .font(.callout)
+                .foregroundStyle(.red)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func recorder(for hotkey: Hotkey) -> some View {
+        KeyboardShortcuts.Recorder(for: hotkey.name) { _ in
+            // Saved only after passing the check below, so it's registered now.
+            Hotkey.unavailable.remove(hotkey)
+            state.unavailableHotkeys = Hotkey.unavailable
+        }
+        .shortcutValidation { shortcut in
+                hotkey.problem(recording: shortcut).map { .disallow(reason: $0) } ?? .allow
+            }
     }
 }

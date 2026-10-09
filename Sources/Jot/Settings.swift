@@ -94,10 +94,8 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         state.notesFolder = folder
         state.notesFolderIcon = folder.map { NSWorkspace.shared.icon(forFile: $0.path) }
         state.today = .now
-        // As the current keyboard layout labels the keys.
-        state.captureHotkey = GlobalHotkey.Combination.defaultCapture.displayString
-        state.searchHotkey = GlobalHotkey.Combination.defaultSearch.displayString
         state.launchAtLogin = LaunchAtLogin.state
+        state.unavailableHotkeys = Hotkey.unavailable
         // SwiftUI applies the new values on the next pass; the pane may have grown.
         DispatchQueue.main.async { [weak self] in self?.fitWindowToPane() }
     }
@@ -176,7 +174,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
                                       onLineNumbersChange: { [weak self] in self?.onLineNumbersChange($0) },
                                       onRelativeDatesChange: { [weak self] in self?.onRelativeDatesChange($0) }))
         case .shortcuts:
-            view = AnyView(ShortcutsPane(state: state))
+            view = AnyView(ShortcutsPane(state: state, onRestoreDefaults: { [weak self] in self?.restoreDefaultHotkeys() }))
         }
         let host = NSHostingView(rootView: view)
         // Reports its size (`fittingSize`); placed with a frame, so it doesn't resize the window.
@@ -200,6 +198,18 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         item.view = switcher
         item.label = "Settings"
         return item
+    }
+
+    /// A default another app holds isn't restored; that hotkey keeps its combination.
+    private func restoreDefaultHotkeys() {
+        let blocked = Hotkey.restoreDefaults()
+        state.unavailableHotkeys = Hotkey.unavailable
+        guard let window, !blocked.isEmpty else { return }
+        let alert = NSAlert()
+        alert.messageText = blocked.map { "\($0.defaultDisplayString) is in use by another app." }.joined(separator: " ")
+        alert.informativeText = "So " + blocked.map { "the \($0.title)" }.joined(separator: " and ")
+            + " keeps its current combination."
+        alert.beginSheetModal(for: window)
     }
 
     /// A folder chooser as a sheet; after a switch, a dialog says the Notes stayed

@@ -5,12 +5,14 @@ set -e
 cd "$(dirname "$0")/.."
 CONFIG="${1:-release}"
 swift build -c "$CONFIG" --product Jot
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/Jot"
+BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
 
 APP=build/Jot.app
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
-cp "$BIN" "$APP/Contents/MacOS/Jot"
+cp "$BIN_DIR/Jot" "$APP/Contents/MacOS/Jot"
+# The hotkey recorder's texts; without them it crashes when it shows one.
+cp -R "$BIN_DIR/KeyboardShortcuts_KeyboardShortcuts.bundle" "$APP/Contents/Resources/"
 codesign --force --sign - "$APP"
 echo "Built $APP"

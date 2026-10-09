@@ -1,0 +1,124 @@
+#if os(macOS)
+import SwiftUI
+
+@available(macOS 12, *)
+extension View {
+	/**
+	Renamed to `onGlobalKeyboardShortcut`.
+	*/
+	@available(*, deprecated, renamed: "onGlobalKeyboardShortcut")
+	public func onKeyboardShortcut(
+		_ shortcut: KeyboardShortcuts.Name,
+		perform: @escaping (KeyboardShortcuts.EventType) -> Void
+	) -> some View {
+		onGlobalKeyboardShortcut(shortcut, perform: perform)
+	}
+
+	/**
+	Renamed to `onGlobalKeyboardShortcut`.
+	*/
+	@available(*, deprecated, renamed: "onGlobalKeyboardShortcut")
+	public func onKeyboardShortcut(
+		_ shortcut: KeyboardShortcuts.Name,
+		type: KeyboardShortcuts.EventType,
+		perform: @escaping () -> Void
+	) -> some View {
+		onGlobalKeyboardShortcut(shortcut, type: type, perform: perform)
+	}
+}
+
+@available(macOS 12, *)
+extension View {
+	/**
+	Register a listener for keyboard shortcut events with the given name.
+
+	You can safely call this even if the user has not yet set a keyboard shortcut. It will just be inactive until they do.
+
+	The listener will stop automatically when the view disappears.
+
+	- Note: This method is not affected by `.removeAllHandlers()`.
+	*/
+	public func onGlobalKeyboardShortcut(
+		_ shortcut: KeyboardShortcuts.Name,
+		perform: @escaping (KeyboardShortcuts.EventType) -> Void
+	) -> some View {
+		task {
+			for await eventType in KeyboardShortcuts.events(for: shortcut) {
+				perform(eventType)
+			}
+		}
+	}
+
+	/**
+	Register a listener for keyboard shortcut events with the given name and type.
+
+	You can safely call this even if the user has not yet set a keyboard shortcut. It will just be inactive until they do.
+
+	The listener will stop automatically when the view disappears.
+
+	- Note: This method is not affected by `.removeAllHandlers()`.
+	*/
+	public func onGlobalKeyboardShortcut(
+		_ shortcut: KeyboardShortcuts.Name,
+		type: KeyboardShortcuts.EventType,
+		perform: @escaping () -> Void
+	) -> some View {
+		task {
+			for await _ in KeyboardShortcuts.events(type, for: shortcut) {
+				perform()
+			}
+		}
+	}
+}
+
+@available(macOS 12.3, *)
+extension View {
+	/**
+	Associates a global keyboard shortcut with a control.
+
+	This is mostly useful to have the keyboard shortcut show for a `Button` in a `Menu` or `MenuBarExtra`.
+
+	It does not trigger the control's action.
+	*/
+	public func globalKeyboardShortcut(_ name: KeyboardShortcuts.Name) -> some View {
+		modifier(GlobalKeyboardShortcutViewModifier(name: name))
+	}
+}
+
+@available(macOS 12.3, *)
+private struct GlobalKeyboardShortcutViewModifier: ViewModifier {
+	// Jot patch: `State` values without the attribute; `@State` is a macro in the
+	// macOS 27 SDK, and its plugin ships only with Xcode.
+	private let recorderActive = State(initialValue: false)
+	private let refresh = State(initialValue: false)
+
+	private var isRecorderActive: Bool {
+		get { recorderActive.wrappedValue }
+		nonmutating set { recorderActive.wrappedValue = newValue }
+	}
+
+	private var triggerRefresh: Bool {
+		get { refresh.wrappedValue }
+		nonmutating set { refresh.wrappedValue = newValue }
+	}
+
+	let name: KeyboardShortcuts.Name
+
+	func body(content: Content) -> some View {
+		content
+			.keyboardShortcut(isRecorderActive ? nil : name.shortcut?.toSwiftUI)
+			.id(triggerRefresh)
+			.onReceive(NotificationCenter.default.publisher(for: .shortcutByNameDidChange)) {
+				guard $0.keyboardShortcutsName == name else {
+					return
+				}
+
+				triggerRefresh.toggle()
+			}
+			.onReceive(NotificationCenter.default.publisher(for: .recorderActiveStatusDidChange)) {
+				isRecorderActive = $0.recorderIsActive
+				triggerRefresh.toggle()
+			}
+	}
+}
+#endif
