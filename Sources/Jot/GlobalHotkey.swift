@@ -11,6 +11,28 @@ final class GlobalHotkey {
 
         static let defaultCapture = Combination(keyCode: UInt32(kVK_ANSI_N), modifiers: UInt32(controlKey | optionKey))
         static let defaultSearch = Combination(keyCode: UInt32(kVK_ANSI_F), modifiers: UInt32(controlKey | optionKey))
+
+        /// As menus show it, e.g. `⌃⌥N`, with the key as the current keyboard layout labels it.
+        var displayString: String {
+            let symbols: [(Int, String)] = [(controlKey, "⌃"), (optionKey, "⌥"), (shiftKey, "⇧"), (cmdKey, "⌘")]
+            return symbols.filter { modifiers & UInt32($0.0) != 0 }.map(\.1).joined() + keyName
+        }
+
+        private var keyName: String {
+            guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+                  let data = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
+            else { return "?" }
+            let layout = Unmanaged<CFData>.fromOpaque(data).takeUnretainedValue()
+            var deadKeys: UInt32 = 0
+            var characters = [UniChar](repeating: 0, count: 4)
+            var length = 0
+            let status = CFDataGetBytePtr(layout).withMemoryRebound(to: UCKeyboardLayout.self, capacity: 1) {
+                UCKeyTranslate($0, UInt16(keyCode), UInt16(kUCKeyActionDisplay), 0, UInt32(LMGetKbdType()),
+                               OptionBits(kUCKeyTranslateNoDeadKeysBit), &deadKeys, characters.count, &length, &characters)
+            }
+            guard status == noErr, length > 0 else { return "?" }
+            return String(utf16CodeUnits: characters, count: length).uppercased()
+        }
     }
 
     enum RegistrationError: Error {

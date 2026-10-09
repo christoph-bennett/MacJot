@@ -2,10 +2,15 @@ import AppKit
 import JotCore
 import SwiftUI
 
-/// The Settings window: one window, brought back to the front if it's already open.
+/// The Settings window: one window, brought back to the front if it's already
+/// open. A segmented control centred in the title bar switches between panes
+/// (the layout of sindresorhus/Settings); switching crossfades and resizes the
+/// window, keeping its top edge in place.
 @MainActor
-final class SettingsWindowController {
+final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let datePrefixKey = "datePrefix"
+    private static let paneKey = "settingsPane"
+    private static let switcherID = NSToolbarItem.Identifier("SettingsPanes")
 
     /// The Date Prefix toggle changed (on the main thread).
     var onDatePrefixChange: (Bool) -> Void = { _ in }
@@ -15,13 +20,27 @@ final class SettingsWindowController {
     /// the old one is still in use. Returns false if it already was the Notes Folder.
     var onNotesFolderChange: (URL) throws -> Bool = { _ in false }
 
+    private let state = SettingsState()
     private var window: NSWindow?
-    private var host: NSHostingController<SettingsView>?
+    private var hosts: [SettingsPane: NSView] = [:]
+    private var current: SettingsPane?
+    private lazy var switcher: NSSegmentedControl = {
+        let control = NSSegmentedControl(labels: SettingsPane.allCases.map(\.title), trackingMode: .selectOne,
+                                         target: self, action: #selector(switchPane(_:)))
+        // Equal segments, like the toolbar switchers in Apple's apps.
+        let font = control.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        let widest = SettingsPane.allCases.map { ($0.title as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
+        for index in SettingsPane.allCases.indices { control.setWidth(ceil(widest) + 24, forSegment: index) }
+        return control
+    }()
 
     func show() {
-        let window = window ?? makeWindow()
-        self.window = window
-        refresh()  // redraws the example name with today's date
+        if window == nil {
+            window = makeWindow()
+        } else {
+            refresh()  // e.g. the example name with today's date
+        }
+        guard let window else { return }
         // Jot is a menu-bar app, never active by itself: without this the window
         // would open behind the app the user is in.
         NSApp.activate()
@@ -29,29 +48,133 @@ final class SettingsWindowController {
     }
 
     private func makeWindow() -> NSWindow {
-        let host = NSHostingController(rootView: makeView())
-        self.host = host
-        let window = SettingsWindow(contentViewController: host)
-        window.title = "Jot Settings"
-        window.styleMask = [.titled, .closable]
+        let window = SettingsWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        window.contentView = NSView()
+        let toolbar = NSToolbar(identifier: "Settings")
+        toolbar.delegate = self
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
+        toolbar.centeredItemIdentifiers = [Self.switcherID]
+        window.toolbar = toolbar
+        window.toolbarStyle = .unified
+        // The switcher takes the title's place; the title (the pane's name) still
+        // names the window for VoiceOver and Mission Control.
+        window.titleVisibility = .hidden
         // The Capture Panel floats; at the same level, Settings opens on top of it.
         window.level = .floating
         window.isReleasedWhenClosed = false
+        self.window = window
+        refresh()  // the first pane is sized with its real content
+        let saved = UserDefaults.standard.string(forKey: Self.paneKey).flatMap(SettingsPane.init)
+        select(saved ?? .general, animated: false)
         window.center()
         return window
     }
 
-    /// Shows the current values, e.g. after the Notes Folder was moved.
+    /// Shows the current values, e.g. after the Notes Folder was moved. Nothing
+    /// to do while Settings was never opened.
     func refresh() {
-        host?.rootView = makeView()
+        guard window != nil else { return }
+        let folder = notesFolderURL()
+        state.notesFolder = folder
+        state.notesFolderIcon = folder.map { NSWorkspace.shared.icon(forFile: $0.path) }
+        state.today = .now
+        // As the current keyboard layout labels the keys.
+        state.captureHotkey = GlobalHotkey.Combination.defaultCapture.displayString
+        state.searchHotkey = GlobalHotkey.Combination.defaultSearch.displayString
+        // SwiftUI applies the new values on the next pass; the pane may have grown.
+        DispatchQueue.main.async { [weak self] in self?.fitWindowToPane() }
     }
 
-    private func makeView() -> SettingsView {
-        let folder = notesFolderURL()
-        return SettingsView(notesFolder: folder,
-                            notesFolderIcon: folder.map { NSWorkspace.shared.icon(forFile: $0.path) },
-                            onChooseNotesFolder: { [weak self] in self?.chooseNotesFolder() },
-                            onDatePrefixChange: { [weak self] in self?.onDatePrefixChange($0) })
+    /// The window's content is the current pane at its natural size, top edge fixed.
+    private func fitWindowToPane(animated: Bool = false) {
+        guard let window, let pane = current, let host = hosts[pane], let container = window.contentView else { return }
+        let size = host.fittingSize
+        guard host.frame.size != size else { return }
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
+        frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
+        window.setFrame(frame, display: true, animate: animated)
+        host.frame = NSRect(x: 0, y: container.bounds.height - size.height, width: size.width, height: size.height)
+    }
+
+    // MARK: Panes
+
+    @objc private func switchPane(_ control: NSSegmentedControl) {
+        select(SettingsPane.allCases[control.selectedSegment], animated: true)
+    }
+
+    private func select(_ pane: SettingsPane, animated: Bool) {
+        guard let window, let container = window.contentView, pane != current else { return }
+        let old = current.flatMap { hosts[$0] }
+        current = pane
+        switcher.selectedSegment = SettingsPane.allCases.firstIndex(of: pane) ?? 0
+        window.title = pane.title
+        UserDefaults.standard.set(pane.rawValue, forKey: Self.paneKey)
+
+        let new = hosts[pane] ?? makeHost(for: pane)
+        hosts[pane] = new
+        let size = new.fittingSize
+        // Pinned to the top while the window resizes around it.
+        new.frame = NSRect(x: 0, y: container.bounds.height - size.height, width: size.width, height: size.height)
+        new.autoresizingMask = [.minYMargin]
+        new.alphaValue = animated ? 0 : 1
+        container.addSubview(new)
+
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
+        frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)  // top edge stays
+        guard animated, let old else {
+            old?.removeFromSuperview()
+            window.setFrame(frame, display: true)
+            return
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            context.allowsImplicitAnimation = true
+            old.animator().alphaValue = 0
+            new.animator().alphaValue = 1
+            window.animator().setFrame(frame, display: true)
+        } completionHandler: { [weak self] in
+            MainActor.assumeIsolated {  // AppKit calls this on the main thread
+                // Switched back to it before the crossfade ended: it's the current pane again.
+                guard let self, self.current.flatMap({ self.hosts[$0] }) !== old else { return }
+                old.removeFromSuperview()
+                old.alphaValue = 1
+            }
+        }
+    }
+
+    private func makeHost(for pane: SettingsPane) -> NSView {
+        let view: AnyView
+        switch pane {
+        case .general:
+            view = AnyView(GeneralPane(state: state,
+                                       onChooseNotesFolder: { [weak self] in self?.chooseNotesFolder() },
+                                       onDatePrefixChange: { [weak self] in self?.onDatePrefixChange($0) }))
+        case .shortcuts:
+            view = AnyView(ShortcutsPane(state: state))
+        }
+        let host = NSHostingView(rootView: view)
+        // Reports its size (`fittingSize`); placed with a frame, so it doesn't resize the window.
+        host.sizingOptions = [.intrinsicContentSize]
+        return host
+    }
+
+    // MARK: Toolbar
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [Self.switcherID]
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [Self.switcherID]
+    }
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
+                 willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        let item = NSToolbarItem(itemIdentifier: identifier)
+        item.view = switcher
+        item.label = "Settings"
+        return item
     }
 
     /// A folder chooser as a sheet; after a switch, a dialog says the Notes stayed
@@ -123,63 +246,6 @@ final class SettingsWindowController {
                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: old.path)
             }
         }
-    }
-}
-
-private struct SettingsView: View {
-    @AppStorage(SettingsWindowController.datePrefixKey) private var datePrefix = false
-    let notesFolder: URL?
-    let notesFolderIcon: NSImage?
-    let onChooseNotesFolder: () -> Void
-    let onDatePrefixChange: (Bool) -> Void
-
-    var body: some View {
-        Form {
-            Section {
-                LabeledContent("Notes Folder") {
-                    HStack(spacing: 6) {
-                        if let notesFolder, let notesFolderIcon {
-                            Image(nsImage: notesFolderIcon)
-                                .resizable()
-                                .frame(width: 16, height: 16)
-                            Text(notesFolder.lastPathComponent)
-                        }
-                        Button("Choose…", action: onChooseNotesFolder)
-                    }
-                }
-            } footer: {
-                VStack(alignment: .leading, spacing: 2) {
-                    if let notesFolder {
-                        Text(SavedNotesFolder.display(notesFolder))
-                            .truncationMode(.middle)
-                            .lineLimit(1)
-                            .textSelection(.enabled)
-                    }
-                    Text("Choosing another folder doesn’t move your notes.")
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .multilineTextAlignment(.leading)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            Section {
-                Toggle("Start file names with the creation date", isOn: $datePrefix)
-            } footer: {
-                VStack(alignment: .leading, spacing: 2) {
-                    // Today's date, so the example matches what the next Note gets.
-                    Text("New notes are named like “\(DatePrefix.string(for: .now))plan.md”.")
-                    Text("Existing files keep their names.")
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .multilineTextAlignment(.leading)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
-        .onChange(of: datePrefix) { _, on in onDatePrefixChange(on) }
-        .frame(width: 440)
-        .fixedSize()
     }
 }
 
