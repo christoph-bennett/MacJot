@@ -2,7 +2,7 @@ import Foundation
 
 /// Recognises a folder that a cloud service syncs. Such services can remove
 /// the local copies of files at any time to free up space, keeping only a
-/// placeholder; Notes in it may then have to download before Jot can read them.
+/// placeholder; Notes in it may then have to download before MacJot can read them.
 public enum CloudFolder {
     /// The service that syncs `folder` ("iCloud Drive", "Dropbox", "Google Drive", …),
     /// or nil for a local folder. iCloud Drive keeps its folders in

@@ -4,7 +4,7 @@ import Foundation
 /// Watches the Notes Folder with FSEvents and calls `onChange` on the main
 /// queue, at most a few times a second, when anything in it changes: Notes
 /// added, edited, renamed or deleted by other apps, sync, or Finder's Put Back.
-/// Jot's own writes are reported too; the Notes Folder tells them apart.
+/// MacJot's own writes are reported too; the Notes Folder tells them apart.
 /// `onRootChange` instead when the folder itself was renamed, moved or deleted.
 @MainActor
 final class FolderWatcher {
@@ -35,7 +35,7 @@ final class FolderWatcher {
             0.2,
             FSEventStreamCreateFlags(kFSEventStreamCreateFlagWatchRoot)
         ) else {
-            NSLog("Jot: couldn't watch the Notes Folder")
+            NSLog("MacJot: couldn't watch the Notes Folder")
             return
         }
         FSEventStreamSetDispatchQueue(stream, .main)

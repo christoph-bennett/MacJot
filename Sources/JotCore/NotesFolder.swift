@@ -8,7 +8,7 @@ import Foundation
 ///
 /// A Draft gets its file in the Notes Folder once its Title is finished (a line
 /// break follows it) or when it is left. Until then flushes go to the Recovery
-/// Copy, which the next launch turns into a Note if Jot crashed. See ADR 0003.
+/// Copy, which the next launch turns into a Note if MacJot crashed. See ADR 0003.
 public final class NotesFolder {
     /// Moves a file to the Trash; injected so tests can observe it.
     public typealias Trash = (URL) throws -> Void
@@ -28,7 +28,7 @@ public final class NotesFolder {
         didSet { rememberFileIdentity() }
     }
     /// The open Note's file on disk (device and inode), to recognise it when it's
-    /// renamed elsewhere. Changes with each of Jot's atomic writes.
+    /// renamed elsewhere. Changes with each of MacJot's atomic writes.
     private var currentFileIdentity: [Int]?
     /// Where the Note left last ended up: after a rename, or the file a Draft got
     /// on leaving. `nil` if it left nothing behind (blank Draft, trashed Note).
@@ -153,11 +153,11 @@ public final class NotesFolder {
     }
 
     public enum SwitchError: LocalizedError, Equatable {
-        /// Jot keeps the Recovery Copy there; as Notes Folder it would list it as a Note.
+        /// MacJot keeps the Recovery Copy there; as Notes Folder it would list it as a Note.
         case holdsRecoveryCopy
 
         public var errorDescription: String? {
-            "Jot keeps its own files in this folder. Choose another one."
+            "MacJot keeps its own files in this folder. Choose another one."
         }
     }
 
@@ -243,7 +243,7 @@ public final class NotesFolder {
 
     /// What `reconcileOpenNote()` did with the open Note.
     public enum OpenNoteChange: Equatable {
-        /// Nothing to do: no change, Jot's own write, or the open Note is a Draft.
+        /// Nothing to do: no change, MacJot's own write, or the open Note is a Draft.
         case unchanged
         /// Changed elsewhere with no local edits: show this text instead.
         case reloaded(String)
@@ -257,7 +257,7 @@ public final class NotesFolder {
     }
 
     /// Brings the open Note in line with its file after something changed in the
-    /// folder (the shell's file-system watcher calls this). Jot's own writes match
+    /// folder (the shell's file-system watcher calls this). MacJot's own writes match
     /// what it last wrote, so they never cause a reload.
     public func reconcileOpenNote() throws -> OpenNoteChange {
         guard isOpen, let file = currentNoteURL else { return .unchanged }

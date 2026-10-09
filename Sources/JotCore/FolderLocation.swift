@@ -1,6 +1,6 @@
 import Foundation
 
-/// Finds the Notes Folder again after it disappeared from its path. Jot keeps
+/// Finds the Notes Folder again after it disappeared from its path. MacJot keeps
 /// a bookmark next to the path; the bookmark follows the folder when it's
 /// renamed or moved, but a folder in the Trash is never followed.
 public enum FolderLocation {

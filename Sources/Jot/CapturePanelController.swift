@@ -24,7 +24,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private var isShowingSaveError = false
     /// ⌘, in the panel.
     var onShowSettings: () -> Void = {}
-    /// The Notes Folder was renamed or moved elsewhere and Jot followed it.
+    /// The Notes Folder was renamed or moved elsewhere and MacJot followed it.
     var onFolderMoved: () -> Void = {}
 
     init(folder: NotesFolder) {
@@ -38,7 +38,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         noteListItem = NSSplitViewItem(sidebarWithViewController: noteList)
         panel = CapturePanel(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
-            // Non-activating: the panel takes keyboard focus without activating Jot,
+            // Non-activating: the panel takes keyboard focus without activating MacJot,
             // like Spotlight. Activation can be refused on macOS 14+, and the app
             // the user came from regains focus by itself when the panel closes.
             styleMask: [.titled, .closable, .resizable, .nonactivatingPanel],
@@ -69,7 +69,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         split.addSplitViewItem(noteListItem)
         split.addSplitViewItem(NSSplitViewItem(viewController: editor))
 
-        panel.title = "Jot"
+        panel.title = "MacJot"
         panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = false
@@ -206,7 +206,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         do {
             text = try leavingCurrentNote { try folder.open(note) }
         } catch {
-            ErrorAlert.show("Jot couldn't open this note.", error: error)
+            ErrorAlert.show("MacJot couldn't open this note.", error: error)
             reloadNoteList()
             return
         }
@@ -241,7 +241,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         do {
             try folder.trash(note)
         } catch {
-            ErrorAlert.show("Jot couldn't move this note to the Trash.", error: error)
+            ErrorAlert.show("MacJot couldn't move this note to the Trash.", error: error)
             return
         }
         cursors.forget(note)
@@ -271,7 +271,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     /// Something in the Notes Folder changed, here or elsewhere: bring the open
     /// Note and the Note List up to date.
-    /// Also how the list catches up with Jot's own saves and renames.
+    /// Also how the list catches up with MacJot's own saves and renames.
     private func folderDidChange() {
         let before = folder.currentNoteURL
         do {
@@ -280,7 +280,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
                 cancelAutosave()
                 display(text, cursor: textView.selectedRange().location)  // clamped to the new text
             case .deleted:
-                // Its file is gone (e.g. moved to the Trash in Finder): move on, as when trashed in Jot.
+                // Its file is gone (e.g. moved to the Trash in Finder): move on, as when trashed in MacJot.
                 if let before { cursors.forget(before) }
                 openNextOrDraft(before.flatMap(noteList.neighbour))
             case .renamed(let note):
@@ -292,7 +292,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
                 break  // the editor already shows the right text
             }
         } catch {
-            NSLog("Jot: couldn't check the open note against its file: \(error)")
+            NSLog("MacJot: couldn't check the open note against its file: \(error)")
         }
         // While the user moves through the list, rows stay put (as when opening a Note).
         reloadNoteList(keepingOrder: noteList.hasFocus)
@@ -359,7 +359,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             do {
                 try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
             } catch {
-                ErrorAlert.show("Jot couldn’t create the Notes Folder.", error: error)
+                ErrorAlert.show("MacJot couldn’t create the Notes Folder.", error: error)
                 return
             }
             SavedNotesFolder.save(old)
@@ -376,7 +376,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             noteList.show(try folder.notes(), selecting: folder.currentNoteURL, keepingOrder: keepingOrder,
                           draftText: folder.isDraft ? textView.string : nil)
         } catch {
-            NSLog("Jot: couldn't list notes: \(error)")
+            NSLog("MacJot: couldn't list notes: \(error)")
         }
     }
 
@@ -412,7 +412,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     func saveBeforeQuit() {
         cancelAutosave()
-        do { try folder.leave() } catch { NSLog("Jot: couldn't save on quit: \(error)") }
+        do { try folder.leave() } catch { NSLog("MacJot: couldn't save on quit: \(error)") }
     }
 
     private func show() {
@@ -476,7 +476,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     /// An untouched Draft shouldn't linger after an accidental summon. Checked one
     /// run-loop turn later, outside AppKit's key-change callback, and only if focus
-    /// went to another app rather than to one of Jot's own windows (e.g. an alert).
+    /// went to another app rather than to one of MacJot's own windows (e.g. an alert).
     func windowDidResignKey(_ notification: Notification) {
         Task { [weak self] in
             guard let self, panel.isVisible, NSApp.keyWindow == nil, folder.isBlankDraft else { return }
@@ -527,7 +527,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private func reportSaveError(_ error: Error) {
         guard !isShowingSaveError else { return }
         isShowingSaveError = true
-        ErrorAlert.show("Jot couldn't save this note.", error: error)
+        ErrorAlert.show("MacJot couldn't save this note.", error: error)
     }
 
     // MARK: Editor
@@ -690,7 +690,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 /// Sends `Esc` that no view handled (e.g. in the Note List) to the controller, and
 /// handles the panel's own shortcuts. Neither the main menu nor
 /// `performKeyEquivalent` can be relied on for those: the panel is non-activating,
-/// and while Jot isn't the active app macOS hands ⌘-keys straight to the focused
+/// and while MacJot isn't the active app macOS hands ⌘-keys straight to the focused
 /// view (⌃⌘S typed commas into the editor, ⌘N type-selected in the Note List).
 /// So they're caught here, as the panel receives them.
 final class CapturePanel: NSPanel {

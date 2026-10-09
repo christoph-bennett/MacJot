@@ -1,8 +1,8 @@
 import AppKit
 import JotCore
 
-/// The Notes Folder Jot uses, kept in the preferences as a path plus a bookmark,
-/// so Jot can tell when the folder was renamed, moved or trashed.
+/// The Notes Folder MacJot uses, kept in the preferences as a path plus a bookmark,
+/// so MacJot can tell when the folder was renamed, moved or trashed.
 @MainActor
 enum SavedNotesFolder {
     static let pathKey = "notesFolder"
@@ -28,7 +28,7 @@ enum SavedNotesFolder {
 
     static var defaultURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Jot", isDirectory: true)
+            .appendingPathComponent("MacJot", isDirectory: true)
     }
 
     // MARK: Alerts
@@ -36,7 +36,7 @@ enum SavedNotesFolder {
     static func tellFollowed(from old: URL, to new: URL) {
         let alert = NSAlert()
         alert.messageText = "Your Notes Folder was moved"
-        alert.informativeText = "“\(old.lastPathComponent)” is now at \(display(new)). Jot uses it there."
+        alert.informativeText = "“\(old.lastPathComponent)” is now at \(display(new)). MacJot uses it there."
         NSApp.activate()
         alert.runModal()
     }
@@ -48,20 +48,20 @@ enum SavedNotesFolder {
         alert.alertStyle = .warning
         if trashed {
             alert.messageText = "Your Notes Folder is in the Trash"
-            alert.informativeText = "To keep using your notes, quit Jot, put “\(folder.lastPathComponent)” back from "
-                + "the Trash and open Jot again. Or create a new, empty folder at \(display(folder))."
+            alert.informativeText = "To keep using your notes, quit MacJot, put “\(folder.lastPathComponent)” back from "
+                + "the Trash and open MacJot again. Or create a new, empty folder at \(display(folder))."
         } else {
-            alert.messageText = "Jot can’t find your Notes Folder"
+            alert.messageText = "MacJot can’t find your Notes Folder"
             alert.informativeText = "“\(folder.lastPathComponent)” is no longer at \(display(folder)). If it’s on a "
-                + "drive that isn’t connected, quit Jot, connect the drive and open Jot again. Or create a new, empty folder there."
+                + "drive that isn’t connected, quit MacJot, connect the drive and open MacJot again. Or create a new, empty folder there."
         }
-        alert.addButton(withTitle: "Quit Jot")
+        alert.addButton(withTitle: "Quit MacJot")
         alert.addButton(withTitle: "Create New Folder")
         NSApp.activate()
         return alert.runModal() == .alertSecondButtonReturn
     }
 
-    /// `~/Documents/Jot`.
+    /// `~/Documents/MacJot`.
     static func display(_ url: URL) -> String {
         (url.path as NSString).abbreviatingWithTildeInPath
     }

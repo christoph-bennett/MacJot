@@ -1,9 +1,9 @@
 import AppKit
 import ServiceManagement
 
-/// Opening Jot at login, read from the system each time rather than from a
+/// Opening MacJot at login, read from the system each time rather than from a
 /// stored copy, so a change under System Settings > General > Login Items
-/// shows up in Jot's Settings (the approach of sindresorhus/LaunchAtLogin-Modern).
+/// shows up in MacJot's Settings (the approach of sindresorhus/LaunchAtLogin-Modern).
 @MainActor
 enum LaunchAtLogin {
     enum State {
@@ -39,7 +39,7 @@ enum LaunchAtLogin {
             }
             return true
         } catch {
-            NSLog("Jot: couldn't turn \(on ? "on" : "off") opening at login: \(error)")
+            NSLog("MacJot: couldn't turn \(on ? "on" : "off") opening at login: \(error)")
             return false
         }
     }
@@ -50,7 +50,7 @@ enum LaunchAtLogin {
 
     private static let didRegisterKey = "didRegisterLoginItem"
 
-    /// On by default: switched on once, then left to the user, so Jot never
+    /// On by default: switched on once, then left to the user, so MacJot never
     /// switches it on again after the user turned it off.
     static func turnOnOnFirstRun() {
         let defaults = UserDefaults.standard

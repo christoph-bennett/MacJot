@@ -114,17 +114,17 @@ struct GeneralPane: View {
                 VStack(alignment: .leading, spacing: 4) {
                     // Checked while awaiting approval too: it's registered, and
                     // unchecking it unregisters it.
-                    Toggle("Open Jot at login", isOn: Binding(
+                    Toggle("Open MacJot at login", isOn: Binding(
                         get: { state.launchAtLogin == .on || state.launchAtLogin == .needsApproval },
                         set: { onLaunchAtLoginChange($0) }))
                     .disabled(state.launchAtLogin == .unavailable)
                     switch state.launchAtLogin {
                     case .needsApproval:
-                        Explanation(text: "Jot isn’t allowed to open at login. Allow it in System Settings, "
+                        Explanation(text: "MacJot isn’t allowed to open at login. Allow it in System Settings, "
                                     + "under Login Items & Extensions.")
                         Button("Open Login Items Settings…", action: LaunchAtLogin.openSystemSettings)
                     case .unavailable:
-                        Explanation(text: "Only available when Jot runs from its app.")
+                        Explanation(text: "Only available when MacJot runs from its app.")
                     case .on, .off:
                         EmptyView()
                     }
@@ -188,7 +188,7 @@ struct EditorPane: View {
 }
 
 /// A recorder per hotkey (KeyboardShortcuts, ADR 0005). It warns about
-/// combinations macOS uses and blocks ones in Jot's menus; `HotkeyCheck` adds
+/// combinations macOS uses and blocks ones in MacJot's menus; `HotkeyCheck` adds
 /// "already the other hotkey" and "another app has it". A rejected combination
 /// isn't saved, so the previous hotkey stays active. Clearing one turns it off.
 struct ShortcutsPane: View {
@@ -201,7 +201,7 @@ struct ShortcutsPane: View {
                 VStack(alignment: .leading, spacing: 4) {
                     recorder(for: .capture)
                     unavailableNote(for: .capture)
-                    Explanation(text: "Opens Jot with a new note, from any app.")
+                    Explanation(text: "Opens MacJot with a new note, from any app.")
                 }
             }
             Divider()
@@ -209,7 +209,7 @@ struct ShortcutsPane: View {
                 VStack(alignment: .leading, spacing: 4) {
                     recorder(for: .search)
                     unavailableNote(for: .search)
-                    Explanation(text: "Opens Jot with your notes and the search field, from any app.")
+                    Explanation(text: "Opens MacJot with your notes and the search field, from any app.")
                 }
             }
             Divider()
@@ -229,7 +229,7 @@ struct ShortcutsPane: View {
     @ViewBuilder
     private func unavailableNote(for hotkey: Hotkey) -> some View {
         if state.unavailableHotkeys.contains(hotkey) {
-            Text("Another app is using this combination, so it doesn’t work in Jot. Record a different one.")
+            Text("Another app is using this combination, so it doesn’t work in MacJot. Record a different one.")
                 .font(.callout)
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)

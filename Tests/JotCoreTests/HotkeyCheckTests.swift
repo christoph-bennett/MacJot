@@ -22,11 +22,11 @@ struct HotkeyCheckTests {
 
     @Test func aCombinationThatCantBeRegisteredIsRejected() {
         #expect(problem("⌃⌥J", for: .capture, registrable: false)
-                == "Jot can’t use this combination. Another app may be using it.")
+                == "MacJot can’t use this combination. Another app may be using it.")
     }
 
     @Test func reRecordingTheSameCombinationIsCheckedToo() {
-        // Jot's hotkeys are paused while recording; another app may have taken it since.
+        // MacJot's hotkeys are paused while recording; another app may have taken it since.
         #expect(problem("⌃⌥N", for: .capture, registrable: false) != nil)
         #expect(problem("⌃⌥N", for: .capture) == nil)
     }

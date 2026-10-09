@@ -5,7 +5,7 @@ let package = Package(
     name: "Jot",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "Jot", targets: ["Jot"]),
+        .executable(name: "MacJot", targets: ["Jot"]),
         .library(name: "JotCore", targets: ["JotCore"]),
     ],
     dependencies: [

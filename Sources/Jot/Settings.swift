@@ -50,7 +50,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
             refresh()  // e.g. the example name with today's date
         }
         guard let window else { return }
-        // Jot is a menu-bar app, never active by itself: without this the window
+        // MacJot is a menu-bar app, never active by itself: without this the window
         // would open behind the app the user is in.
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
@@ -216,7 +216,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     }
 
     /// A folder chooser as a sheet; after a switch, a dialog says the Notes stayed
-    /// in the old folder. Jot never moves them itself.
+    /// in the old folder. MacJot never moves them itself.
     private func chooseNotesFolder() {
         guard let window else { return }
         let old = notesFolderURL()
@@ -227,7 +227,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         chooser.allowsMultipleSelection = false
         // Opens next to the current folder, where another one can be chosen.
         chooser.directoryURL = old?.deletingLastPathComponent()
-        chooser.message = "Choose the folder Jot keeps your notes in."
+        chooser.message = "Choose the folder MacJot keeps your notes in."
         chooser.prompt = "Choose"
         chooser.beginSheetModal(for: window) { [weak self] response in
             guard let self, response == .OK, let new = chooser.url else { return }
@@ -244,7 +244,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         do {
             guard try onNotesFolderChange(new) else { return }
         } catch {
-            ErrorAlert.show("Jot couldn’t switch to “\(new.lastPathComponent)”.", error: error)
+            ErrorAlert.show("MacJot couldn’t switch to “\(new.lastPathComponent)”.", error: error)
             return
         }
         refresh()
@@ -262,7 +262,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
             ? "In Finder, Control-click the folder and choose Keep Downloaded."
             : "In Finder or in \(service)’s settings, make the folder available offline."
         alert.informativeText = "\(service) can remove the files on this Mac at any time to free up space, keeping "
-            + "only placeholders. Jot then has to wait for a note to download before it can list, search or open it, "
+            + "only placeholders. MacJot then has to wait for a note to download before it can list, search or open it, "
             + "and can’t while you’re offline. Use this folder only if it always stays downloaded. \(keepDownloaded)"
         alert.addButton(withTitle: "Use This Folder")
         alert.addButton(withTitle: "Cancel").keyEquivalent = "\u{1b}"
@@ -275,7 +275,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         let alert = NSAlert()
         alert.messageText = "Your existing notes weren’t moved"
         alert.informativeText = "New notes now go to “\(new.lastPathComponent)”. Notes in “\(old.lastPathComponent)” stay "
-            + "there and no longer show in Jot. To keep them in Jot, move them to the new folder in Finder."
+            + "there and no longer show in MacJot. To keep them in MacJot, move them to the new folder in Finder."
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Show Old Folder")
         alert.beginSheetModal(for: window) { response in

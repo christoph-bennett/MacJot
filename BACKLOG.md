@@ -5,7 +5,7 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 ## Inbox
 
 - **Keep macOS inline predictions in the editor.** They are off because Return with a prediction showing bypassed the paragraph handling (ADR 0004). Would need handling line breaks the input system inserts itself.
-- **Register Jot on the services dashboard and in `~/services/SERVICES.md`**, including the Recovery Copy location (`~/Library/Application Support/Jot/recovery.md`), once Jot runs from a stable path like `~/Applications/Jot.app`.
+- **Register MacJot on the services dashboard and in `~/services/SERVICES.md`**, including the Recovery Copy location (`~/Library/Application Support/MacJot/recovery.md`), once MacJot runs from a stable path like `~/Applications/MacJot.app`.
 - **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings.
 - **Hint while a Note is empty**: a dimmed placeholder in the editor such as "Leave this note empty to move it to the Trash", so emptying a Note isn't a surprise. Chosen over a confirmation dialog: trashing happens on leave (panel close, switching Notes, quit), where a dialog would block or arrive in a closing panel, and nothing is lost (⌘Z while open, Finder's Trash afterwards).
 - **Trash an emptied Note with its full contents, even when deleted slowly.** The Trash gets the last autosaved version; deleting with pauses autosaves shrinking versions, so in the worst case only a few characters end up there (select-all + Delete is fine). Fix: trash the longest version saved since the Note was opened, or the version it was opened with.
@@ -16,7 +16,7 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 - **Setting: line height** (spacing between lines), next to font size; the paragraph gap and line numbers have to follow it.
 - **Show invisible characters**: spaces, tabs and line breaks as faint symbols, e.g. to check Markdown line breaks; toggle in Settings or the View menu.
 - **Settings in a config file** at `~/.macjot/config.json` instead of UserDefaults. Postponed 2026-10-09 before deciding why (hand edits, dotfiles, scripts), which settings go in it (settings only, or also state like window frames and cursor positions) and where it lives (`~/.macjot/` or `~/.config/macjot/`). Hotkeys are stored by KeyboardShortcuts itself; the Notes Folder has a binary bookmark next to its path.
-- **Setting: custom Date Prefix format**, e.g. `20261009-` or `2026-10-09_` instead of the fixed `2026-10-09-`; next to the Date Prefix checkbox in Settings > General, with the live example showing the result. Jot also reads the prefix back (`DatePrefix.of`, `DatePrefix.day(of:)`) to keep it on rename and to date the Note List, so recognising Notes named with an earlier format has to keep working; the format may need limits (must contain year, month and day, only filename-safe characters).
+- **Setting: custom Date Prefix format**, e.g. `20261009-` or `2026-10-09_` instead of the fixed `2026-10-09-`; next to the Date Prefix checkbox in Settings > General, with the live example showing the result. MacJot also reads the prefix back (`DatePrefix.of`, `DatePrefix.day(of:)`) to keep it on rename and to date the Note List, so recognising Notes named with an earlier format has to keep working; the format may need limits (must contain year, month and day, only filename-safe characters).
 
 ## MVP
 
@@ -38,12 +38,12 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 - Copy a Note as rich text.
 - Conflict-resolution UI for concurrent external edits (MVP: local unsaved edits win).
 - App Store / sandboxed build.
-- **Open `.md` files from Finder in Jot** ("Open With", or as the default app for Markdown). Open question: a file outside the Notes Folder is edited in place in the Capture Panel, or copied into the Notes Folder? In place fits ADR 0001; rename-on-leave and the Note List would then need to handle files outside the folder.
+- **Open `.md` files from Finder in MacJot** ("Open With", or as the default app for Markdown). Open question: a file outside the Notes Folder is edited in place in the Capture Panel, or copied into the Notes Folder? In place fits ADR 0001; rename-on-leave and the Note List would then need to handle files outside the folder.
 
 ## Not planned
 
 - **Underline**: Markdown has no syntax for it; `<u>` would put HTML in the files.
 - **AI features, dictation, encryption, Git sync, Apple Notes import**: outside the "quick plain-Markdown capture" scope (decided when comparing with Stik).
 - **Streaks/stats, analytics, localisation, custom themes and opacity**: same reason.
-- **Moving Notes when the Notes Folder changes**: the user moves them; Jot only shows a hint (Q30).
+- **Moving Notes when the Notes Folder changes**: the user moves them; MacJot only shows a hint (Q30).
 - **Renaming existing files when the Date Prefix setting changes**: the setting applies to new Notes only (Q22).

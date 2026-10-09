@@ -1,4 +1,4 @@
-/// Jot's two global hotkeys.
+/// MacJot's two global hotkeys.
 public enum Hotkey: String, CaseIterable, Sendable {
     case capture, search
 
@@ -21,7 +21,7 @@ public enum HotkeyCheck {
     /// Why `candidate` can't become `hotkey`'s combination, as a message for the
     /// user; nil if it can. `canRegister` tries a system-wide registration. It
     /// fails only when another app holds the combination exclusively: most apps
-    /// don't, and those can't be detected. While the recorder records, Jot's own
+    /// don't, and those can't be detected. While the recorder records, MacJot's own
     /// hotkeys are paused, so re-recording the current combination is checked too.
     public static func problem<Combination: Equatable>(
         recording candidate: Combination, for hotkey: Hotkey,
@@ -31,7 +31,7 @@ public enum HotkeyCheck {
             return "This combination is already the \(hotkey.other.title)."
         }
         guard canRegister(candidate) else {
-            return "Jot can’t use this combination. Another app may be using it."
+            return "MacJot can’t use this combination. Another app may be using it."
         }
         return nil
     }

@@ -47,14 +47,14 @@ extension Hotkey {
     func checkAvailableBeforeRegistering() {
         guard let shortcut = KeyboardShortcuts.getShortcut(for: name), !Self.canRegister(shortcut) else { return }
         Self.unavailable.insert(self)
-        NSLog("Jot: couldn't register the \(title) \(shortcut); another app holds it")
+        NSLog("MacJot: couldn't register the \(title) \(shortcut); another app holds it")
     }
 
     /// Restores the defaults, except one another app holds: that hotkey keeps its
     /// combination. Returns the hotkeys that weren't restored.
     static func restoreDefaults() -> [Hotkey] {
         let held = Set(allCases.compactMap { KeyboardShortcuts.getShortcut(for: $0.name) })
-        // Jot's own combinations are registered, so the probe would fail for them.
+        // MacJot's own combinations are registered, so the probe would fail for them.
         let blocked = allCases.filter { hotkey in
             guard let initial = hotkey.name.initialShortcut else { return false }
             return !held.contains(initial) && !canRegister(initial)
@@ -66,7 +66,7 @@ extension Hotkey {
     }
 
     /// Registers `shortcut` for a moment; fails if it's registered already,
-    /// in Jot or exclusively by another app.
+    /// in MacJot or exclusively by another app.
     private static func canRegister(_ shortcut: KeyboardShortcuts.Shortcut) -> Bool {
         var ref: EventHotKeyRef?
         let status = RegisterEventHotKey(

@@ -11,10 +11,12 @@
 
 **Blocked by:** 18
 
-**Status:** ready-for-agent
+**Done 2026-10-09:** the move was done as described. The old login item was on; the user switched it off in Jot, `didRegisterLoginItem` and the obsolete `settingsPane` were left out of the copied preferences, and MacJot registered its own login item on first launch. `Application Support/Jot` was empty. The old `com.onethingwell.jot` domain is kept as a backup.
 
-- [ ] No user-visible text says "Jot" any more (menus, alerts, Settings, hint, tooltip, About)
-- [ ] The installed app is `~/Applications/MacJot.app`, its process is `MacJot`, its bundle ID `com.onethingwell.macjot`
-- [ ] After the move, MacJot opens the user's `~/Documents/Jot` with the same settings, hotkeys, cursor positions and panel frame, and shows no first-launch hint
-- [ ] Exactly one login item, for MacJot; the old Jot.app and its Application Support folder are gone
-- [ ] A fresh install (no preferences) creates `~/Documents/MacJot`
+**Status:** done
+
+- [x] No user-visible text says "Jot" any more (menus, alerts, Settings, hint, tooltip, About)
+- [x] The installed app is `~/Applications/MacJot.app`, its process is `MacJot`, its bundle ID `com.onethingwell.macjot`
+- [x] After the move, MacJot opens the user's `~/Documents/Jot` with the same settings, hotkeys, cursor positions and panel frame, and shows no first-launch hint
+- [x] Exactly one login item, for MacJot; the old Jot.app and its Application Support folder are gone
+- [x] A fresh install (no preferences) creates `~/Documents/MacJot`

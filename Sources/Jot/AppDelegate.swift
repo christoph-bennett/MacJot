@@ -76,7 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         firstLaunchHint = popover
     }
 
-    /// `kill`/`pkill` (e.g. scripts/install.sh) send SIGTERM, which would end Jot
+    /// `kill`/`pkill` (e.g. scripts/install.sh) send SIGTERM, which would end MacJot
     /// on the spot; quit normally instead, so the open Note is saved.
     private func quitNormallyOnTerminationSignal() {
         signal(SIGTERM, SIG_IGN)
@@ -120,10 +120,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         } catch {
             let fallback = SavedNotesFolder.defaultURL
             guard chosen.standardizedFileURL != fallback.standardizedFileURL, let folder = try? make(fallback) else {
-                ErrorAlert.show("Jot couldn’t open its Notes Folder.", error: error)
+                ErrorAlert.show("MacJot couldn’t open its Notes Folder.", error: error)
                 return nil
             }
-            ErrorAlert.show("Jot couldn’t open the Notes Folder “\(chosen.path)”. It’s using “\(fallback.path)” for now.",
+            ErrorAlert.show("MacJot couldn’t open the Notes Folder “\(chosen.path)”. It’s using “\(fallback.path)” for now.",
                             error: error)
             return folder
         }
@@ -133,8 +133,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func makeStatusItem() -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "note.text", accessibilityDescription: "Jot")
-        item.button?.toolTip = "Jot"
+        item.button?.image = NSImage(systemSymbolName: "note.text", accessibilityDescription: "MacJot")
+        item.button?.toolTip = "MacJot"
 
         let menu = NSMenu()
         menu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "").target = self
@@ -142,7 +142,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit Jot", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit MacJot", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu
         return item
     }
@@ -171,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// Holds a Draft's text until its Title is finished; outside the Notes Folder on purpose.
     private static var recoveryURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Jot", isDirectory: true)
+            .appendingPathComponent("MacJot", isDirectory: true)
             .appendingPathComponent("recovery.md")
     }
 }
@@ -183,7 +183,7 @@ private struct FirstLaunchHint: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Jot lives here in the menu bar.")
+            Text("MacJot lives here in the menu bar.")
                 .font(.headline)
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
                 if let capture {
