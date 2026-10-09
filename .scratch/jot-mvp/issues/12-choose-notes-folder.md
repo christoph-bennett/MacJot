@@ -17,3 +17,4 @@
 
 - [x] Renamed or moved: Jot follows the folder, with the open Note, and says where it is now
 - [x] In the Trash or gone: never followed; an alert offers Quit Jot (e.g. to put it back first) or Create New Folder at the old path
+- [x] A folder synced by a cloud service (iCloud Drive, or a File Provider service under `~/Library/CloudStorage` such as Dropbox, Google Drive, OneDrive) can be chosen after a warning: the service may evict files, so it's only recommended if the folder always stays downloaded

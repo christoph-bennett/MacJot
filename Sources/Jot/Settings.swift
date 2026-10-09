@@ -70,14 +70,43 @@ final class SettingsWindowController {
         chooser.prompt = "Choose"
         chooser.beginSheetModal(for: window) { [weak self] response in
             guard let self, response == .OK, let new = chooser.url else { return }
-            do {
-                guard try onNotesFolderChange(new) else { return }
-            } catch {
-                ErrorAlert.show("Jot couldn’t switch to “\(new.lastPathComponent)”.", error: error)
-                return
+            guard let service = CloudFolder.service(syncing: new) else {
+                return switchFolder(to: new, from: old, window: window)
             }
-            refresh()
-            if let old { tellNotesStayed(in: old, newFolder: new, window: window) }
+            warnAboutCloudFolder(new, syncedBy: service, window: window) { [weak self] in
+                self?.switchFolder(to: new, from: old, window: window)
+            }
+        }
+    }
+
+    private func switchFolder(to new: URL, from old: URL?, window: NSWindow) {
+        do {
+            guard try onNotesFolderChange(new) else { return }
+        } catch {
+            ErrorAlert.show("Jot couldn’t switch to “\(new.lastPathComponent)”.", error: error)
+            return
+        }
+        refresh()
+        if let old { tellNotesStayed(in: old, newFolder: new, window: window) }
+    }
+
+    /// Possible, but only safe if the folder stays downloaded: the service may
+    /// replace Notes with placeholders at any time to free up space.
+    private func warnAboutCloudFolder(_ folder: URL, syncedBy service: String, window: NSWindow,
+                                      then proceed: @escaping () -> Void) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "“\(folder.lastPathComponent)” is in \(service)"
+        let keepDownloaded = service == "iCloud Drive"
+            ? "In Finder, Control-click the folder and choose Keep Downloaded."
+            : "In Finder or in \(service)’s settings, make the folder available offline."
+        alert.informativeText = "\(service) can remove the files on this Mac at any time to free up space, keeping "
+            + "only placeholders. Jot then has to wait for a note to download before it can list, search or open it, "
+            + "and can’t while you’re offline. Use this folder only if it always stays downloaded. \(keepDownloaded)"
+        alert.addButton(withTitle: "Use This Folder")
+        alert.addButton(withTitle: "Cancel").keyEquivalent = "\u{1b}"
+        alert.beginSheetModal(for: window) { response in
+            if response == .alertFirstButtonReturn { proceed() }
         }
     }
 
