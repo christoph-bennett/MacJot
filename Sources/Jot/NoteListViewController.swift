@@ -9,8 +9,6 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     NSSearchFieldDelegate {
     /// The user picked a Note (click or arrow keys).
     var onOpen: (URL) -> Void = { _ in }
-    /// New Note under "No Notes": start writing (as ⌘N).
-    var onNewNote: () -> Void = {}
     /// Return in the search field or the list: go on writing in the selected Note.
     var onReturn: () -> Void = {}
     /// `Esc` in the search field with nothing left to clear.
@@ -23,7 +21,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     let tableView = NoteTableView()
     let searchField = NSSearchField()
     /// Says why the list is empty (Apple's `ContentUnavailableView`), over it.
-    private let placeholder = NSHostingView(rootView: PlaceholderView(kind: nil, onNewNote: {}))
+    private let placeholder = NSHostingView(rootView: PlaceholderView(kind: nil))
     /// The open Draft, once it has text, is a row of its own on top, so a new Note shows up
     /// in the list straight away rather than once it gets its file.
     private enum Row {
@@ -96,7 +94,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     private func showPlaceholder(_ kind: NoteListPlaceholder?) {
         placeholder.isHidden = kind == nil
         guard placeholder.rootView.kind != kind else { return }
-        placeholder.rootView = PlaceholderView(kind: kind) { [weak self] in self?.onNewNote() }
+        placeholder.rootView = PlaceholderView(kind: kind)
     }
 
     /// The search field or the list has keyboard focus.
@@ -339,25 +337,16 @@ private final class NoteRowView: NSTableCellView {
     }
 }
 
-/// Why the Note List is empty, in Apple's standard look. With no Notes at all,
-/// a button starts one: the search field has the focus there, not the editor.
+/// Why the Note List is empty, in Apple's standard look. No New Note button:
+/// a blank Draft is always open in the editor already (Return gets there).
 private struct PlaceholderView: View {
     let kind: NoteListPlaceholder?
-    let onNewNote: () -> Void
 
     var body: some View {
         switch kind {
-        case .noResults(let query):
-            ContentUnavailableView.search(text: query)
-        case .noNotes:
-            ContentUnavailableView {
-                Label("No Notes", systemImage: "note.text")
-            } actions: {
-                Button("New Note", action: onNewNote)
-                    .help("Start writing a new note (⌘N)")
-            }
-        case nil:
-            EmptyView()
+        case .noResults(let query): ContentUnavailableView.search(text: query)
+        case .noNotes: ContentUnavailableView("No Notes", systemImage: "note.text")
+        case nil: EmptyView()
         }
     }
 }
