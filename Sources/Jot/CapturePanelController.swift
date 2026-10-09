@@ -385,6 +385,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         let location = min(cursor, (text as NSString).length)
         textView.setSelectedRange(NSRange(location: location, length: 0))
         textView.scrollRangeToVisible(NSRange(location: location, length: 0))
+        // All of it: TextKit redraws only what it thinks changed, and after
+        // switching to a shorter Note the previous Note's last lines stayed on
+        // screen below the new text.
+        textView.needsDisplay = true
     }
 
     /// Runs an operation that may leave the open Note, then remembers the cursor
