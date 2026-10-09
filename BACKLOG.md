@@ -22,7 +22,7 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 - **Rename to MacJot** → ticket 17, ADR 0006 (decided 2026-10-09; replaces the Inbox item "Final app name and bundle ID"). Released on GitHub only, so Apple's rule against "Mac" in third-party names is an accepted risk. User-facing texts, app bundle, executable and process, bundle ID, Application Support folder, scripts and `SERVICES.md`; Swift module and type names stay. New installs default to `~/Documents/MacJot`; an existing Notes Folder is never moved or renamed.
 - **Settings always opens on General** when its window opens, instead of the last pane → ticket 18.
-- **HIG audit of Settings and the Note List** → ticket 19: layout, spacing, typography. An audit first, the user approves which findings get fixed.
+- **HIG audit of Settings and the Note List** → ticket 19, fixes in tickets 20 to 22: layout, spacing, typography. An audit first, the user approves which findings get fixed.
 
 - **Line numbers in the editor**, on by default, with a Settings option to turn them off → ticket 16.
 

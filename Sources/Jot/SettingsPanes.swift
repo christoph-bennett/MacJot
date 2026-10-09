@@ -33,13 +33,16 @@ final class SettingsState {
 private let paneWidth: CGFloat = 460
 
 /// The classic Mac settings layout: labels in a right-aligned column, controls
-/// left-aligned next to them, explanations in small grey text below a control.
+/// left-aligned next to them, explanations in small grey text 4 pt below a
+/// control. Settings (`Row`s) are 16 pt apart, clearly more than the parts of
+/// one setting, and a `Divider` gets the same 16 pt above and below; it spans
+/// both columns. A grid rather than a `.columns` form, whose row spacing can't
+/// be set (HIG audit, ticket 20).
 private struct Pane<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        Form { content }
-            .formStyle(.columns)
+        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 16) { content }
             .frame(width: paneWidth)
             .padding(.vertical, 20)
             .padding(.horizontal, 30)
@@ -47,8 +50,33 @@ private struct Pane<Content: View>: View {
     }
 }
 
-/// The space of an empty line of small text, between a setting and its explanation.
-private let blankLine: CGFloat = 12
+/// One setting: its label in the right-aligned column, its controls and
+/// explanations next to it. Without a label, the label cell stays empty.
+private struct Row<Content: View>: View {
+    let label: String?
+    @ViewBuilder let content: Content
+
+    init(_ label: String? = nil, @ViewBuilder content: () -> Content) {
+        self.label = label
+        self.content = content()
+    }
+
+    var body: some View {
+        GridRow(alignment: .firstTextBaseline) {
+            if let label {
+                Text(label)
+                    .gridColumnAlignment(.trailing)
+                    .accessibilityHidden(true)  // read with the controls instead, as LabeledContent did
+            } else {
+                Color.clear.frame(width: 0, height: 0)  // fixed: a flexible cell would widen the label column
+            }
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(label.map { Text($0) } ?? Text(""))
+        }
+    }
+}
 
 private struct Explanation: View {
     let text: String
@@ -72,7 +100,7 @@ struct GeneralPane: View {
 
     var body: some View {
         Pane {
-            LabeledContent("Notes Folder:") {
+            Row("Notes Folder:") {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         if let folder = state.notesFolder, let icon = state.notesFolderIcon {
@@ -90,27 +118,24 @@ struct GeneralPane: View {
                             .truncationMode(.middle)
                             .lineLimit(1)
                             .textSelection(.enabled)
-                            .padding(.top, blankLine / 2)
                     }
                     Explanation(text: "Choosing another folder doesn’t move your notes.")
-                        .padding(.top, blankLine)
                 }
             }
             Divider()
-            LabeledContent("New Notes:") {
+            Row("New Notes:") {
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle("Start file names with the creation date", isOn: $datePrefix)
                     // Today's date, so the example matches what the next Note gets.
                     Explanation(text: "Named like “\(DatePrefix.string(for: state.today))plan.md”. "
                                 + "Existing files keep their names.")
-                        .padding(.top, blankLine)
                 }
             }
-            LabeledContent("Trash:") {
+            Row("Trash:") {
                 Toggle("Ask before moving notes to the Trash", isOn: $confirmTrash)
             }
             Divider()
-            LabeledContent("Startup:") {
+            Row("Startup:") {
                 VStack(alignment: .leading, spacing: 4) {
                     // Checked while awaiting approval too: it's registered, and
                     // unchecking it unregisters it.
@@ -130,11 +155,10 @@ struct GeneralPane: View {
                     }
                 }
             }
-            LabeledContent("Capture Panel:") {
+            Row("Capture Panel:") {
                 VStack(alignment: .leading, spacing: 4) {
                     Button("Reset Size & Position", action: onResetPanel)
                     Explanation(text: "Puts the panel back in the middle of the screen, at its original size.")
-                        .padding(.top, blankLine / 2)
                 }
             }
         }
@@ -160,24 +184,26 @@ struct EditorPane: View {
 
     var body: some View {
         Pane {
-            Picker("Font Size:", selection: $fontSize) {
-                // A stored size that isn't in the list (set elsewhere) is shown too.
-                ForEach(Array(Set(Self.sizes + [fontSize])).sorted(), id: \.self) { size in
-                    Text("\(Int(size)) pt").tag(size)
+            Row("Font Size:") {
+                Picker("Font Size", selection: $fontSize) {
+                    // A stored size that isn't in the list (set elsewhere) is shown too.
+                    ForEach(Array(Set(Self.sizes + [fontSize])).sorted(), id: \.self) { size in
+                        Text("\(Int(size)) pt").tag(size)
+                    }
                 }
+                .labelsHidden()
+                .fixedSize()
             }
-            .fixedSize()
-            LabeledContent("Line Numbers:") {
+            Row("Line Numbers:") {
                 Toggle("Show line numbers", isOn: $lineNumbers)
             }
             Divider()
-            LabeledContent("Note List:") {
+            Row("Note List:") {
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle("Show relative dates", isOn: $relativeDates)
                     Explanation(text: relativeDates
                                 ? "Like “now”, “2h” or “Mon”."
                                 : "Like “\(Self.absoluteExample)”.")
-                        .padding(.top, blankLine)
                 }
             }
         }
@@ -197,7 +223,7 @@ struct ShortcutsPane: View {
 
     var body: some View {
         Pane {
-            LabeledContent("Capture:") {
+            Row("Capture:") {
                 VStack(alignment: .leading, spacing: 4) {
                     recorder(for: .capture)
                     unavailableNote(for: .capture)
@@ -205,7 +231,7 @@ struct ShortcutsPane: View {
                 }
             }
             Divider()
-            LabeledContent("Search:") {
+            Row("Search:") {
                 VStack(alignment: .leading, spacing: 4) {
                     recorder(for: .search)
                     unavailableNote(for: .search)
@@ -213,15 +239,12 @@ struct ShortcutsPane: View {
                 }
             }
             Divider()
-            LabeledContent {
+            Row {
                 VStack(alignment: .leading, spacing: 4) {
                     Button("Restore Defaults", action: onRestoreDefaults)
                     Explanation(text: "Sets the hotkeys back to \(Hotkey.capture.defaultDisplayString) "
                                 + "and \(Hotkey.search.defaultDisplayString).")
-                        .padding(.top, blankLine / 2)
                 }
-            } label: {
-                Text("")
             }
         }
     }

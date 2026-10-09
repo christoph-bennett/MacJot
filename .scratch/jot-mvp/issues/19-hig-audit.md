@@ -12,9 +12,11 @@
 
 **Blocked by:** 17 (so renders and texts show the new name)
 
-**Status:** ready-for-agent
+**Done 2026-10-09:** 11 findings in `.scratch/hig-audit/README.md`; the user followed all proposals. Fixes: tickets 20 (Settings spacing), 21 (Note List layout), 22 (Note List empty states). Comparisons with Safari, Mail and Notes are marked "to verify": no screenshots could be taken in the session.
 
-- [ ] Every Settings pane and the Note List pane is covered, each with a current render
-- [ ] Each finding names its source (HIG page or measured Apple app)
-- [ ] Findings are numbered and the user has answered each one
-- [ ] Approved findings are written up as tickets
+**Status:** done
+
+- [x] Every Settings pane and the Note List pane is covered, each with a current render
+- [x] Each finding names its source (HIG page or measured Apple app)
+- [x] Findings are numbered and the user has answered each one
+- [x] Approved findings are written up as tickets
