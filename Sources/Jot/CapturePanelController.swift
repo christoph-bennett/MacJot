@@ -16,6 +16,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private let textView: NSTextView
     private let styler = MarkdownStyler()
     private let noteList = NoteListViewController()
+    private let gutter: LineNumberGutter
     private let noteListItem: NSSplitViewItem
     private let cursors = CursorPositions()
     private var autosave: Task<Void, Never>?
@@ -31,6 +32,9 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
         let scrollView = Self.makeEditorScrollView()
         textView = scrollView.documentView as! NSTextView
+        gutter = LineNumberGutter(textView: textView, scrollView: scrollView)
+        scrollView.verticalRulerView = gutter
+        scrollView.hasVerticalRuler = true
         noteListItem = NSSplitViewItem(sidebarWithViewController: noteList)
         panel = CapturePanel(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
@@ -430,6 +434,14 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         styler.baseSize = size
         if let storage = textView.textStorage { styler.restyleAll(storage) }
         textView.typingAttributes = styler.baseAttributes
+        gutter.fontSize = size
+    }
+
+    /// The line numbers beside the text (Settings > Editor).
+    func setLineNumbers(_ on: Bool) {
+        textView.enclosingScrollView?.rulersVisible = on
+        if on { gutter.refresh() }
+        (textView as? EditorTextView)?.leadingInset = on ? 0 : nil
     }
 
     /// The Note List's dates: "2h", "Mon", or the short date and time.

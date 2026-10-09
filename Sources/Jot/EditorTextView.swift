@@ -13,6 +13,29 @@ final class EditorTextView: NSTextView {
     /// A box was clicked; the index is its first character (`[`).
     var onCheckboxClick: (Int) -> Void = { _ in }
 
+    /// Overrides the left inset while the line numbers show: the text then
+    /// starts just after the gutter's separator (the container's 5 pt line
+    /// padding), not a whole inset further. The right inset stays: the container
+    /// is narrowed only by the left side's change.
+    var leadingInset: CGFloat? {
+        didSet {
+            guard leadingInset != oldValue else { return }
+            let standard = standardInsetWidth ?? textContainerInset.width
+            standardInsetWidth = standard
+            // NSTextView insets both sides by `width`; the origin override moves the left edge.
+            textContainerInset.width = leadingInset.map { (standard + $0) / 2 } ?? standard
+            invalidateTextContainerOrigin()
+            needsDisplay = true
+        }
+    }
+    private var standardInsetWidth: CGFloat?
+
+    override var textContainerOrigin: NSPoint {
+        var origin = super.textContainerOrigin
+        if let leadingInset { origin.x = leadingInset }
+        return origin
+    }
+
     override func mouseDown(with event: NSEvent) {
         guard event.modifierFlags.intersection([.shift, .command, .option, .control]).isEmpty,
               let box = checkbox(at: convert(event.locationInWindow, from: nil)) else {

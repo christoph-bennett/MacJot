@@ -4,7 +4,7 @@
 
 **Gutter look** (modelled on STTextView's gutter, which the user liked: github.com/krzyzanowskim/STTextView, files `Sources/STTextViewAppKit/Gutter/STGutterView.swift`, `STGutterLineNumberCell.swift`, `STGutterSeparatorView.swift`, and the snapshot images under `Tests/STTextViewAppKitTests/__Snapshots__/GutterSnapshotTests/`. GPL v3: take the design, write our own code.)
 
-- **Digits:** the system font (SF Pro), regular weight, condensed, with tabular (monospaced) figures so numbers of the same width line up; lining figures, slashed zero. Not SF Mono: the condensed SF digits are narrower and quieter. Roughly the body text's size, so a number sits level with its line.
+- **Digits:** SF Mono, regular, 2 pt smaller than the body text, as in Xcode, drawn on whole pixels. (Changed after the user tried it: the spec's condensed SF Pro with tabular figures looked a few pixels off between numbers, and the user preferred SF Mono from a comparison of six variants.)
 - **Colour:** `secondaryLabelColor`, so they're dimmed and follow light/dark by themselves.
 - **Alignment:** right-aligned towards the text, 6 pt from the separator, 4 pt inset on the left. Each number sits on the baseline of the first line of its file line; continuation lines of a wrapped line get no number.
 - **Width:** at least about 35 pt; it grows when the numbers gain a digit (99 → 100), never per keystroke otherwise.
@@ -14,8 +14,8 @@
 
 **Blocked by:** 07, 14
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Line numbers are shown by default, one per line of the file (wrapped lines keep one number; paragraph-gap blank lines are numbered)
-- [ ] The Settings toggle hides and shows the line numbers live and persists across relaunch
-- [ ] Line numbers stay aligned while typing, scrolling, resizing and changing the font size
+- [x] Line numbers are shown by default, one per line of the file (wrapped lines keep one number; paragraph-gap blank lines are numbered)
+- [x] The Settings toggle hides and shows the line numbers live and persists across relaunch
+- [x] Line numbers stay aligned while typing, scrolling, resizing and changing the font size

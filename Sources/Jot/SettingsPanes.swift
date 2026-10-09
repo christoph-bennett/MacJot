@@ -145,7 +145,9 @@ struct GeneralPane: View {
 struct EditorPane: View {
     @AppStorage(SettingsWindowController.fontSizeKey) private var fontSize = SettingsWindowController.defaultFontSize
     @AppStorage(SettingsWindowController.relativeDatesKey) private var relativeDates = true
+    @AppStorage(SettingsWindowController.lineNumbersKey) private var lineNumbers = true
     let onFontSizeChange: (CGFloat) -> Void
+    let onLineNumbersChange: (Bool) -> Void
     let onRelativeDatesChange: (Bool) -> Void
 
     private static let sizes: [Double] = [11, 12, 13, 14, 15, 16, 18, 20, 22, 24]
@@ -165,6 +167,9 @@ struct EditorPane: View {
                 }
             }
             .fixedSize()
+            LabeledContent("Line Numbers:") {
+                Toggle("Show line numbers", isOn: $lineNumbers)
+            }
             Divider()
             LabeledContent("Note List:") {
                 VStack(alignment: .leading, spacing: 4) {
@@ -178,6 +183,7 @@ struct EditorPane: View {
         }
         .onChange(of: fontSize) { _, size in onFontSizeChange(size) }
         .onChange(of: relativeDates) { _, on in onRelativeDatesChange(on) }
+        .onChange(of: lineNumbers) { _, on in onLineNumbersChange(on) }
     }
 }
 

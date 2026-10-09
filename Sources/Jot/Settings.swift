@@ -12,6 +12,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let fontSizeKey = "editorFontSize"
     static let defaultFontSize = 14.0
     static let relativeDatesKey = "relativeDates"
+    static let lineNumbersKey = "showLineNumbers"
     private static let paneKey = "settingsPane"
     private static let switcherID = NSToolbarItem.Identifier("SettingsPanes")
 
@@ -20,6 +21,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     /// Settings > Editor changed (on the main thread).
     var onFontSizeChange: (CGFloat) -> Void = { _ in }
     var onRelativeDatesChange: (Bool) -> Void = { _ in }
+    var onLineNumbersChange: (Bool) -> Void = { _ in }
     /// Reset Size & Position was clicked.
     var onResetPanel: () -> Void = {}
     /// The Notes Folder in use, shown in Settings.
@@ -171,6 +173,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
                                        onResetPanel: { [weak self] in self?.onResetPanel() }))
         case .editor:
             view = AnyView(EditorPane(onFontSizeChange: { [weak self] in self?.onFontSizeChange($0) },
+                                      onLineNumbersChange: { [weak self] in self?.onLineNumbersChange($0) },
                                       onRelativeDatesChange: { [weak self] in self?.onRelativeDatesChange($0) }))
         case .shortcuts:
             view = AnyView(ShortcutsPane(state: state))
