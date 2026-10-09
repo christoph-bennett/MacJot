@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings = SettingsWindowController()
     private var captureHotkey: GlobalHotkey?
     private var searchHotkey: GlobalHotkey?
+    private var terminationSignal: DispatchSourceSignal?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let defaults = UserDefaults.standard
@@ -38,6 +39,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = makeStatusItem()
         registerHotkeys()
         registerLaunchAtLoginOnFirstRun()
+        quitNormallyOnTerminationSignal()
+    }
+
+    /// `kill`/`pkill` (e.g. scripts/install.sh) send SIGTERM, which would end Jot
+    /// on the spot; quit normally instead, so the open Note is saved.
+    private func quitNormallyOnTerminationSignal() {
+        signal(SIGTERM, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        source.setEventHandler { NSApp.terminate(nil) }
+        source.resume()
+        terminationSignal = source
     }
 
     func applicationWillTerminate(_ notification: Notification) {
