@@ -21,7 +21,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 15 | [Settings panes](15-settings-panes.md) | 12 | done |
 | 16 | [Line numbers](16-line-numbers.md) | 07, 14 | done |
 | 17 | [Rename to MacJot](17-rename-to-macjot.md) | 18 | ready-for-agent |
-| 18 | [Settings opens on General](18-settings-opens-on-general.md) | none | ready-for-agent |
+| 18 | [Settings opens on General](18-settings-opens-on-general.md) | none | done |
 | 19 | [HIG audit of Settings and the Note List](19-hig-audit.md) | 17 | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).

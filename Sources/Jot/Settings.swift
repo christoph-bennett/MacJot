@@ -13,7 +13,6 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let defaultFontSize = 14.0
     static let relativeDatesKey = "relativeDates"
     static let lineNumbersKey = "showLineNumbers"
-    private static let paneKey = "settingsPane"
     private static let switcherID = NSToolbarItem.Identifier("SettingsPanes")
 
     /// The Date Prefix toggle changed (on the main thread).
@@ -78,10 +77,15 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
                                                queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
+        // It opens on General next time; while open (or hidden with the app) it keeps
+        // its pane. After it's off screen, so the switch isn't seen.
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window,
+                                               queue: .main) { [weak self] _ in
+            DispatchQueue.main.async { self?.select(.general, animated: false) }
+        }
         self.window = window
         refresh()  // the first pane is sized with its real content
-        let saved = UserDefaults.standard.string(forKey: Self.paneKey).flatMap(SettingsPane.init)
-        select(saved ?? .general, animated: false)
+        select(.general, animated: false)
         window.center()
         return window
     }
@@ -123,7 +127,6 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         current = pane
         switcher.selectedSegment = SettingsPane.allCases.firstIndex(of: pane) ?? 0
         window.title = pane.title
-        UserDefaults.standard.set(pane.rawValue, forKey: Self.paneKey)
 
         let new = hosts[pane] ?? makeHost(for: pane)
         hosts[pane] = new
