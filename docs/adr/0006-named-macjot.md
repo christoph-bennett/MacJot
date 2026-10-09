@@ -1,0 +1,3 @@
+# Named MacJot
+
+The app is called MacJot, with bundle ID `com.onethingwell.macjot`, replacing the working name Jot (`com.onethingwell.jot`). Apple's trademark guidelines don't allow "Mac" in a third-party product name, and the App Store can reject it; we accept that because MacJot is released on GitHub only. Changing the name again later would mean a new bundle ID, which loses users' settings, login items and permissions. The rename covers what users and the system see (texts, app bundle, executable, bundle ID, Application Support folder); the Swift module and type names keep "Jot", as nobody sees them and renaming them would only make the history harder to follow.

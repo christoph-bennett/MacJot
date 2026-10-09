@@ -15,10 +15,14 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 - **Highlight the current line**: a faint background behind the line with the cursor, following light/dark; maybe a Settings toggle.
 - **Setting: line height** (spacing between lines), next to font size; the paragraph gap and line numbers have to follow it.
 - **Show invisible characters**: spaces, tabs and line breaks as faint symbols, e.g. to check Markdown line breaks; toggle in Settings or the View menu.
-- **Final app name and bundle ID** before the first public release ("Jot" and `com.onethingwell.jot` are working names; the bundle ID can't change afterwards without losing user settings and permissions).
+- **Settings in a config file** at `~/.macjot/config.json` instead of UserDefaults. Postponed 2026-10-09 before deciding why (hand edits, dotfiles, scripts), which settings go in it (settings only, or also state like window frames and cursor positions) and where it lives (`~/.macjot/` or `~/.config/macjot/`). Hotkeys are stored by KeyboardShortcuts itself; the Notes Folder has a binary bookmark next to its path.
 - **Setting: custom Date Prefix format**, e.g. `20261009-` or `2026-10-09_` instead of the fixed `2026-10-09-`; next to the Date Prefix checkbox in Settings > General, with the live example showing the result. Jot also reads the prefix back (`DatePrefix.of`, `DatePrefix.day(of:)`) to keep it on rename and to date the Note List, so recognising Notes named with an earlier format has to keep working; the format may need limits (must contain year, month and day, only filename-safe characters).
 
 ## MVP
+
+- **Rename to MacJot** → ticket 17, ADR 0006 (decided 2026-10-09; replaces the Inbox item "Final app name and bundle ID"). Released on GitHub only, so Apple's rule against "Mac" in third-party names is an accepted risk. User-facing texts, app bundle, executable and process, bundle ID, Application Support folder, scripts and `SERVICES.md`; Swift module and type names stay. New installs default to `~/Documents/MacJot`; an existing Notes Folder is never moved or renamed.
+- **Settings always opens on General** when its window opens, instead of the last pane → ticket 18.
+- **HIG audit of Settings and the Note List** → ticket 19: layout, spacing, typography. An audit first, the user approves which findings get fixed.
 
 - **Line numbers in the editor**, on by default, with a Settings option to turn them off → ticket 16.
 
