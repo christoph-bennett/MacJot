@@ -72,6 +72,9 @@ for (appearance, suffix) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dar
     panel.title = "MacJot"
     panel.contentViewController = split
     panel.setContentSize(NSSize(width: 693, height: 525))
+    // As CapturePanelController opens it (ticket 21: 240 pt).
+    split.splitView.layoutSubtreeIfNeeded()
+    split.splitView.setPosition(240, ofDividerAt: 0)
     let notes = try! folder.notes()
     list.show(notes, selecting: notes[1].url)
     pump()

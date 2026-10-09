@@ -10,6 +10,9 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private static let autosaveDelay: Duration = .milliseconds(500)
     private static let frameAutosaveName = "CapturePanel"
     private static let defaultSize = NSSize(width: 640, height: 420)
+    /// The Note List's width the user dragged to; it opens at the default until then.
+    static let noteListWidthKey = "noteListWidth"
+    private static let defaultNoteListWidth: CGFloat = 240
 
     private let folder: NotesFolder
     private let panel: CapturePanel
@@ -18,6 +21,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private let noteList = NoteListViewController()
     private let gutter: LineNumberGutter
     private let noteListItem: NSSplitViewItem
+    private let split = NSSplitViewController()
+    /// A width for the Note List to take the next time it opens (after Reset
+    /// Size & Position while it was closed).
+    private var pendingNoteListWidth: CGFloat?
     private let cursors = CursorPositions()
     private var autosave: Task<Void, Never>?
     private var watcher: FolderWatcher?
@@ -65,7 +72,6 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         noteListItem.minimumThickness = 180
         noteListItem.maximumThickness = 320
         noteListItem.isCollapsed = true
-        let split = NSSplitViewController()
         split.addSplitViewItem(noteListItem)
         split.addSplitViewItem(NSSplitViewItem(viewController: editor))
 
@@ -88,6 +94,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             panel.center()
         }
         panel.setFrameAutosaveName(Self.frameAutosaveName)
+        let savedWidth = UserDefaults.standard.double(forKey: Self.noteListWidthKey)
+        pendingNoteListWidth = savedWidth > 0 ? savedWidth : Self.defaultNoteListWidth
         watchFolder()
     }
 
@@ -148,7 +156,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             if let recent = (try? folder.notes())?.first { open(recent.url) } else { showNewDraft() }
         }
         reloadNoteList(evenIfCollapsed: true)
-        noteListItem.isCollapsed = false
+        expandNoteList(animated: false)
         show()
         panel.makeFirstResponder(noteList.searchField)
     }
@@ -191,10 +199,14 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         let willShow = noteListItem.isCollapsed
         if willShow {
             reloadNoteList(evenIfCollapsed: true)
-        } else if noteList.hasFocus {
-            panel.makeFirstResponder(textView)  // don't leave typing aimed at a hidden list
+            expandNoteList(animated: true)
+        } else {
+            if noteList.hasFocus {
+                panel.makeFirstResponder(textView)  // don't leave typing aimed at a hidden list
+            }
+            saveNoteListWidth()
+            noteListItem.animator().isCollapsed = true
         }
-        noteListItem.animator().isCollapsed = !willShow
     }
 
     // MARK: Notes
@@ -411,6 +423,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     }
 
     func saveBeforeQuit() {
+        saveNoteListWidth()
         cancelAutosave()
         do { try folder.leave() } catch { NSLog("MacJot: couldn't save on quit: \(error)") }
     }
@@ -458,6 +471,40 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         let frame = panel.frameRect(forContentRect: NSRect(origin: .zero, size: Self.defaultSize))
         panel.setFrame(NSRect(x: visible.midX - frame.width / 2, y: visible.midY - frame.height / 2,
                               width: frame.width, height: frame.height), display: true, animate: panel.isVisible)
+        UserDefaults.standard.removeObject(forKey: Self.noteListWidthKey)
+        if noteListItem.isCollapsed {
+            pendingNoteListWidth = Self.defaultNoteListWidth
+        } else {
+            split.splitView.setPosition(Self.defaultNoteListWidth, ofDividerAt: 0)
+        }
+    }
+
+    /// Opens the Note List; at a pending width (the saved one at launch, or the
+    /// default after a reset) without animation, as it's set while opening.
+    private func expandNoteList(animated: Bool) {
+        guard noteListItem.isCollapsed else { return }
+        guard let width = pendingNoteListWidth else {
+            (animated ? noteListItem.animator() : noteListItem).isCollapsed = false
+            return
+        }
+        pendingNoteListWidth = nil
+        noteListItem.isCollapsed = false
+        split.splitView.layoutSubtreeIfNeeded()
+        split.splitView.setPosition(min(max(width, noteListItem.minimumThickness), noteListItem.maximumThickness),
+                                    ofDividerAt: 0)
+    }
+
+    /// Saves the open Note List's width for the next launch, when it closes
+    /// (toggled, panel closed, quit): the end of any divider drag. Not the split
+    /// view's autosave, which would also restore the collapsed state MacJot sets itself.
+    private func saveNoteListWidth() {
+        guard !noteListItem.isCollapsed else { return }
+        let width = Double(noteList.view.frame.width)
+        guard width >= noteListItem.minimumThickness else { return }
+        // Untouched: keep following the default.
+        guard width != Self.defaultNoteListWidth || UserDefaults.standard.object(forKey: Self.noteListWidthKey) != nil
+        else { return }
+        UserDefaults.standard.set(width, forKey: Self.noteListWidthKey)
     }
 
     /// The remembered frame may be on a screen that's no longer connected. If its
@@ -486,6 +533,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     /// The next summon starts without a stale search.
     func windowWillClose(_ notification: Notification) {
+        saveNoteListWidth()
         noteList.cancelSearch()
         cancelAutosave()
         save { folder in try leavingCurrentNote { try folder.leave() } }

@@ -158,7 +158,7 @@ struct GeneralPane: View {
             Row("Capture Panel:") {
                 VStack(alignment: .leading, spacing: 4) {
                     Button("Reset Size & Position", action: onResetPanel)
-                    Explanation(text: "Puts the panel back in the middle of the screen, at its original size.")
+                    Explanation(text: "Puts the panel and its note list back to their original size, in the middle of the screen.")
                 }
             }
         }

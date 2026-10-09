@@ -37,7 +37,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         tableView.addTableColumn(column)
         tableView.headerView = nil
         tableView.style = .sourceList
-        tableView.rowHeight = 44
+        tableView.rowHeight = NoteRowView.height
         tableView.dataSource = self
         tableView.delegate = self
         tableView.onDeleteKey = { [weak self] in self?.deleteSelected() }
@@ -66,9 +66,11 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
             container.addSubview(subview)
         }
         NSLayoutConstraint.activate([
-            searchField.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor, constant: 6),
-            searchField.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
-            searchField.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
+            // Its border on the row highlights' edges, 10 pt in from the sidebar's (HIG audit,
+            // ticket 21); the field draws its border 1 pt inside its frame.
+            searchField.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor, constant: 10),
+            searchField.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 9),
+            searchField.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -9),
             scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 6),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -258,18 +260,32 @@ final class NoteTableView: NSTableView {
     }
 }
 
-/// A Note List row: Title on top, relative date and preview below.
+/// A Note List row: Title on top, relative date and preview below, in the HIG's
+/// Headline and Subheadline text styles, 10 pt from the row's top and bottom.
 private final class NoteRowView: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("NoteRow")
 
     private let title = NSTextField(labelWithString: "")
     private let detail = NSTextField(labelWithString: "")
+    private static let titleFont = NSFont.preferredFont(forTextStyle: .headline)
+    private static let detailFont = NSFont.preferredFont(forTextStyle: .subheadline)
+    private static let padding: CGFloat = 10
+    private static let lineGap: CGFloat = 3
+    /// 53 pt with the system's fonts: both lines, the gap between them, and the padding.
+    static var height: CGFloat {
+        func lineHeight(_ font: NSFont) -> CGFloat {
+            let label = NSTextField(labelWithString: "Ag")
+            label.font = font
+            return ceil(label.intrinsicContentSize.height)
+        }
+        return padding + lineHeight(titleFont) + lineGap + lineHeight(detailFont) + padding
+    }
 
     init() {
         super.init(frame: .zero)
         identifier = Self.identifier
-        title.font = .systemFont(ofSize: 13, weight: .semibold)
-        detail.font = .systemFont(ofSize: 11)
+        title.font = Self.titleFont
+        detail.font = Self.detailFont
         detail.textColor = .secondaryLabelColor
         for field in [title, detail] {
             field.lineBreakMode = .byTruncatingTail
@@ -279,10 +295,10 @@ private final class NoteRowView: NSTableCellView {
         NSLayoutConstraint.activate([
             title.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             title.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
-            title.topAnchor.constraint(equalTo: topAnchor, constant: 5),
+            title.topAnchor.constraint(equalTo: topAnchor, constant: Self.padding),
             detail.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             detail.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            detail.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 2),
+            detail.topAnchor.constraint(equalTo: title.bottomAnchor, constant: Self.lineGap),
         ])
     }
 
