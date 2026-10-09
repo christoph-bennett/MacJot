@@ -20,7 +20,7 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## MVP
 
-- **Line numbers in the editor**, on by default, with a Settings option to turn them off → ticket 14.
+- **Line numbers in the editor**, on by default, with a Settings option to turn them off → ticket 16.
 
 ## Later
 
