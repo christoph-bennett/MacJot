@@ -4,11 +4,16 @@
 
 **Blocked by:** 04, 05
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Settings shows the current Notes Folder and a button to choose another
-- [ ] After choosing, the Note List shows the new folder's Notes and new Notes are written there
-- [ ] Dialog explains Notes must be moved manually; Show Old Folder reveals the old folder in Finder
-- [ ] No files are moved, copied or deleted in either folder
-- [ ] The open Note is saved to the old folder before switching
-- [ ] Choice persists across relaunch; if the folder is missing at launch it's recreated
+- [x] Settings shows the current Notes Folder and a button to choose another
+- [x] After choosing, the Note List shows the new folder's Notes and new Notes are written there
+- [x] Dialog explains Notes must be moved manually; Show Old Folder reveals the old folder in Finder
+- [x] No files are moved, copied or deleted in either folder
+- [x] The open Note is saved to the old folder before switching
+- [x] Choice persists across relaunch; if the folder is missing at launch it's recreated
+
+**Added at the user's request:** Jot keeps a bookmark next to the folder's path, so it notices when the Notes Folder itself is renamed, moved or deleted, both while running (FSEvents root changes) and at launch.
+
+- [x] Renamed or moved: Jot follows the folder, with the open Note, and says where it is now
+- [x] In the Trash or gone: never followed; an alert offers Quit Jot (e.g. to put it back first) or Create New Folder at the old path

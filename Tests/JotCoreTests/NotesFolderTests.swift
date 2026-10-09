@@ -66,6 +66,143 @@ final class NotesFolderTests {
         #expect(isDirectory.boolValue)
     }
 
+    // MARK: Switching folders
+
+    private var otherRoot: URL { root.deletingLastPathComponent().appendingPathComponent("Other", isDirectory: true) }
+
+    private func otherFiles() throws -> [String] {
+        try FileManager.default.contentsOfDirectory(atPath: otherRoot.path).sorted()
+    }
+
+    @Test func switchingCreatesTheNewFolderIfMissing() throws {
+        let folder = try makeFolder()
+        try folder.switchFolder(to: otherRoot)
+        #expect(folder.url == otherRoot)
+        #expect(try otherFiles().isEmpty)
+    }
+
+    @Test func afterSwitchingTheListShowsTheNewFoldersNotes() throws {
+        let folder = try makeFolder()
+        try writeDraft(folder, "Old note\n")
+        try FileManager.default.createDirectory(at: otherRoot, withIntermediateDirectories: true)
+        try "New note\n".write(to: otherRoot.appendingPathComponent("new-note.md"), atomically: true, encoding: .utf8)
+        _ = try folder.notes()  // fills the cache with the old folder's Notes
+        try folder.switchFolder(to: otherRoot)
+        #expect(try folder.notes().map(\.url.lastPathComponent) == ["new-note.md"])
+    }
+
+    @Test func afterSwitchingNewNotesAreWrittenToTheNewFolder() throws {
+        let folder = try makeFolder()
+        try folder.switchFolder(to: otherRoot)
+        try writeDraft(folder, "Fresh\n")
+        #expect(try otherFiles() == ["fresh.md"])
+        #expect(try files().isEmpty)
+    }
+
+    @Test func switchingSavesTheOpenNoteToTheOldFolder() throws {
+        let folder = try makeFolder()
+        try writeDraft(folder, "Plan\n")
+        _ = try folder.open(root.appendingPathComponent("plan.md"))
+        folder.update(text: "Plan\nmore")
+        try folder.switchFolder(to: otherRoot)
+        #expect(try contents("plan.md") == "Plan\nmore")
+        #expect(try otherFiles().isEmpty)
+        #expect(folder.lastLeftNoteURL == root.appendingPathComponent("plan.md"))
+    }
+
+    @Test func switchingGivesAnUnfinishedDraftItsFileInTheOldFolder() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Half a tit")
+        try folder.flush()  // in the Recovery Copy
+        try folder.switchFolder(to: otherRoot)
+        #expect(try files() == ["half-a-tit.md"])
+        #expect(recoveryContents() == nil)
+        #expect(try otherFiles().isEmpty)
+    }
+
+    @Test func switchingMovesNoFiles() throws {
+        let folder = try makeFolder()
+        try writeDraft(folder, "One\n")
+        try writeDraft(folder, "Two\n")
+        try folder.switchFolder(to: otherRoot)
+        #expect(try files() == ["one.md", "two.md"])
+        #expect(try otherFiles().isEmpty)
+        #expect(trashed.isEmpty)
+    }
+
+    @Test func switchingClosesTheOpenNote() throws {
+        let folder = try makeFolder()
+        try writeDraft(folder, "One\n")
+        _ = try folder.open(root.appendingPathComponent("one.md"))
+        try folder.switchFolder(to: otherRoot)
+        #expect(folder.currentNoteURL == nil)
+        #expect(!folder.isDraft)
+    }
+
+    @Test func failedSaveBeforeSwitchingKeepsTheOldFolder() throws {
+        let folder = try makeFolder()
+        try writeDraft(folder, "Plan\n")
+        _ = try folder.open(root.appendingPathComponent("plan.md"))
+        folder.update(text: "Plan\nmore")
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: root.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: root.path) }
+        #expect(throws: (any Error).self) { try folder.switchFolder(to: otherRoot) }
+        #expect(folder.url == root)
+        #expect(folder.currentNoteURL == root.appendingPathComponent("plan.md"))
+    }
+
+    @Test func switchingReportsWhetherItSwitched() throws {
+        let folder = try makeFolder()
+        #expect(try folder.switchFolder(to: otherRoot))
+        #expect(try !folder.switchFolder(to: otherRoot))
+    }
+
+    @Test func switchingToTheSameFolderKeepsTheOpenNote() throws {
+        let folder = try makeFolder()
+        try writeDraft(folder, "Plan\n")
+        _ = try folder.open(root.appendingPathComponent("plan.md"))
+        #expect(try !folder.switchFolder(to: root))
+        #expect(folder.currentNoteURL == root.appendingPathComponent("plan.md"))
+    }
+
+    @Test func theSameFolderThroughASymlinkIsNotASwitch() throws {
+        let folder = try makeFolder()
+        try FileManager.default.createSymbolicLink(at: otherRoot, withDestinationURL: root)
+        #expect(try !folder.switchFolder(to: otherRoot))
+        #expect(folder.url == root)
+    }
+
+    @Test func followingAMovedFolderKeepsTheOpenNoteOpen() throws {
+        let folder = try makeFolder()
+        try writeDraft(folder, "Plan\n")
+        _ = try folder.open(root.appendingPathComponent("plan.md"))
+        try FileManager.default.moveItem(at: root, to: otherRoot)
+        folder.followMove(to: otherRoot)
+        #expect(folder.url == otherRoot)
+        #expect(folder.currentNoteURL == otherRoot.appendingPathComponent("plan.md"))
+        folder.update(text: "Plan\nmore")
+        try folder.flush()
+        #expect(try String(contentsOf: otherRoot.appendingPathComponent("plan.md"), encoding: .utf8) == "Plan\nmore")
+        #expect(try folder.notes().map(\.url.lastPathComponent) == ["plan.md"])
+    }
+
+    @Test func followingAMovedFolderKeepsADraftADraft() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Half")
+        try FileManager.default.moveItem(at: root, to: otherRoot)
+        folder.followMove(to: otherRoot)
+        try folder.leave()
+        #expect(try otherFiles() == ["half.md"])
+    }
+
+    @Test func theRecoveryCopysFolderCantBeTheNotesFolder() throws {
+        let folder = try makeFolder()
+        #expect(throws: NotesFolder.SwitchError.holdsRecoveryCopy) { try folder.switchFolder(to: support) }
+        #expect(folder.url == root)
+    }
+
     // MARK: Draft lifecycle
 
     @Test func untouchedDraftCreatesNoFile() throws {
@@ -793,8 +930,10 @@ final class NotesFolderTests {
     @Test func recoveryCopyRestoredWithThePrefixOnGetsTodaysDate() throws {
         try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
         try "Crashed idea".write(to: recoveryURL, atomically: true, encoding: .utf8)
+        // Dated by the copy's file, which was just written: the real today, not the injected clock.
+        let written = try #require(try recoveryURL.resourceValues(forKeys: [.creationDateKey]).creationDate)
         _ = try makeFolder(datePrefix: true)
-        #expect(try files() == ["2026-10-08-crashed-idea.md"])
+        #expect(try files() == ["\(DatePrefix.string(for: written))crashed-idea.md"])
     }
 
     @Test func recoveryCopyIsDatedByItsFileNotTheRelaunch() throws {

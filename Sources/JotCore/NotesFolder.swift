@@ -13,7 +13,8 @@ public final class NotesFolder {
     /// Moves a file to the Trash; injected so tests can observe it.
     public typealias Trash = (URL) throws -> Void
 
-    public let url: URL
+    /// The Notes Folder; changed only by `switchFolder(to:)`.
+    public private(set) var url: URL
     private let recoveryURL: URL
     private let moveToTrash: Trash
     private let clock: () -> Date
@@ -125,6 +126,47 @@ public final class NotesFolder {
         lastLeftNoteURL = left
         leaveCount += 1
         return wrote
+    }
+
+    /// Makes `newURL` the Notes Folder, creating it if needed. The open Note is
+    /// saved and left first, so it ends up in the old folder; no files are moved
+    /// or copied. If saving fails, the old folder stays in use (the new one may
+    /// already have been created). Returns false if `newURL` already is the Notes
+    /// Folder, by another path or not.
+    @discardableResult
+    public func switchFolder(to newURL: URL) throws -> Bool {
+        guard !isSameFolder(newURL, url) else { return false }
+        guard !isSameFolder(newURL, recoveryURL.deletingLastPathComponent()) else { throw SwitchError.holdsRecoveryCopy }
+        try FileManager.default.createDirectory(at: newURL, withIntermediateDirectories: true)
+        try leave()
+        url = newURL
+        summaries = [:]
+        return true
+    }
+
+    /// The Notes Folder itself was renamed or moved elsewhere: use it at
+    /// `newURL`. The open Note moved with it and stays open.
+    public func followMove(to newURL: URL) {
+        if let current = currentNoteURL { currentNoteURL = newURL.appendingPathComponent(current.lastPathComponent) }
+        url = newURL
+        summaries = [:]
+    }
+
+    public enum SwitchError: LocalizedError, Equatable {
+        /// Jot keeps the Recovery Copy there; as Notes Folder it would list it as a Note.
+        case holdsRecoveryCopy
+
+        public var errorDescription: String? {
+            "Jot keeps its own files in this folder. Choose another one."
+        }
+    }
+
+    /// Same path, or the same folder on disk reached through a symlink or
+    /// another letter case.
+    private func isSameFolder(_ a: URL, _ b: URL) -> Bool {
+        if a.standardizedFileURL.resolvingSymlinksInPath() == b.standardizedFileURL.resolvingSymlinksInPath() { return true }
+        guard let identity = Self.identity(of: a) else { return false }
+        return identity == Self.identity(of: b)
     }
 
     // MARK: Note List

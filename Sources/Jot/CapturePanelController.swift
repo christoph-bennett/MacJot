@@ -23,6 +23,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private var isShowingSaveError = false
     /// ⌘, in the panel.
     var onShowSettings: () -> Void = {}
+    /// The Notes Folder was renamed or moved elsewhere and Jot followed it.
+    var onFolderMoved: () -> Void = {}
 
     init(folder: NotesFolder) {
         self.folder = folder
@@ -82,7 +84,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             panel.center()
         }
         panel.setFrameAutosaveName(Self.frameAutosaveName)
-        watcher = FolderWatcher(folder.url) { [weak self] in self?.folderDidChange() }
+        watchFolder()
     }
 
     // MARK: Showing and hiding
@@ -290,6 +292,76 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         }
         // While the user moves through the list, rows stay put (as when opening a Note).
         reloadNoteList(keepingOrder: noteList.hasFocus)
+    }
+
+    /// Makes `url` the Notes Folder (Settings). The open Note is saved to the old
+    /// folder first; if that fails, the old folder stays and the error is thrown.
+    /// A visible panel moves on to the new folder's most recent Note, or a Draft.
+    /// Returns false if `url` already was the Notes Folder.
+    func switchFolder(to url: URL) throws -> Bool {
+        cancelAutosave()
+        guard try leavingCurrentNote({ try folder.switchFolder(to: url) }) else { return false }
+        isShowingSaveError = false
+        watchFolder()
+        noteList.cancelSearch()
+        if panel.isVisible {
+            openNextOrDraft(nil)
+        } else {
+            display("", cursor: 0)  // nothing of the old folder's Note left behind; any summon replaces it
+        }
+        reloadNoteList()
+        return true
+    }
+
+    private var isHandlingRootChange = false
+    /// Finds the folder in use after it disappears from its path. Not the saved
+    /// bookmark: after a fallback at launch, that's another folder's.
+    private var folderBookmark: Data?
+
+    private func watchFolder() {
+        folderBookmark = FolderLocation.bookmark(for: folder.url)
+        watcher = nil  // stop watching the old folder before the new watcher starts
+        watcher = FolderWatcher(folder.url, onChange: { [weak self] in self?.folderDidChange() },
+                                onRootChange: { [weak self] in self?.folderRootDidChange() })
+    }
+
+    /// The Notes Folder itself was renamed, moved or deleted. A renamed or moved
+    /// folder is followed, with the open Note; for one in the Trash or gone the
+    /// user decides between a new, empty folder at its path and quitting.
+    private func folderRootDidChange() {
+        // The alerts below run modally, and the watcher can report again meanwhile.
+        guard !isHandlingRootChange else { return }
+        isHandlingRootChange = true
+        defer { isHandlingRootChange = false }
+        let old = folder.url
+        let status = FolderLocation.status(of: old, bookmark: folderBookmark)
+        switch status {
+        case .inPlace:
+            folderDidChange()  // e.g. moved back, or another folder took its place
+            return
+        case .moved(let found):
+            folder.followMove(to: found)
+            cursors.followFolderMove(from: old, to: found)
+            SavedNotesFolder.save(found)
+            watchFolder()
+            folderDidChange()
+            onFolderMoved()
+            SavedNotesFolder.tellFollowed(from: old, to: found)
+        case .trashed, .gone, .missing:
+            guard SavedNotesFolder.askToRecreate(old, trashed: status == .trashed) else {
+                NSApp.terminate(nil)
+                return
+            }
+            do {
+                try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+            } catch {
+                ErrorAlert.show("Jot couldn’t create the Notes Folder.", error: error)
+                return
+            }
+            SavedNotesFolder.save(old)
+            watchFolder()
+            folderDidChange()  // the open Note's file is gone with the folder: move on
+        }
     }
 
     /// Skipped while collapsed: autosave calls this, and reading every Note for a
@@ -623,5 +695,15 @@ final class CursorPositions {
 
     func forget(_ note: URL) {
         entries[note.path] = nil
+    }
+
+    /// The Notes Folder was renamed or moved: its Notes keep their positions.
+    func followFolderMove(from old: URL, to new: URL) {
+        var entries = entries
+        for (path, entry) in entries where (path as NSString).deletingLastPathComponent == old.path {
+            entries[path] = nil
+            entries[new.appendingPathComponent((path as NSString).lastPathComponent).path] = entry
+        }
+        self.entries = entries
     }
 }
