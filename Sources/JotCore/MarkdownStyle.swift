@@ -22,6 +22,11 @@ public enum MarkdownStyle {
             case completedTask
             /// The first blank line after a paragraph, drawn with practically no height.
             case paragraphGap
+            /// A fenced code block, fences included (ticket 35): literal, monospaced.
+            case codeBlock
+            /// The language after an opening fence (```` ```swift ````): dimmed like
+            /// the fence, but content, so Search finds it.
+            case codeInfo
         }
 
         public var range: NSRange
@@ -38,15 +43,109 @@ public enum MarkdownStyle {
 
     /// Spans in the lines touching `range` (expanded to whole lines), in order:
     /// line constructs first, then inline ones, each followed by its markers.
+    /// Inside a fenced code block nothing is Markdown: it gets one `codeBlock`
+    /// span, and its fence lines are markers.
     public static func spans(in text: String, range: NSRange) -> [Span] {
+        spans(in: text, range: range, codeBlocks: codeBlocks(in: text))
+    }
+
+    /// As above, with the text's `codeBlocks(in:)` already found: callers that
+    /// go through a Note line by line find them once.
+    public static func spans(in text: String, range: NSRange, codeBlocks blocks: [NSRange]) -> [Span] {
         let ns = text as NSString
         let lines = ns.lineRange(for: range)
+        let inBlock = { (r: NSRange) in blocks.contains { NSIntersectionRange($0, r).length > 0 || NSLocationInRange(r.location, $0) } }
         var spans: [Span] = []
         ns.enumerateSubstrings(in: lines, options: [.byLines, .substringNotRequired]) { _, line, _, _ in
-            lineSpans(ns, line: line, into: &spans)
+            guard !inBlock(line) else { return }
+            lineSpans(ns, line: line, codeBlocks: blocks, into: &spans)
         }
-        inlineSpans(ns, in: lines, into: &spans)
+        var inline: [Span] = []
+        inlineSpans(ns, in: lines, into: &inline)
+        spans += inline.filter { !inBlock($0.range) }
+        for block in blocks where NSIntersectionRange(block, lines).length > 0 {
+            spans.append(Span(range: NSIntersectionRange(block, lines), kind: .codeBlock))
+            for (index, fence) in fenceLines(ns, in: block).enumerated() where NSIntersectionRange(fence, lines).length > 0 {
+                // Only the backticks or tildes are syntax; an opening fence's language is content.
+                let line = ns.substring(with: fence)
+                guard index == 0, let opening = Fence(line) else {
+                    spans.append(Span(range: fence, kind: .marker))
+                    continue
+                }
+                let run = (line.prefix { $0 == " " }.count) + opening.length
+                spans.append(Span(range: NSRange(location: fence.location, length: run), kind: .marker))
+                if let info = trimmed(NSRange(location: fence.location + run, length: fence.length - run), in: ns) {
+                    spans.append(Span(range: info, kind: .codeInfo))
+                }
+            }
+        }
         return spans
+    }
+
+    // MARK: Fenced code blocks
+
+    /// Every fenced code block, from its opening fence line through its closing
+    /// one (line breaks included); an unclosed one runs to the end. As in
+    /// CommonMark: a fence is three or more ``` ` ``` or `~`, indented at most three
+    /// spaces; it's closed only by a fence of the same character, at least as
+    /// long, with nothing after it.
+    public static func codeBlocks(in text: String) -> [NSRange] {
+        let ns = text as NSString
+        var blocks: [NSRange] = []
+        var opening: (start: Int, fence: Fence)?
+        ns.enumerateSubstrings(in: NSRange(location: 0, length: ns.length), options: .byLines) { line, _, enclosing, _ in
+            guard let fence = Fence(line ?? "") else { return }
+            if let open = opening {
+                guard fence.closes(open.fence) else { return }
+                blocks.append(NSRange(location: open.start, length: NSMaxRange(enclosing) - open.start))
+                opening = nil
+            } else {
+                opening = (enclosing.location, fence)
+            }
+        }
+        if let open = opening { blocks.append(NSRange(location: open.start, length: ns.length - open.start)) }
+        return blocks
+    }
+
+    /// Whether `line` is a fence line, opening or closing.
+    public static func isFence(_ line: String) -> Bool { Fence(line) != nil }
+
+    /// A fence line: its character, length, and whether anything follows it.
+    struct Fence {
+        let character: Character
+        let length: Int
+        let hasInfo: Bool
+
+        init?(_ line: String) {
+            let indent = line.prefix { $0 == " " }.count
+            guard indent <= 3 else { return nil }
+            let rest = line.dropFirst(indent)
+            guard let first = rest.first, first == "`" || first == "~" else { return nil }
+            let run = rest.prefix { $0 == first }.count
+            guard run >= 3 else { return nil }
+            character = first
+            length = run
+            hasInfo = !rest.dropFirst(run).trimmingCharacters(in: .whitespaces).isEmpty
+        }
+
+        func closes(_ opening: Fence) -> Bool {
+            character == opening.character && length >= opening.length && !hasInfo
+        }
+    }
+
+    /// A block's opening fence line, and its closing one if it has one (without line breaks).
+    public static func fenceLines(_ ns: NSString, in block: NSRange) -> [NSRange] {
+        var contents = 0
+        ns.getLineStart(nil, end: nil, contentsEnd: &contents, for: NSRange(location: block.location, length: 0))
+        let openingLine = NSRange(location: block.location, length: contents - block.location)
+        var fences = [openingLine]
+        let last = ns.lineRange(for: NSRange(location: max(NSMaxRange(block) - 1, block.location), length: 0))
+        if last.location > block.location, let opening = Fence(ns.substring(with: openingLine)),
+           Fence(ns.substring(with: last).trimmingCharacters(in: .newlines))?.closes(opening) == true {
+            ns.getLineStart(nil, end: nil, contentsEnd: &contents, for: NSRange(location: last.location, length: 0))
+            fences.append(NSRange(location: last.location, length: contents - last.location))
+        }
+        return fences
     }
 
     // MARK: Line constructs
@@ -57,9 +156,9 @@ public enum MarkdownStyle {
     private static let listItem = regex(#"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+"#)
     private static let task = regex(#"\G\[([ xX])\](?=[ \t]|$)"#)
 
-    private static func lineSpans(_ ns: NSString, line: NSRange, into spans: inout [Span]) {
+    private static func lineSpans(_ ns: NSString, line: NSRange, codeBlocks: [NSRange], into spans: inout [Span]) {
         if line.length == 0 || ns.substring(with: line).trimmingCharacters(in: .whitespaces).isEmpty {
-            if isParagraphGap(ns, blankLine: line) {
+            if isParagraphGap(ns, blankLine: line, codeBlocks: codeBlocks) {
                 spans.append(Span(range: ns.lineRange(for: line), kind: .paragraphGap))
             }
             return
@@ -105,18 +204,24 @@ public enum MarkdownStyle {
     /// Whether a cursor at `location` would sit on a paragraph gap: the small
     /// spacer line between two paragraphs, which is no place to type.
     public static func isParagraphGap(at location: Int, in text: String) -> Bool {
+        isParagraphGap(at: location, in: text, codeBlocks: codeBlocks(in: text))
+    }
+
+    /// As above, with the text's `codeBlocks(in:)` already found.
+    public static func isParagraphGap(at location: Int, in text: String, codeBlocks: [NSRange]) -> Bool {
         let ns = text as NSString
         guard location < ns.length else { return false }  // the empty last line
         let line = ns.lineRange(for: NSRange(location: location, length: 0))
         let blank = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return blank && isParagraphGap(ns, blankLine: line)
+        return blank && isParagraphGap(ns, blankLine: line, codeBlocks: codeBlocks)
     }
 
-    /// A blank line directly after a non-blank one. Further blank lines keep
-    /// their full height: the user added them on purpose. Line numbers skip
-    /// the same lines (`LineNumbers`).
-    static func isParagraphGap(_ ns: NSString, blankLine: NSRange) -> Bool {
+    /// A blank line directly after a non-blank one, outside code blocks (code is
+    /// literal, ticket 35). Further blank lines keep their full height: the user
+    /// added them on purpose. Line numbers skip the same lines (`LineNumbers`).
+    static func isParagraphGap(_ ns: NSString, blankLine: NSRange, codeBlocks: [NSRange]) -> Bool {
         guard blankLine.location > 0 else { return false }
+        guard !codeBlocks.contains(where: { NSLocationInRange(blankLine.location, $0) }) else { return false }
         let previous = ns.lineRange(for: NSRange(location: blankLine.location - 1, length: 0))
         return !ns.substring(with: previous).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }

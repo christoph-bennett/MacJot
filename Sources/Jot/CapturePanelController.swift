@@ -891,6 +891,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         case .inline(let format): apply(MarkdownEditing.toggle(format, in: text, selection: selection))
         case .line(let format): apply(MarkdownEditing.toggle(format, in: text, selection: selection))
         case .link: apply(MarkdownEditing.toggleLink(in: text, selection: selection))
+        case .codeBlock: apply(MarkdownEditing.toggleCodeBlock(in: text, selection: selection))
         }
         panel.makeFirstResponder(textView)
     }

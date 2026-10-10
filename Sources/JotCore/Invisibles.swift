@@ -16,14 +16,16 @@ public enum Invisibles {
     /// The invisible characters in `range` and their symbols, in order.
     public static func symbols(in text: String, range: NSRange) -> [(location: Int, symbol: Symbol)] {
         let ns = text as NSString
+        let blocks = MarkdownStyle.codeBlocks(in: text)
         var found: [(location: Int, symbol: Symbol)] = []
         for location in range.location..<min(NSMaxRange(range), ns.length) {
             switch ns.character(at: location) {
             case 0x20: found.append((location, .space))
             case 0x09: found.append((location, .tab))
             case 0x0A:
-                if MarkdownStyle.isParagraphGap(at: location, in: text) { continue }  // the gap's own break
-                let isBeforeGap = location + 1 < ns.length && MarkdownStyle.isParagraphGap(at: location + 1, in: text)
+                if MarkdownStyle.isParagraphGap(at: location, in: text, codeBlocks: blocks) { continue }  // the gap's own break
+                let isBeforeGap = location + 1 < ns.length
+                    && MarkdownStyle.isParagraphGap(at: location + 1, in: text, codeBlocks: blocks)
                 found.append((location, isBeforeGap ? .paragraphEnd : .lineBreak))
             default: continue
             }

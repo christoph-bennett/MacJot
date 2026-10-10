@@ -6,9 +6,9 @@ The editor today handles Return inside a fenced block (a single line break, no l
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The button wraps selected lines in fences, inserts an empty block on an empty line, and removes the fences when used inside a block; ⌘Z undoes it in one step
-- [ ] A fenced block shows monospaced, with `**`, `#`, `- [ ]` etc. inside it left unformatted; the fences are dimmed
-- [ ] Text after a block is styled normally again; an unclosed fence runs to the end of the Note
-- [ ] The button is greyed out for an Outside File, like the rest of the toolbar
+- [x] The button wraps selected lines in fences, inserts an empty block on an empty line, and removes the fences when used inside a block; ⌘Z undoes it in one step
+- [x] A fenced block shows monospaced, with `**`, `#`, `- [ ]` etc. inside it left unformatted; the fences are dimmed
+- [x] Text after a block is styled normally again; an unclosed fence runs to the end of the Note
+- [x] The button is greyed out for an Outside File, like the rest of the toolbar

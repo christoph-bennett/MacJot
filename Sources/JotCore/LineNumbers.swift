@@ -26,12 +26,13 @@ public struct LineNumbers {
         }
         self.starts = starts
         var next = 1
+        let blocks = MarkdownStyle.codeBlocks(in: text)
         numbers = starts.map { start in
             // The empty last line is never a gap: the cursor goes there after Return.
             let line = ns.lineRange(for: NSRange(location: start, length: 0))
             let isGap = start < ns.length
                 && ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && MarkdownStyle.isParagraphGap(ns, blankLine: line)
+                && MarkdownStyle.isParagraphGap(ns, blankLine: line, codeBlocks: blocks)
             if isGap { return nil }
             defer { next += 1 }
             return next

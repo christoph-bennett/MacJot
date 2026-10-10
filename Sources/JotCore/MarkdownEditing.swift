@@ -143,15 +143,62 @@ public enum MarkdownEditing {
         }
     }
 
-    /// Inside a ``` or ~~~ fenced code block: an odd number of fence lines up to
-    /// and including this one (so an opening fence line counts as inside).
-    private static func isInCodeFence(_ ns: NSString, throughLine line: NSRange) -> Bool {
-        var fences = 0
-        ns.enumerateSubstrings(in: NSRange(location: 0, length: NSMaxRange(line)), options: .byLines) { text, _, _, _ in
-            let trimmed = (text ?? "").trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") { fences += 1 }
+    /// The Formatting Toolbar's Code Block (ticket 35): if the selection's lines
+    /// touch a fenced block, removes its fences; on an empty line, inserts an
+    /// empty block with the cursor in it; otherwise wraps the selection's lines
+    /// (or the cursor's) in fences. The selection stays on the same text.
+    public static func toggleCodeBlock(in text: String, selection: NSRange) -> TextEdit {
+        let ns = text as NSString
+        var lines = ns.lineRange(for: selection)
+        if selection.length > 0, NSMaxRange(selection) == NSMaxRange(lines), NSMaxRange(selection) < ns.length {
+            // A selection ending at a line's start doesn't take that line.
+            lines = ns.lineRange(for: NSRange(location: selection.location, length: selection.length - 1))
         }
-        return fences % 2 == 1
+        if let block = MarkdownStyle.codeBlocks(in: text).first(where: {
+            NSIntersectionRange($0, lines).length > 0 || (selection.location == ns.length && NSMaxRange($0) == ns.length)
+        }) {
+            return unwrap(block, in: ns, selection: selection)
+        }
+        let contentEnd = lineContentEnd(ns, ns.lineRange(for: NSRange(location: max(NSMaxRange(lines) - 1, lines.location), length: 0)))
+        let content = NSRange(location: lines.location, length: max(contentEnd - lines.location, 0))
+        let body = ns.substring(with: content)
+        if selection.length == 0, body.trimmingCharacters(in: .whitespaces).isEmpty {
+            return TextEdit(range: content, replacement: "```\n\n```",
+                            selection: NSRange(location: content.location + 4, length: 0))
+        }
+        return TextEdit(range: content, replacement: "```\n" + body + "\n```",
+                        selection: NSRange(location: selection.location + 4, length: selection.length))
+    }
+
+    /// `block` without its fence lines; positions in the fences end up at the
+    /// nearest edge of what's left, positions after the block move up with it.
+    private static func unwrap(_ block: NSRange, in ns: NSString, selection: NSRange) -> TextEdit {
+        let fences = MarkdownStyle.fenceLines(ns, in: block)
+        let opening = ns.lineRange(for: NSRange(location: block.location, length: 0))
+        let innerEnd = fences.count > 1 ? fences[1].location : NSMaxRange(block)
+        var inner = ns.substring(with: NSRange(location: NSMaxRange(opening), length: max(innerEnd - NSMaxRange(opening), 0)))
+        // The closing fence was the text's last line: the break before it goes with it.
+        if fences.count > 1, NSMaxRange(block) == ns.length, !ns.substring(with: block).hasSuffix("\n"), inner.hasSuffix("\n") {
+            inner.removeLast()
+        }
+        let innerLength = (inner as NSString).length
+        func map(_ position: Int) -> Int {
+            if position <= block.location { return position }
+            if position >= NSMaxRange(block) { return position + innerLength - block.length }
+            return min(max(position - opening.length, block.location), block.location + innerLength)
+        }
+        let start = map(selection.location), end = map(NSMaxRange(selection))
+        return TextEdit(range: block, replacement: inner, selection: NSRange(location: start, length: max(end - start, 0)))
+    }
+
+    /// Inside a fenced code block (`MarkdownStyle.codeBlocks`): its opening fence
+    /// line counts as inside, its closing one not, as Return after it starts
+    /// normal text again.
+    private static func isInCodeFence(_ ns: NSString, throughLine line: NSRange) -> Bool {
+        guard let block = MarkdownStyle.codeBlocks(in: ns as String).first(where: { NSLocationInRange(line.location, $0) })
+        else { return false }
+        let fences = MarkdownStyle.fenceLines(ns, in: block)
+        return !(fences.count > 1 && fences[1].location == line.location)
     }
 
     /// End of the line's text, before its line break.

@@ -6,6 +6,8 @@ enum FormatCommand {
     case inline(InlineFormat)
     case line(LineFormat)
     case link
+    /// Fences around lines (ticket 35).
+    case codeBlock
 }
 
 /// The editor side of the Capture Panel: the Formatting Toolbar on top, with a
@@ -60,6 +62,7 @@ final class EditorViewController: NSViewController {
         ],
         [
             ("chevron.left.forwardslash.chevron.right", "Inline Code", .inline(.code)),
+            ("curlybraces.square", "Code Block", .codeBlock),
             ("link", "Link", .link),
         ],
     ]

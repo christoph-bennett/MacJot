@@ -13,6 +13,9 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
     var lineSpacing = LineSpacing.normal
 
     private var lastFrontmatter: NSRange?
+    /// Code blocks span lines (ticket 35): when a fence line comes or goes, every
+    /// line after the edit may have changed sides.
+    private var lastFenceCount = 0
 
     var baseAttributes: [NSAttributedString.Key: Any] {
         let paragraph = NSMutableParagraphStyle()
@@ -37,18 +40,43 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
             target = NSUnionRange(target, frontmatter)
         }
         lastFrontmatter = frontmatter
-        style(storage, range: clamp(target, to: length), frontmatter: frontmatter)
+        let blocks = MarkdownStyle.codeBlocks(in: text)
+        let fences = Self.fenceCount(blocks, in: text)
+        let ns = text as NSString
+        var editedHasFence = false
+        ns.enumerateSubstrings(in: ns.lineRange(for: clamp(editedRange, to: length)), options: .byLines) { line, _, _, stop in
+            if MarkdownStyle.isFence(line ?? "") { editedHasFence = true; stop.pointee = true }
+        }
+        // A fence came, went or moved (e.g. a paste replacing one with another).
+        if fences != lastFenceCount || editedHasFence {
+            // Everything from the edit on may be in or out of code now.
+            let start = min(target.location, length)
+            target = NSRange(location: start, length: length - start)
+        } else {
+            for block in blocks where NSIntersectionRange(block, target).length > 0 || NSLocationInRange(target.location, block) {
+                target = NSUnionRange(target, block)
+            }
+        }
+        lastFenceCount = fences
+        style(storage, range: clamp(target, to: length), frontmatter: frontmatter, codeBlocks: blocks)
+    }
+
+    /// Fence lines in the text: one per unclosed block, two per closed one.
+    private static func fenceCount(_ blocks: [NSRange], in text: String) -> Int {
+        blocks.reduce(0) { $0 + MarkdownStyle.fenceLines(text as NSString, in: $1).count }
     }
 
     /// Restyles everything, e.g. after the font size changed.
     func restyleAll(_ storage: NSTextStorage) {
+        let blocks = MarkdownStyle.codeBlocks(in: storage.string)
+        lastFenceCount = Self.fenceCount(blocks, in: storage.string)
         lastFrontmatter = MarkdownEditing.frontmatterRange(in: storage.string)
-        style(storage, range: NSRange(location: 0, length: storage.length), frontmatter: lastFrontmatter)
+        style(storage, range: NSRange(location: 0, length: storage.length), frontmatter: lastFrontmatter, codeBlocks: blocks)
     }
 
     // MARK: Styling
 
-    private func style(_ storage: NSTextStorage, range: NSRange, frontmatter: NSRange?) {
+    private func style(_ storage: NSTextStorage, range: NSRange, frontmatter: NSRange?, codeBlocks: [NSRange]) {
         let ns = storage.string as NSString
         var lines = ns.lineRange(for: range)
         // A blank line's gap styling depends on the line before it, so the line
@@ -60,7 +88,8 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
         storage.setAttributes(baseAttributes, range: lines)
 
         let isInFrontmatter = { (r: NSRange) in frontmatter.map { NSIntersectionRange($0, r).length > 0 } ?? false }
-        let spans = MarkdownStyle.spans(in: storage.string, range: lines).filter { !isInFrontmatter($0.range) }
+        let spans = MarkdownStyle.spans(in: storage.string, range: lines, codeBlocks: codeBlocks)
+            .filter { !isInFrontmatter($0.range) }
 
         // Line size first (headings), then traits, then markers on top.
         for span in spans {
@@ -98,6 +127,10 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
                 // `EditorLayoutManager` draws a box over them.
                 setMonospaced(storage, range: span.range)
                 storage.addAttributes([.foregroundColor: NSColor.clear, .checkbox: checked], range: span.range)
+            case .codeBlock:
+                setMonospaced(storage, range: span.range)  // the fences are markers, dimmed below
+            case .codeInfo:
+                storage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: span.range)
             case .heading, .marker:
                 break
             }

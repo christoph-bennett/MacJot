@@ -39,7 +39,7 @@ public struct NoteSummary: Equatable {
     public static func displayTitle(of text: String) -> String? {
         let ns = text as NSString
         guard let line = NoteStructure(ns).titleLine else { return nil }
-        let title = plain(ns, line: line)
+        let title = plain(ns, line: line, codeBlocks: MarkdownStyle.codeBlocks(in: text))
         return title.isEmpty ? nil : title
     }
 
@@ -54,13 +54,14 @@ public struct NoteSummary: Equatable {
         init(_ text: String) {
             let ns = text as NSString
             guard let titleLine = NoteStructure(ns).titleLine else { return }
-            let title = NoteSummary.plain(ns, line: titleLine)
+            let blocks = MarkdownStyle.codeBlocks(in: text)  // once, not for every line
+            let title = NoteSummary.plain(ns, line: titleLine, codeBlocks: blocks)
             self.title = title.isEmpty ? nil : title
             let rest = NSRange(location: NSMaxRange(titleLine), length: ns.length - NSMaxRange(titleLine))
             var lines: [String] = []
             ns.enumerateSubstrings(in: rest, options: .byLines) { line, range, _, _ in
                 guard let line, !line.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                lines.append(NoteSummary.plain(ns, line: range))
+                lines.append(NoteSummary.plain(ns, line: range, codeBlocks: blocks))
             }
             self.lines = lines
         }
@@ -117,9 +118,9 @@ public struct NoteSummary: Equatable {
     }
 
     /// The line with its Markdown markers removed, as the editor would dim them.
-    private static func plain(_ ns: NSString, line: NSRange) -> String {
+    private static func plain(_ ns: NSString, line: NSRange, codeBlocks: [NSRange]) -> String {
         let text = ns as String
-        let markers = MarkdownStyle.spans(in: text, range: line)
+        let markers = MarkdownStyle.spans(in: text, range: line, codeBlocks: codeBlocks)
             .filter(\.isSyntax)
             .map(\.range)
             .sorted { $0.location > $1.location }
