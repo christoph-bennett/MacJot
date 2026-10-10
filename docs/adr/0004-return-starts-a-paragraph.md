@@ -1,3 +1,5 @@
 # Return starts a paragraph
 
 In the editor, Return outside lists, quotes and frontmatter inserts a blank line (`\n\n`), and Shift-Return inserts a single line break. Standard Markdown renderers (markdown-it with `breaks: false`, as in the FluxMarkdown Quick Look plugin, GitHub, most previewers) join lines separated by one line break into one paragraph, so a plain-text Return made separate lines in Jot appear as one line elsewhere; Stik avoids this by writing a blank line per paragraph. We rejected keeping single line breaks (files render differently outside Jot) and rewriting breaks on save as `\` or two trailing spaces (the file would no longer be exactly what the editor shows). The cost: files contain blank lines between paragraphs, which the editor displays as paragraph spacing.
+
+**Update (ticket 23):** the editor no longer shows these blank lines as paragraph spacing: they take practically no height, so the next paragraph sits right below (as after Shift-Return), and the line numbers skip them. Only a further blank line shows as an empty line. In the editor, Return and Shift-Return now look the same; the difference is in the file.

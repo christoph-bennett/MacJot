@@ -115,7 +115,13 @@ final class LineNumberGutter: NSRulerView {
             let rect = layoutManager.lineFragmentRect(forGlyphAt: index, effectiveRange: &row)
             let character = layoutManager.characterIndexForGlyph(at: row.location)
             if let number = lines.number(ofLineStartingAt: character) {
-                let baseline = rect.minY + layoutManager.location(forGlyphAt: row.location).y
+                // A blank line's only glyph, the line break, sits at the bottom of
+                // the line, not on its baseline, so that comes from the font.
+                let isBlank = (textView.string as NSString).character(at: character) == 0x0A
+                let font = textView.textStorage?.attribute(.font, at: character, effectiveRange: nil) as? NSFont
+                let baseline = rect.minY + (isBlank
+                    ? layoutManager.defaultBaselineOffset(for: font ?? NSFont.systemFont(ofSize: fontSize))
+                    : layoutManager.location(forGlyphAt: row.location).y)
                 draw(number, baselineInText: baseline + origin.y, in: textView)
             }
             index = NSMaxRange(row)

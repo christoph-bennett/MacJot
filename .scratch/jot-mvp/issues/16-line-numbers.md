@@ -12,6 +12,8 @@
 - **Background:** the same as the text's, no separate band (STTextView uses a visual-effect view with the content-background material inside the window, following the window's active state).
 - **Not now, but possible later** (it has them as options): highlighting the current line's number with `selectedTextBackgroundColor` at about 25 % opacity and a stronger number colour; this pairs with the backlog's "highlight the current line". When word wrap can be turned off (backlog), the gutter stays put while the text scrolls sideways.
 
+**Changed later (ticket 23, 2026-10-09):** paragraph gaps are no longer numbered.
+
 **Blocked by:** 07, 14
 
 **Status:** done

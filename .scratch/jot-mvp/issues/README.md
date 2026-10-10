@@ -26,6 +26,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 20 | [Settings spacing](20-settings-spacing.md) | 19 | done |
 | 21 | [Note List layout](21-note-list-layout.md) | 19 | done |
 | 22 | [Note List empty states](22-note-list-empty-states.md) | 19 | done |
+| 23 | [Paragraph gaps: no number, no height](23-line-numbers-skip-paragraph-gaps.md) | 16 | done |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 

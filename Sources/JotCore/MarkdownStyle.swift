@@ -20,7 +20,7 @@ public enum MarkdownStyle {
             case checkbox(checked: Bool)
             /// A checked item's text (after the box), shown struck through.
             case completedTask
-            /// The first blank line after a paragraph, shown as spacing rather than a full line.
+            /// The first blank line after a paragraph, drawn with practically no height.
             case paragraphGap
         }
 
@@ -113,8 +113,9 @@ public enum MarkdownStyle {
     }
 
     /// A blank line directly after a non-blank one. Further blank lines keep
-    /// their full height: the user added them on purpose.
-    private static func isParagraphGap(_ ns: NSString, blankLine: NSRange) -> Bool {
+    /// their full height: the user added them on purpose. Line numbers skip
+    /// the same lines (`LineNumbers`).
+    static func isParagraphGap(_ ns: NSString, blankLine: NSRange) -> Bool {
         guard blankLine.location > 0 else { return false }
         let previous = ns.lineRange(for: NSRange(location: blankLine.location - 1, length: 0))
         return !ns.substring(with: previous).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

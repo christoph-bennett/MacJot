@@ -1,13 +1,16 @@
 import Foundation
 
 /// Where each line of a Note's file starts, for the editor's line numbers.
-/// Lines are the file's: every line break starts one (so the blank lines
-/// between paragraphs count, and a trailing break starts an empty last line);
-/// how the editor wraps a line doesn't matter. Positions are UTF-16 offsets,
-/// as in `NSString` and the text view.
+/// Lines are the file's: every line break starts one (a trailing break starts
+/// an empty last line); how the editor wraps a line doesn't matter. A paragraph
+/// gap, the blank line Return puts between paragraphs (ADR 0004), takes
+/// practically no space in the editor, so it gets no number and isn't counted.
+/// Positions are UTF-16 offsets, as in `NSString` and the text view.
 public struct LineNumbers {
     /// The start of every line, ascending.
     private let starts: [Int]
+    /// Each line's number, nil for a paragraph gap.
+    private let numbers: [Int?]
 
     public init(_ text: String) {
         let ns = text as NSString
@@ -22,17 +25,29 @@ public struct LineNumbers {
             location = end
         }
         self.starts = starts
+        var next = 1
+        numbers = starts.map { start in
+            // The empty last line is never a gap: the cursor goes there after Return.
+            let line = ns.lineRange(for: NSRange(location: start, length: 0))
+            let isGap = start < ns.length
+                && ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && MarkdownStyle.isParagraphGap(ns, blankLine: line)
+            if isGap { return nil }
+            defer { next += 1 }
+            return next
+        }
     }
 
-    public var count: Int { starts.count }
+    /// The highest number shown.
+    public var count: Int { numbers.last { $0 != nil }.flatMap { $0 } ?? 0 }
 
     /// The 1-based number of the line that starts at `offset`, or nil if no
-    /// line starts there.
+    /// line starts there or it's a paragraph gap.
     public func number(ofLineStartingAt offset: Int) -> Int? {
         var low = 0, high = starts.count - 1
         while low <= high {
             let middle = (low + high) / 2
-            if starts[middle] == offset { return middle + 1 }
+            if starts[middle] == offset { return numbers[middle] }
             if starts[middle] < offset { low = middle + 1 } else { high = middle - 1 }
         }
         return nil

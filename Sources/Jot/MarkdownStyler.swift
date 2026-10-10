@@ -83,7 +83,14 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
             case .link:
                 storage.addAttribute(.foregroundColor, value: NSColor.linkColor, range: span.range)
             case .paragraphGap:
-                storage.addAttribute(.font, value: NSFont.systemFont(ofSize: baseSize * 0.5), range: span.range)
+                // No height: the next paragraph sits right below, exactly as after
+                // Shift-Return (decided 2026-10-09, ticket 23). Neither the font
+                // (size 0 would mean the default size) nor the editor's 2 pt line
+                // spacing may add any.
+                let gap = NSMutableParagraphStyle()
+                gap.lineSpacing = 0
+                gap.maximumLineHeight = 0.01
+                storage.addAttributes([.font: NSFont.systemFont(ofSize: 1), .paragraphStyle: gap], range: span.range)
             case .checkbox(let checked):
                 // The characters stay (they're the file's text) but are invisible:
                 // `EditorLayoutManager` draws a box over them.
