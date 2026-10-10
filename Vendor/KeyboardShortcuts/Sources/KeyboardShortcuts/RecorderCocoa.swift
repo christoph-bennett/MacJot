@@ -130,36 +130,11 @@ extension KeyboardShortcuts {
 			return size
 		}
 
-		// Center the text in the full field width, not just the area left of the cancel button. On macOS 27+, NSSearchField uses subviews for text layout: a clip view when focused and a label when not. Mirror the right-side inset (cancel button) to the left so center-aligned text is visually centered in the whole field.
-		@_documentation(visibility: private)
-		override public func layout() {
-			super.layout()
-
-			guard #available(macOS 27, *) else {
-				return
-			}
-
-			for subview in subviews {
-				let name = NSStringFromClass(type(of: subview))
-
-				guard name.contains("ClipView") || name.contains("SimpleLabel") else {
-					continue
-				}
-
-				let rightInset = bounds.width - subview.frame.maxX
-
-				guard rightInset > subview.frame.minX else {
-					continue
-				}
-
-				subview.frame = NSRect(
-					x: rightInset,
-					y: subview.frame.minY,
-					width: bounds.width - rightInset * 2,
-					height: subview.frame.height
-				)
-			}
-		}
+		// Jot patch: no `layout()` override here. Upstream centres the text in the
+		// full field width by mirroring the cancel button's inset on the left; that
+		// leaves too little room (⌃⌥⇧⌘Space was cut off) and, next to the button,
+		// looks off-centre. The search field's own centring, in the area left of
+		// the button, is kept.
 
 		private var cancelButton: NSButtonCell?
 

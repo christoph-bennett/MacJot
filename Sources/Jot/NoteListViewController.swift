@@ -17,9 +17,20 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     var menuItems: (URL) -> [NSMenuItem] = { _ in [] }
     /// The Delete key was pressed on a Note; `next` is the Note to show afterwards.
     var onDelete: (URL) -> Void = { _ in }
+    /// The + next to the search field: start a new Note, as File > New Note does.
+    var onNewNote: () -> Void = {}
 
     let tableView = NoteTableView()
     let searchField = NSSearchField()
+    private lazy var newNoteButton: NSButton = {
+        let image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New Note")!
+        let button = NSButton(image: image, target: self, action: #selector(newNote))
+        button.isBordered = false
+        button.symbolConfiguration = .init(pointSize: 15, weight: .regular)
+        button.contentTintColor = .secondaryLabelColor
+        button.toolTip = "New Note (⌘N)"
+        return button
+    }()
     /// Says why the list is empty (Apple's `ContentUnavailableView`), over it.
     private let placeholder = NSHostingView(rootView: PlaceholderView(kind: nil))
     /// The open Draft, once it has text, is a row of its own on top, so a new Note shows up
@@ -67,7 +78,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         placeholder.isHidden = true
         // Only its natural size: no required minimum while the sidebar collapses to nothing.
         placeholder.sizingOptions = [.intrinsicContentSize]
-        for subview in [searchField, scrollView, placeholder] as [NSView] {
+        for subview in [searchField, newNoteButton, scrollView, placeholder] as [NSView] {
             subview.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(subview)
         }
@@ -76,7 +87,10 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
             // ticket 21); the field draws its border 1 pt inside its frame.
             searchField.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor, constant: 10),
             searchField.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 9),
-            searchField.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -9),
+            // The + after the field, its symbol's edge on the row highlights' too.
+            newNoteButton.leadingAnchor.constraint(equalTo: searchField.trailingAnchor, constant: 6),
+            newNoteButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
+            newNoteButton.centerYAnchor.constraint(equalTo: searchField.centerYAnchor),
             scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 6),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -90,6 +104,8 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         container.clipsToBounds = true
         view = container
     }
+
+    @objc private func newNote() { onNewNote() }
 
     private func showPlaceholder(_ kind: NoteListPlaceholder?) {
         placeholder.isHidden = kind == nil

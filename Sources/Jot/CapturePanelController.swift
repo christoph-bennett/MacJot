@@ -69,6 +69,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         noteList.menuItems = { [weak self] in self?.actions(for: $0) ?? [] }
         noteList.onReturn = { [weak self] in self?.focusEditor() }
         noteList.onCancel = { [weak self] in self?.hide() }
+        noteList.onNewNote = { [weak self] in self?.showNewDraft() }
         noteListItem.minimumThickness = 180
         noteListItem.maximumThickness = 320
         noteListItem.isCollapsed = true
