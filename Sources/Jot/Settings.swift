@@ -11,6 +11,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let datePrefixKey = "datePrefix"
     static let fontSizeKey = "editorFontSize"
     static let defaultFontSize = 14.0
+    static let lineSpacingKey = "editorLineSpacing"
     static let relativeDatesKey = "relativeDates"
     static let lineNumbersKey = "showLineNumbers"
     static let currentLineKey = "highlightCurrentLine"
@@ -21,6 +22,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     var onDatePrefixChange: (Bool) -> Void = { _ in }
     /// Settings > Editor changed (on the main thread).
     var onFontSizeChange: (CGFloat) -> Void = { _ in }
+    var onLineSpacingChange: (LineSpacing) -> Void = { _ in }
     var onRelativeDatesChange: (Bool) -> Void = { _ in }
     var onLineNumbersChange: (Bool) -> Void = { _ in }
     var onCurrentLineChange: (Bool) -> Void = { _ in }
@@ -178,6 +180,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
                                        onResetPanel: { [weak self] in self?.onResetPanel() }))
         case .editor:
             view = AnyView(EditorPane(onFontSizeChange: { [weak self] in self?.onFontSizeChange($0) },
+                                      onLineSpacingChange: { [weak self] in self?.onLineSpacingChange($0) },
                                       onLineNumbersChange: { [weak self] in self?.onLineNumbersChange($0) },
                                       onCurrentLineChange: { [weak self] in self?.onCurrentLineChange($0) },
                                       onWrapLinesChange: { [weak self] in self?.onWrapLinesChange($0) },

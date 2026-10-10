@@ -4,9 +4,9 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Settings > Editor shows "Line Spacing:" with Tight / Normal / Relaxed below Font Size; Normal by default, looking exactly as before
-- [ ] Changing it respaces the open Note at once
-- [ ] Line numbers, the current-line band, paragraph gaps, headings and checklists stay aligned at every spacing and font size
-- [ ] The setting is remembered across launches
+- [x] Settings > Editor shows "Line Spacing:" with Tight / Normal / Relaxed below Font Size; Normal by default, looking exactly as before
+- [x] Changing it respaces the open Note at once
+- [x] Line numbers, the current-line band, paragraph gaps, headings and checklists stay aligned at every spacing and font size
+- [x] The setting is remembered across launches

@@ -168,11 +168,13 @@ struct GeneralPane: View {
 
 struct EditorPane: View {
     @AppStorage(SettingsWindowController.fontSizeKey) private var fontSize = SettingsWindowController.defaultFontSize
+    @AppStorage(SettingsWindowController.lineSpacingKey) private var lineSpacing = LineSpacing.normal
     @AppStorage(SettingsWindowController.relativeDatesKey) private var relativeDates = true
     @AppStorage(SettingsWindowController.lineNumbersKey) private var lineNumbers = true
     @AppStorage(SettingsWindowController.currentLineKey) private var currentLine = true
     @AppStorage(SettingsWindowController.wrapLinesKey) private var wrapLines = true
     let onFontSizeChange: (CGFloat) -> Void
+    let onLineSpacingChange: (LineSpacing) -> Void
     let onLineNumbersChange: (Bool) -> Void
     let onCurrentLineChange: (Bool) -> Void
     let onWrapLinesChange: (Bool) -> Void
@@ -198,6 +200,13 @@ struct EditorPane: View {
                 .labelsHidden()
                 .fixedSize()
             }
+            Row("Line Spacing:") {
+                Picker("Line Spacing", selection: $lineSpacing) {
+                    ForEach(LineSpacing.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
             Row("Line Numbers:") {
                 Toggle("Show line numbers", isOn: $lineNumbers)
             }
@@ -218,6 +227,7 @@ struct EditorPane: View {
             }
         }
         .onChange(of: fontSize) { _, size in onFontSizeChange(size) }
+        .onChange(of: lineSpacing) { _, spacing in onLineSpacingChange(spacing) }
         .onChange(of: relativeDates) { _, on in onRelativeDatesChange(on) }
         .onChange(of: lineNumbers) { _, on in onLineNumbersChange(on) }
         .onChange(of: currentLine) { _, on in onCurrentLineChange(on) }

@@ -63,7 +63,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.delegate = self
         (textView as? EditorTextView)?.onCheckboxClick = { [weak self] in self?.toggleCheckbox(at: $0) }
         scrollView.contentView.postsFrameChangedNotifications = true
-        NotificationCenter.default.addObserver(self, selector: #selector(fitUnwrappedWidth),
+        NotificationCenter.default.addObserver(self, selector: #selector(fitTextWidth),
                                                name: NSView.frameDidChangeNotification, object: scrollView.contentView)
 
         editor.onFormat = { [weak self] in self?.format($0) }
@@ -582,11 +582,23 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         gutter.fontSize = size
     }
 
+    /// The space below each line (Settings > Editor, ticket 33); the line numbers
+    /// and the current-line band follow the laid-out lines by themselves.
+    func setLineSpacing(_ spacing: LineSpacing) {
+        guard spacing != styler.lineSpacing else { return }
+        styler.lineSpacing = spacing
+        if let storage = textView.textStorage { styler.restyleAll(storage) }
+        textView.typingAttributes = styler.baseAttributes
+        textView.needsDisplay = true
+        gutter.refresh()
+    }
+
     /// The line numbers beside the text (Settings > Editor).
     func setLineNumbers(_ on: Bool) {
         textView.enclosingScrollView?.rulersVisible = on
         if on { gutter.refresh() }
         (textView as? EditorTextView)?.leadingInset = on ? 0 : nil
+        fitTextWidth()  // the gutter takes its room as an inset of the clip view, which resizes nothing
     }
 
     /// A band behind the cursor's line and its number drawn stronger (Settings > Editor).
@@ -608,22 +620,33 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.autoresizingMask = on ? [.width] : []
         if on {
             textView.minSize = NSSize(width: 0, height: 0)
-            textView.setFrameSize(NSSize(width: scrollView.contentSize.width, height: textView.frame.height))
+            fitTextWidth()
             // As tracking the width does: the text view's width less the inset on both sides.
             container.containerSize = NSSize(width: textView.frame.width - 2 * textView.textContainerInset.width, height: huge)
         } else {
             container.containerSize = NSSize(width: huge, height: huge)
-            fitUnwrappedWidth()
+            fitTextWidth()
         }
         textView.scrollRangeToVisible(textView.selectedRange())
     }
 
-    /// Unwrapped, the text view is never narrower than the visible area, so clicks
-    /// and the current-line band reach its right edge; called again when the panel resizes.
-    @objc private func fitUnwrappedWidth() {
-        guard textView.isHorizontallyResizable, let scrollView = textView.enclosingScrollView else { return }
-        textView.minSize = NSSize(width: scrollView.contentSize.width, height: 0)
-        textView.sizeToFit()
+    /// The width the text has: the clip view's, less the line numbers, which sit
+    /// in its left content inset (not `contentSize`, which includes them).
+    private var visibleTextWidth: CGFloat {
+        guard let clip = textView.enclosingScrollView?.contentView else { return textView.frame.width }
+        return clip.bounds.width - clip.contentInsets.left - clip.contentInsets.right
+    }
+
+    /// Wrapped, the text view is exactly as wide as the visible area. Unwrapped,
+    /// it's never narrower, so clicks and the current-line band reach its right
+    /// edge. Called again when the panel resizes and the line numbers toggle.
+    @objc private func fitTextWidth() {
+        if textView.isHorizontallyResizable {
+            textView.minSize = NSSize(width: visibleTextWidth, height: 0)
+            textView.sizeToFit()
+        } else if textView.frame.width != visibleTextWidth {
+            textView.setFrameSize(NSSize(width: visibleTextWidth, height: textView.frame.height))
+        }
     }
 
     /// The Note List's dates: "2h", "Mon", or the short date and time.

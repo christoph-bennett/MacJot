@@ -9,12 +9,14 @@ import JotCore
 /// Colours are dynamic system colours, so light/dark switching needs no code.
 final class MarkdownStyler: NSObject, NSTextStorageDelegate {
     var baseSize: CGFloat = 14
+    /// Settings > Editor > Line Spacing (ticket 33).
+    var lineSpacing = LineSpacing.normal
 
     private var lastFrontmatter: NSRange?
 
     var baseAttributes: [NSAttributedString.Key: Any] {
         let paragraph = NSMutableParagraphStyle()
-        paragraph.lineSpacing = 2
+        paragraph.lineSpacing = lineSpacing.points(fontSize: baseSize)
         return [.font: NSFont.systemFont(ofSize: baseSize), .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph]
     }
 

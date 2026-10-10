@@ -36,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         panel.onShowSettings = { [weak self] in self?.showSettings() }
         panel.onFolderMoved = { [weak self] in self?.settings.refresh() }
         panel.setFontSize(defaults.double(forKey: SettingsWindowController.fontSizeKey))
+        panel.setLineSpacing(defaults.string(forKey: SettingsWindowController.lineSpacingKey)
+            .flatMap(LineSpacing.init(rawValue:)) ?? .normal)
+        settings.onLineSpacingChange = { [weak panel] in panel?.setLineSpacing($0) }
         panel.setRelativeDates(defaults.bool(forKey: SettingsWindowController.relativeDatesKey))
         panel.setLineNumbers(defaults.bool(forKey: SettingsWindowController.lineNumbersKey))
         settings.onLineNumbersChange = { [weak panel] in panel?.setLineNumbers($0) }
