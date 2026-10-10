@@ -4,7 +4,9 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Five runs of `scripts/bundle.sh && scripts/install.sh` in a row each end with the new build running, without error -600
-- [ ] With MacJot not running, `install.sh` still installs and starts it
+- [x] Five runs of `scripts/bundle.sh && scripts/install.sh` in a row each end with the new build running, without error -600
+- [x] With MacJot not running, `install.sh` still installs and starts it
+
+**Cause (2026-10-10):** for up to about 0.25 s after the old process has exited, `open` fails with -600; copying the new bundle sometimes covered that window, so it failed about every other run. Nothing queryable shows when the window ends (pgrep, `lsappinfo`, the login item's launchd job are all gone at once), so the script retries `open` every 0.5 s for up to 5 s, then waits for the process. Five runs in a row and one with MacJot not running all ended with the new build running.

@@ -30,7 +30,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 24 | [Find and replace in the open Note](24-find-and-replace.md) | none | done |
 | 25 | [Hint while a Note is empty](25-empty-note-hint.md) | 26 | done |
 | 26 | [Trash an emptied Note with its full contents](26-trash-full-contents.md) | none | done |
-| 27 | [`install.sh` starts MacJot reliably](27-install-script-starts-macjot.md) | none | ready-for-agent |
+| 27 | [`install.sh` starts MacJot reliably](27-install-script-starts-macjot.md) | none | done |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
