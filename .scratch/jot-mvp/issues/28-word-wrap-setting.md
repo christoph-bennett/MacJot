@@ -4,10 +4,10 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Settings > Editor shows "Wrap lines", checked by default, below Line Numbers
-- [ ] Unchecked: a long line stays one line and the editor scrolls sideways; short Notes show no horizontal scroll bar
-- [ ] Typing at the end of a long line keeps the cursor in view
-- [ ] Line numbers, find (⌘F) and the current-line highlight (ticket 29, if done) still line up with wrapping off
-- [ ] Checking it again wraps the lines at once
+- [x] Settings > Editor shows "Wrap lines", checked by default, below Line Numbers
+- [x] Unchecked: a long line stays one line and the editor scrolls sideways; short Notes show no horizontal scroll bar
+- [x] Typing at the end of a long line keeps the cursor in view
+- [x] Line numbers, find (⌘F) and the current-line highlight (ticket 29, if done) still line up with wrapping off
+- [x] Checking it again wraps the lines at once

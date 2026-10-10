@@ -117,7 +117,11 @@ final class LineNumberGutter: NSRulerView {
         let current = highlightsCurrentLine && textView.selectedRanges.count == 1
             ? CurrentLine.range(in: textView.string, selection: textView.selectedRange())?.location : nil
         let origin = textView.textContainerOrigin
-        let visible = textView.visibleRect.offsetBy(dx: -origin.x, dy: -origin.y)
+        // The visible rows across the whole width: scrolled sideways (wrapping off),
+        // a short line's glyphs may all lie left of the visible area.
+        var visible = textView.visibleRect.offsetBy(dx: -origin.x, dy: -origin.y)
+        visible.origin.x = 0
+        visible.size.width = container.size.width
         let glyphs = layoutManager.glyphRange(forBoundingRect: visible, in: container)
         var index = glyphs.location
         while index < NSMaxRange(glyphs) {

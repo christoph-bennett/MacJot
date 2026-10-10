@@ -57,6 +57,9 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         configure(textView)
         textView.delegate = self
         (textView as? EditorTextView)?.onCheckboxClick = { [weak self] in self?.toggleCheckbox(at: $0) }
+        scrollView.contentView.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(self, selector: #selector(fitUnwrappedWidth),
+                                               name: NSView.frameDidChangeNotification, object: scrollView.contentView)
 
         let editor = EditorViewController(scrollView: scrollView)
         editor.onFormat = { [weak self] in self?.format($0) }
@@ -490,6 +493,37 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         gutter.highlightsCurrentLine = on
     }
 
+    /// Long lines wrap at the editor's width, or run on and the editor scrolls
+    /// sideways (Settings > Editor).
+    func setWrapsLines(_ on: Bool) {
+        guard let scrollView = textView.enclosingScrollView, let container = textView.textContainer else { return }
+        let huge = CGFloat.greatestFiniteMagnitude
+        // Shown only while a line is too wide: the scroll view hides it when there's nothing to scroll.
+        scrollView.hasHorizontalScroller = !on
+        container.widthTracksTextView = on
+        textView.isHorizontallyResizable = !on
+        // Unwrapped, the text view is as wide as its longest line (`sizeToFit`).
+        textView.autoresizingMask = on ? [.width] : []
+        if on {
+            textView.minSize = NSSize(width: 0, height: 0)
+            textView.setFrameSize(NSSize(width: scrollView.contentSize.width, height: textView.frame.height))
+            // As tracking the width does: the text view's width less the inset on both sides.
+            container.containerSize = NSSize(width: textView.frame.width - 2 * textView.textContainerInset.width, height: huge)
+        } else {
+            container.containerSize = NSSize(width: huge, height: huge)
+            fitUnwrappedWidth()
+        }
+        textView.scrollRangeToVisible(textView.selectedRange())
+    }
+
+    /// Unwrapped, the text view is never narrower than the visible area, so clicks
+    /// and the current-line band reach its right edge; called again when the panel resizes.
+    @objc private func fitUnwrappedWidth() {
+        guard textView.isHorizontallyResizable, let scrollView = textView.enclosingScrollView else { return }
+        textView.minSize = NSSize(width: scrollView.contentSize.width, height: 0)
+        textView.sizeToFit()
+    }
+
     /// The Note List's dates: "2h", "Mon", or the short date and time.
     func setRelativeDates(_ on: Bool) {
         noteList.showsRelativeDates = on
@@ -734,6 +768,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.didChangeText()
         textView.setSelectedRange(edit.selection)
         textView.typingAttributes = styler.baseAttributes
+        // Typing scrolls by itself; also after Return, e.g. back to the start of the line with wrapping off.
+        textView.scrollRangeToVisible(edit.selection)
     }
 
     /// The editor runs on TextKit 1. TextKit 2 lays out an empty last line as if
