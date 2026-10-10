@@ -34,6 +34,8 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 28 | [Word wrap on/off](28-word-wrap-setting.md) | none | done |
 | 29 | [Highlight the current line](29-highlight-current-line.md) | none | done |
 | 30 | [MacJot opens `.md` files from its Notes Folder](30-open-md-files.md) | none | done |
+| 31 | [Outside Files open read-only](31-outside-files-read-only.md) | none | ready-for-agent |
+| 32 | [Move to Notes Folder](32-move-to-notes-folder.md) | 31 | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 

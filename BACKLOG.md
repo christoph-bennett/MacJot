@@ -19,6 +19,10 @@ Picked from Later 2026-10-10:
 - **Open `.md` files from Finder in MacJot** → ticket 30 (decided 2026-10-10: Open With only, never the default app; files in the Notes Folder open, others get an alert).
 - **Highlight the current line**: a faint background behind the line with the cursor, following light/dark; with a toggle in Settings > Editor. → ticket 29
 
+Decided 2026-10-10, after trying ticket 30's alert:
+
+- **Outside Files open read-only**, with a **Move to Notes Folder** button, instead of the alert for files outside the Notes Folder (ADR 0007). → tickets 31 and 32
+
 Earlier:
 
 - **Rename to MacJot** → ticket 17, ADR 0006 (decided 2026-10-09; replaces the Inbox item "Final app name and bundle ID"). Released on GitHub only, so Apple's rule against "Mac" in third-party names is an accepted risk. User-facing texts, app bundle, executable and process, bundle ID, Application Support folder, scripts and `SERVICES.md`; Swift module and type names stay. New installs default to `~/Documents/MacJot`; an existing Notes Folder is never moved or renamed.
@@ -29,7 +33,6 @@ Earlier:
 
 ## Later
 
-- **Edit `.md` files outside the Notes Folder** (opened from Finder; ticket 30 only opens Notes Folder files). Open questions: edit in place (fits ADR 0001) or copy into the Notes Folder; if in place, whether such a file is renamed when its Title changes, whether it shows in the Note List, and what happens when it's emptied (trash it, or keep it).
 - **Setting: line height** (spacing between lines), next to font size; the paragraph gap and line numbers have to follow it.
 - **Show invisible characters**: spaces, tabs and line breaks as faint symbols, e.g. to check Markdown line breaks; toggle in Settings or the View menu.
 - **Setting: custom Date Prefix format**, e.g. `20261009-` or `2026-10-09_` instead of the fixed `2026-10-09-`; next to the Date Prefix checkbox in Settings > General, with the live example showing the result. MacJot also reads the prefix back (`DatePrefix.of`, `DatePrefix.day(of:)`) to keep it on rename and to date the Note List, so recognising Notes named with an earlier format has to keep working; the format may need limits (must contain year, month and day, only filename-safe characters).
@@ -46,6 +49,7 @@ Earlier:
 
 ## Not planned
 
+- **Editing Outside Files in place**: Notes live in one folder, and moving a file there keeps the Note List, Search, renaming and trashing consistent; Outside Files are read-only until moved (ADR 0007, decided 2026-10-10).
 - **App Store / sandboxed build**: MacJot is released on GitHub only (ADR 0006; "Mac" in the name wouldn't pass review), and a sandbox would restrict access to the Notes Folder (decided 2026-10-10).
 - **Keep macOS inline predictions in the editor**: they insert line breaks past the Return handling (ADR 0004); catching those reliably is a lot of fragile work for little gain (decided 2026-10-10).
 - **Hotkey to reopen the last Note**: the Search Hotkey already opens the most recently changed Note, and Return continues writing in it (decided 2026-10-10).

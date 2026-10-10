@@ -44,6 +44,10 @@ _Avoid_: Empty note, unsaved note
 A hidden backup of a Draft's text, kept outside the Notes Folder until the Draft gets its file, so a crash never loses it.
 _Avoid_: Temp file, autosave file, backup
 
+**Outside File**:
+A Markdown file opened in the Capture Panel from elsewhere; shown read-only until it's moved into the Notes Folder, when it becomes a Note.
+_Avoid_: External note, foreign file, guest file
+
 **Search**:
 Looking for text across all Notes, by filtering the Note List.
 _Avoid_: Find (that's within one Note), filter
