@@ -4,11 +4,11 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] ⌘F shows the find bar; typing highlights matches in the open Note; Return / ⌘G and ⇧⌘G move between them
-- [ ] ⌥⌘F shows find and replace; Replace and Replace All work and can be undone with ⌘Z
-- [ ] ⌘E with a selection puts it in the find field
-- [ ] Edit > Find lists all five with their shortcuts
-- [ ] ⌘F while the Note List's search field has focus opens the editor's find bar
-- [ ] Esc in the find bar closes it (the panel stays); switching Notes keeps or closes the bar sensibly and never finds in the previous Note's text
+- [x] ⌘F shows the find bar; typing highlights matches in the open Note; Return / ⌘G and ⇧⌘G move between them
+- [x] ⌥⌘F shows find and replace; Replace and Replace All work and can be undone with ⌘Z
+- [x] ⌘E with a selection puts it in the find field
+- [x] Edit > Find lists all five with their shortcuts
+- [x] ⌘F while the Note List's search field has focus opens the editor's find bar
+- [x] Esc in the find bar closes it (the panel stays); switching Notes keeps or closes the bar sensibly and never finds in the previous Note's text

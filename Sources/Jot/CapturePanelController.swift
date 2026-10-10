@@ -191,9 +191,28 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         case ([.control, .command], kVK_ANSI_S): toggleNoteList()
         case ([.command], kVK_ANSI_N): showNewDraft()
         case ([.command], kVK_ANSI_Comma): onShowSettings()
+        // Find (GLOSSARY: within the open Note), the standard Mac set (ticket 24).
+        // Also with focus in the Note List: it always finds in the editor.
+        case ([.command], kVK_ANSI_F): find(.showFindInterface)
+        case ([.option, .command], kVK_ANSI_F): find(.showReplaceInterface)
+        case ([.command], kVK_ANSI_G): find(.nextMatch)
+        case ([.shift, .command], kVK_ANSI_G): find(.previousMatch)
+        case ([.command], kVK_ANSI_E): find(.setSearchString)
         default: return false
         }
         return true
+    }
+
+    /// Edit > Find's items; their tags are `NSTextFinder.Action`s.
+    @objc func performFind(_ sender: NSMenuItem) {
+        NSTextFinder.Action(rawValue: sender.tag).map(find)
+    }
+
+    private func find(_ action: NSTextFinder.Action) {
+        // The text view's finder reads the action from the sender's tag.
+        let sender = NSMenuItem()
+        sender.tag = action.rawValue
+        textView.performTextFinderAction(sender)
     }
 
     @objc func toggleNoteList() {
@@ -399,6 +418,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     }
 
     private func display(_ text: String, cursor: Int) {
+        // Find is for the Note it was opened on: never matches left from another.
+        find(.hideFindInterface)
         textView.string = text
         if let storage = textView.textStorage { styler.restyleAll(storage) }
         textView.typingAttributes = styler.baseAttributes
@@ -590,8 +611,13 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
         switch selector {
         case #selector(NSResponder.cancelOperation(_:)):
-            // `Esc` closes the panel. NSTextView would otherwise treat it as "complete word".
-            hide()
+            // `Esc` closes the find bar, if it's open, then the panel. NSTextView
+            // would otherwise treat it as "complete word".
+            if textView.enclosingScrollView?.isFindBarVisible == true {
+                find(.hideFindInterface)
+            } else {
+                hide()
+            }
         case #selector(NSResponder.insertNewline(_:)):
             // Return starts a paragraph; Shift-Return is a single line break (ADR 0004).
             let soft = NSApp.currentEvent?.modifierFlags.contains(.shift) ?? false
@@ -727,6 +753,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.isRichText = false
         textView.allowsUndo = true
         textView.usesFontPanel = false
+        textView.usesFindBar = true  // ticket 24
+        textView.isIncrementalSearchingEnabled = true
         textView.textStorage?.delegate = styler
         textView.typingAttributes = styler.baseAttributes
         textView.textContainerInset = NSSize(width: 12, height: 12)
