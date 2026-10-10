@@ -67,6 +67,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
                                                name: NSView.frameDidChangeNotification, object: scrollView.contentView)
 
         editor.onFormat = { [weak self] in self?.format($0) }
+        editor.onMoveToNotesFolder = { [weak self] in self?.moveOutsideFileIn() }
         editor.menuItems = { [weak self] in
             guard let self, let file = folder.currentNoteURL ?? folder.outsideFileURL else { return [] }
             return actions(for: file)
@@ -351,8 +352,28 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         return NoteActions.items(
             for: note,
             prepare: { [weak self] in self?.save { try $0.flush() } },
-            trash: isOutside ? nil : { [weak self] note in self?.confirmTrash(note) { self?.trash(note) } }
+            last: isOutside ? .moveIn { [weak self] in self?.moveOutsideFileIn() }
+                            : .trash { [weak self] note in self?.confirmTrash(note) { self?.trash(note) } }
         )
+    }
+
+    /// Move to Notes Folder (ticket 32): the Outside File becomes a Note, editable
+    /// at once, selected in the Note List where its date puts it. If the move
+    /// fails, it stays read-only where it was.
+    private func moveOutsideFileIn() {
+        guard folder.outsideFileURL != nil else { return }  // a stale menu item: already moved or gone
+        let moved: URL
+        do {
+            moved = try folder.moveOutsideFileIn()
+        } catch {
+            ErrorAlert.show("MacJot couldn't move this file.", error: error)
+            return
+        }
+        open(moved)  // a Note now; if it can't be read, that says so
+        // Shown and selected where its date puts it, also if a search wouldn't have listed it.
+        noteList.cancelSearch()
+        reloadNoteList()
+        panel.makeFirstResponder(textView)
     }
 
     /// Something in the Notes Folder changed, here or elsewhere: bring the open

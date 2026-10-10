@@ -17,6 +17,8 @@ final class EditorViewController: NSViewController {
     var menuItems: () -> [NSMenuItem] = { [] }
     /// A Formatting Toolbar control was clicked.
     var onFormat: (FormatCommand) -> Void = { _ in }
+    /// The read-only bar's Move to Notes Folder button was clicked (ticket 32).
+    var onMoveToNotesFolder: () -> Void = {}
 
     private let scrollView: NSScrollView
     private let moreButton = NSButton()
@@ -142,6 +144,14 @@ final class EditorViewController: NSViewController {
         let row = NSStackView(views: [lock, readOnlyLabel])
         row.spacing = 6
         row.alignment = .firstBaseline
+        // Blue like a default button, but without Return as its key: Return in
+        // the text would otherwise move the file.
+        let move = NSButton(title: "Move to Notes Folder", target: self, action: #selector(moveToNotesFolder))
+        move.bezelColor = .controlAccentColor
+        move.controlSize = .small
+        move.translatesAutoresizingMaskIntoConstraints = false
+        move.setContentCompressionResistancePriority(.required, for: .horizontal)
+        readOnlyBar.addSubview(move)
         let top = NSBox(), bottom = NSBox()
         for view in [row, top, bottom] as [NSView] {
             view.translatesAutoresizingMaskIntoConstraints = false
@@ -160,10 +170,13 @@ final class EditorViewController: NSViewController {
             row.topAnchor.constraint(equalTo: readOnlyBar.topAnchor, constant: 8),
             row.bottomAnchor.constraint(equalTo: readOnlyBar.bottomAnchor, constant: -8),
             row.leadingAnchor.constraint(equalTo: readOnlyBar.leadingAnchor, constant: 16),
-            // Room on the right for ticket 32's Move to Notes Folder button.
-            row.trailingAnchor.constraint(lessThanOrEqualTo: readOnlyBar.trailingAnchor, constant: -16),
+            move.centerYAnchor.constraint(equalTo: readOnlyBar.centerYAnchor),
+            move.trailingAnchor.constraint(equalTo: readOnlyBar.trailingAnchor, constant: -12),
+            row.trailingAnchor.constraint(lessThanOrEqualTo: move.leadingAnchor, constant: -12),
         ])
     }
+
+    @objc private func moveToNotesFolder() { onMoveToNotesFolder() }
 
     /// A pull-down of H1–H3 and plain text, with ⌘1–⌘3 and ⌘0 as its key
     /// equivalents. (A panel key equivalent reaches the window's controls before

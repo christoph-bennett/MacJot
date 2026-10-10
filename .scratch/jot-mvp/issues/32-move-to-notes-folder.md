@@ -10,10 +10,10 @@
 
 **Blocked by:** 31
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The bar's button and the menus' item move a Desktop file into the Notes Folder; the original is gone from the Desktop
-- [ ] Afterwards it's editable, has no bar or lock, and sits in the Note List by its modification date, selected
-- [ ] `Shopping Ideas.md` keeps its name; `notes.markdown` becomes `notes.md`; a clash gives `-2`; no Date Prefix
-- [ ] Changing its Title afterwards renames it as for any Note
-- [ ] A failed move (e.g. a read-only volume, or "Don't Allow" in the folder prompt) shows the alert and leaves the file where it was, read-only; never two copies
+- [x] The bar's button and the menus' item move a Desktop file into the Notes Folder; the original is gone from the Desktop
+- [x] Afterwards it's editable, has no bar or lock, and sits in the Note List by its modification date, selected
+- [x] `Shopping Ideas.md` keeps its name; `notes.markdown` becomes `notes.md`; a clash gives `-2`; no Date Prefix
+- [x] Changing its Title afterwards renames it as for any Note
+- [x] A failed move (e.g. a read-only volume, or "Don't Allow" in the folder prompt) shows the alert and leaves the file where it was, read-only; never two copies

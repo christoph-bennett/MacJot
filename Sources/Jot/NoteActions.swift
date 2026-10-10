@@ -21,8 +21,14 @@ final class ClosureMenuItem: NSMenuItem {
 @MainActor
 enum NoteActions {
     /// `prepare` runs first (e.g. to save the open Note so the file is current).
-    /// Without `trash` (an Outside File, ticket 31) there's no Move to Trash.
-    static func items(for note: URL, prepare: @escaping () -> Void, trash: ((URL) -> Void)?) -> [NSMenuItem] {
+    /// The last item: Move to Trash for a Note, Move to Notes Folder for an
+    /// Outside File (tickets 31 and 32), which MacJot never trashes.
+    enum Last {
+        case trash((URL) -> Void)
+        case moveIn(() -> Void)
+    }
+
+    static func items(for note: URL, prepare: @escaping () -> Void, last: Last) -> [NSMenuItem] {
         let items = [
             ClosureMenuItem("Reveal in Finder", symbol: "folder") {
                 prepare()
@@ -39,7 +45,11 @@ enum NoteActions {
                 NSPasteboard.general.setString(text, forType: .string)
             },
         ]
-        guard let trash else { return items }
-        return items + [.separator(), ClosureMenuItem("Move to Trash", symbol: "trash") { trash(note) }]
+        switch last {
+        case .trash(let trash):
+            return items + [.separator(), ClosureMenuItem("Move to Trash", symbol: "trash") { trash(note) }]
+        case .moveIn(let moveIn):
+            return items + [.separator(), ClosureMenuItem("Move to Notes Folder", symbol: "tray.and.arrow.down") { moveIn() }]
+        }
     }
 }

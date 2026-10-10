@@ -773,6 +773,94 @@ final class NotesFolderTests {
         #expect(throws: NotesFolder.OutsideFileError.self) { try folder.openOutside(missing) }
     }
 
+    // MARK: Move to Notes Folder (ticket 32)
+
+    @Test func movingAnOutsideFileMakesItANote() throws {
+        let folder = try makeFolder()
+        let outside = try writeOutside("Shopping Ideas.md", "Shopping\nideas")
+        _ = try folder.openOutside(outside)
+        let moved = try folder.moveOutsideFileIn()
+        #expect(moved.lastPathComponent == "Shopping Ideas.md")
+        #expect(try files() == ["Shopping Ideas.md"])
+        #expect(!FileManager.default.fileExists(atPath: outside.path))
+        #expect(folder.outsideFileURL == nil)
+        #expect(folder.isNote(moved))
+        #expect(try folder.open(moved) == "Shopping\nideas")
+    }
+
+    @Test func aMovedFileKeepsItsNameAndDate() throws {
+        let folder = try makeFolder(datePrefix: true)
+        let outside = try writeOutside("notes.markdown", "Notes")
+        let modified = day(2026, 3, 1)
+        try FileManager.default.setAttributes([.modificationDate: modified], ofItemAtPath: outside.path)
+        _ = try folder.openOutside(outside)
+        _ = try folder.moveOutsideFileIn()
+        #expect(try files() == ["notes.md"])  // .md, and no Date Prefix
+        let attributes = try FileManager.default.attributesOfItem(atPath: root.appendingPathComponent("notes.md").path)
+        #expect(attributes[.modificationDate] as? Date == modified)
+    }
+
+    @Test func aMovedFileDoesntReplaceANote() throws {
+        let folder = try makeFolder()
+        try writeNote("ideas.md", "Mine")
+        _ = try folder.openOutside(try writeOutside("ideas.md", "Theirs"))
+        _ = try folder.moveOutsideFileIn()
+        #expect(try files() == ["ideas-2.md", "ideas.md"])
+        #expect(try contents("ideas.md") == "Mine")
+        #expect(try contents("ideas-2.md") == "Theirs")
+    }
+
+    @Test func aFileFromASubfolderMovesToTheTop() throws {
+        let folder = try makeFolder()
+        let sub = root.appendingPathComponent("Archive", isDirectory: true)
+        try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+        let old = sub.appendingPathComponent("old.md")
+        try "Old".write(to: old, atomically: true, encoding: .utf8)
+        _ = try folder.openOutside(old)
+        _ = try folder.moveOutsideFileIn()
+        #expect(try files() == ["Archive", "old.md"])
+        #expect(try FileManager.default.contentsOfDirectory(atPath: sub.path).isEmpty)
+    }
+
+    @Test func aMovedNoteIsRenamedOnceItsTitleChanges() throws {
+        let folder = try makeFolder()
+        _ = try folder.openOutside(try writeOutside("Shopping Ideas.md", "Shopping\nideas"))
+        _ = try folder.open(try folder.moveOutsideFileIn())
+        try folder.leave()
+        #expect(try files() == ["Shopping Ideas.md"])  // unchanged Title: name kept
+        _ = try folder.open(root.appendingPathComponent("Shopping Ideas.md"))
+        folder.update(text: "Groceries\nideas")
+        try folder.leave()
+        #expect(try files() == ["groceries.md"])
+    }
+
+    @Test func aSymlinksRealFileIsMoved() throws {
+        let folder = try makeFolder()
+        let real = try writeOutside("Real.md", "Real")
+        let link = real.deletingLastPathComponent().appendingPathComponent("Link.md")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+        _ = try folder.openOutside(link)
+        let moved = try folder.moveOutsideFileIn()
+        #expect(moved.lastPathComponent == "Link.md")
+        #expect(try String(contentsOf: moved, encoding: .utf8) == "Real")
+        #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: moved.path)) == nil)  // the file, not a link
+        #expect(!FileManager.default.fileExists(atPath: real.path))
+        #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) == nil)
+    }
+
+    @Test func aFailedMoveLeavesTheFileWhereItWas() throws {
+        let folder = try makeFolder()
+        let outside = try writeOutside("Ideas.md", "Ideas")
+        let desktop = outside.deletingLastPathComponent()
+        _ = try folder.openOutside(outside)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: desktop.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: desktop.path) }
+        #expect(throws: (any Error).self) { try folder.moveOutsideFileIn() }
+        #expect(FileManager.default.fileExists(atPath: outside.path))
+        #expect(folder.outsideFileURL == outside)
+        #expect(try files().isEmpty)
+    }
+
     @Test func notesAreListedNewestFirst() throws {
         try writeNote("old.md", "Old", modified: Date(timeIntervalSinceNow: -3600))
         try writeNote("new.md", "New", modified: Date())

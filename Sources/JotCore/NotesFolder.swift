@@ -293,6 +293,37 @@ public final class NotesFolder {
         return text
     }
 
+    /// Moves the shown Outside File into the Notes Folder (ticket 32, ADR 0007)
+    /// and returns where it ended up, for the caller to open as a Note. It keeps
+    /// its name (as `.md`, without a Date Prefix; `-2` on a clash) and its
+    /// modification date. A symlink's real file is moved, and the link removed:
+    /// moving only the link would leave two copies once the Note is saved. If the
+    /// move fails, it stays where it was, still the Outside File; never two copies.
+    public func moveOutsideFileIn() throws -> URL {
+        guard let file = outsideFileURL else { throw CocoaError(.fileNoSuchFile) }
+        let source = file.resolvingSymlinksInPath()
+        var name = file.deletingPathExtension().lastPathComponent
+        while name.hasPrefix(".") { name.removeFirst() }  // a hidden file wouldn't be listed as a Note
+        if name.isEmpty { name = "untitled" }
+        let moved: URL
+        do {
+            moved = try place(source, name: name)
+        } catch let error as POSIXError where error.code == .EXDEV {
+            // Another volume: copy (dates included), then delete the original.
+            moved = try placeTemporary(name: name) { try FileManager.default.copyItem(at: source, to: $0) }
+            do {
+                try FileManager.default.removeItem(at: source)
+            } catch {
+                try? FileManager.default.removeItem(at: moved)
+                throw error
+            }
+        }
+        if source != file { try? FileManager.default.removeItem(at: file) }
+        outsideFileURL = nil
+        outsideText = ""
+        return moved
+    }
+
     /// The Outside File couldn't be read, as opposed to the open Note not saving.
     public enum OutsideFileError: LocalizedError {
         case unreadable(Error)
@@ -514,9 +545,15 @@ public final class NotesFolder {
     /// Writes a new Note's file. The text goes to a hidden temporary file first
     /// and is then moved into place, so the Note appears complete or not at all.
     private func create(_ data: Data, name: String) throws -> URL {
+        try placeTemporary(name: name) { try data.write(to: $0) }
+    }
+
+    /// Fills a hidden temporary file in the Notes Folder, then places it as
+    /// `<name>.md`; the temporary file never stays behind, also if filling it fails.
+    private func placeTemporary(name: String, fill: (URL) throws -> Void) throws -> URL {
         let temporary = url.appendingPathComponent(".jot-\(UUID().uuidString).tmp")
-        try data.write(to: temporary)
         defer { try? FileManager.default.removeItem(at: temporary) }
+        try fill(temporary)
         return try place(temporary, name: name)
     }
 
