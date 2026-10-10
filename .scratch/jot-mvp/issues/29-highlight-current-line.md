@@ -4,10 +4,10 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Settings > Editor shows "Highlight current line", checked by default; unchecking it removes the band and the stronger number
-- [ ] The band follows the cursor (typing, arrows, clicks) and covers every row of a wrapped line
-- [ ] Selecting text removes the band; a plain cursor brings it back
-- [ ] The current line's number is drawn stronger; with line numbers off, only the band shows
-- [ ] Looks right in light and dark mode, and with find highlights (⌘F)
+- [x] Settings > Editor shows "Highlight current line", checked by default; unchecking it removes the band and the stronger number
+- [x] The band follows the cursor (typing, arrows, clicks) and covers every row of a wrapped line
+- [x] Selecting text removes the band; a plain cursor brings it back
+- [x] The current line's number is drawn stronger; with line numbers off, only the band shows
+- [x] Looks right in light and dark mode, and with find highlights (⌘F)

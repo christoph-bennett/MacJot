@@ -27,6 +27,11 @@ final class LineNumberGutter: NSRulerView {
     }
     private var numberFont = LineNumberGutter.numberFont(size: 14)
 
+    /// The cursor's line number drawn stronger (ticket 29); the editor draws the band.
+    var highlightsCurrentLine = false {
+        didSet { if highlightsCurrentLine != oldValue { needsDisplay = true } }
+    }
+
     init(textView: NSTextView, scrollView: NSScrollView) {
         self.textView = textView
         super.init(scrollView: scrollView, orientation: .verticalRuler)
@@ -45,6 +50,9 @@ final class LineNumberGutter: NSRulerView {
         // Resizing rewraps lines; scrolling shows others.
         textView.postsFrameChangedNotifications = true
         center.addObserver(self, selector: #selector(redraw), name: NSView.frameDidChangeNotification, object: textView)
+        // The current line's number.
+        center.addObserver(self, selector: #selector(redraw), name: NSTextView.didChangeSelectionNotification,
+                           object: textView)
         scrollView.contentView.postsBoundsChangedNotifications = true
         center.addObserver(self, selector: #selector(redraw), name: NSView.boundsDidChangeNotification,
                            object: scrollView.contentView)
@@ -106,6 +114,8 @@ final class LineNumberGutter: NSRulerView {
         NSRect(x: floor(bounds.maxX) - 1, y: dirtyRect.minY, width: 1, height: dirtyRect.height).fill()
 
         let lines = currentLines
+        let current = highlightsCurrentLine && textView.selectedRanges.count == 1
+            ? CurrentLine.range(in: textView.string, selection: textView.selectedRange())?.location : nil
         let origin = textView.textContainerOrigin
         let visible = textView.visibleRect.offsetBy(dx: -origin.x, dy: -origin.y)
         let glyphs = layoutManager.glyphRange(forBoundingRect: visible, in: container)
@@ -122,26 +132,26 @@ final class LineNumberGutter: NSRulerView {
                 let baseline = rect.minY + (isBlank
                     ? layoutManager.defaultBaselineOffset(for: font ?? NSFont.systemFont(ofSize: fontSize))
                     : layoutManager.location(forGlyphAt: row.location).y)
-                draw(number, baselineInText: baseline + origin.y, in: textView)
+                draw(number, baselineInText: baseline + origin.y, isCurrent: character == current, in: textView)
             }
             index = NSMaxRange(row)
         }
         // The empty last line after a final line break (or of an empty Note) has no glyphs.
-        if layoutManager.extraLineFragmentTextContainer != nil,
-           let number = lines.number(ofLineStartingAt: textView.textStorage?.length ?? 0) {
+        let end = textView.textStorage?.length ?? 0
+        if layoutManager.extraLineFragmentTextContainer != nil, let number = lines.number(ofLineStartingAt: end) {
             let rect = layoutManager.extraLineFragmentRect
             // Laid out with the typing attributes, which are always the editor's plain ones.
             let font = NSFont.systemFont(ofSize: fontSize)
             let baseline = rect.minY + layoutManager.defaultBaselineOffset(for: font)
-            draw(number, baselineInText: baseline + origin.y, in: textView)
+            draw(number, baselineInText: baseline + origin.y, isCurrent: end == current, in: textView)
         }
     }
 
     /// Right-aligned towards the text, its baseline level with the line's.
-    private func draw(_ number: Int, baselineInText baseline: CGFloat, in textView: NSTextView) {
+    private func draw(_ number: Int, baselineInText baseline: CGFloat, isCurrent: Bool, in textView: NSTextView) {
         let y = convert(NSPoint(x: 0, y: baseline), from: textView).y
         let string = String(number) as NSString
-        let attributes: [NSAttributedString.Key: Any] = [.font: numberFont, .foregroundColor: NSColor.secondaryLabelColor]
+        let attributes: [NSAttributedString.Key: Any] = [.font: numberFont, .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor]
         let width = string.size(withAttributes: attributes).width
         // On whole pixels, so numbers of the same width line up exactly.
         let scale = window?.backingScaleFactor ?? 2

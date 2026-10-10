@@ -170,8 +170,10 @@ struct EditorPane: View {
     @AppStorage(SettingsWindowController.fontSizeKey) private var fontSize = SettingsWindowController.defaultFontSize
     @AppStorage(SettingsWindowController.relativeDatesKey) private var relativeDates = true
     @AppStorage(SettingsWindowController.lineNumbersKey) private var lineNumbers = true
+    @AppStorage(SettingsWindowController.currentLineKey) private var currentLine = true
     let onFontSizeChange: (CGFloat) -> Void
     let onLineNumbersChange: (Bool) -> Void
+    let onCurrentLineChange: (Bool) -> Void
     let onRelativeDatesChange: (Bool) -> Void
 
     private static let sizes: [Double] = [11, 12, 13, 14, 15, 16, 18, 20, 22, 24]
@@ -197,6 +199,9 @@ struct EditorPane: View {
             Row("Line Numbers:") {
                 Toggle("Show line numbers", isOn: $lineNumbers)
             }
+            Row("Current Line:") {
+                Toggle("Highlight current line", isOn: $currentLine)
+            }
             Divider()
             Row("Note List:") {
                 VStack(alignment: .leading, spacing: 4) {
@@ -210,6 +215,7 @@ struct EditorPane: View {
         .onChange(of: fontSize) { _, size in onFontSizeChange(size) }
         .onChange(of: relativeDates) { _, on in onRelativeDatesChange(on) }
         .onChange(of: lineNumbers) { _, on in onLineNumbersChange(on) }
+        .onChange(of: currentLine) { _, on in onCurrentLineChange(on) }
     }
 }
 

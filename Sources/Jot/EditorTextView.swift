@@ -1,4 +1,5 @@
 import AppKit
+import JotCore
 
 extension NSAttributedString.Key {
     /// On a checklist item's `[ ]` / `[x]`: whether it's checked. Set by
@@ -34,6 +35,64 @@ final class EditorTextView: NSTextView {
     /// it empty trashes it (ticket 25). Drawn, not part of the text.
     var hint: String? {
         didSet { if hint != oldValue { needsDisplay = true } }
+    }
+
+    /// A faint band behind the line with the cursor, all its wrapped rows (ticket 29).
+    var highlightsCurrentLine = false {
+        didSet {
+            guard highlightsCurrentLine != oldValue else { return }
+            bandRect = currentLineRect()
+            needsDisplay = true
+        }
+    }
+    /// Where the band was last drawn, to redraw there when the cursor moves away.
+    private var bandRect: NSRect?
+    /// Faint enough not to compete with the text or the find highlights. The
+    /// label colour, so it follows light and dark; a dark background needs more
+    /// of it to show at all.
+    private static let bandColor = NSColor(name: nil) { appearance in
+        let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return NSColor.labelColor.withAlphaComponent(isDark ? 0.1 : 0.05)
+    }
+
+    override func setSelectedRanges(_ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting: Bool) {
+        super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
+        guard highlightsCurrentLine else { return }
+        let band = currentLineRect()
+        guard band != bandRect else { return }
+        if let bandRect { setNeedsDisplay(bandRect) }
+        if let band { setNeedsDisplay(band) }
+        bandRect = band
+    }
+
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
+        // Measured afresh: resizing or restyling may have rewrapped the line
+        // (and redraws the whole view anyway).
+        guard let band = currentLineRect() else { return }
+        bandRect = band
+        Self.bandColor.setFill()
+        band.intersection(rect).fill(using: .sourceOver)
+    }
+
+    /// The band: every row of the cursor's line, across the whole width. Nil
+    /// while it's off or text is selected.
+    private func currentLineRect() -> NSRect? {
+        guard highlightsCurrentLine, selectedRanges.count == 1, let layoutManager, let textContainer,
+              let line = CurrentLine.range(in: string, selection: selectedRange()) else { return nil }
+        var rows: NSRect
+        if line.length == 0 {
+            // The empty last line after a final break (or of an empty Note) has no glyphs.
+            guard layoutManager.extraLineFragmentTextContainer != nil else { return nil }
+            rows = layoutManager.extraLineFragmentRect
+        } else {
+            let glyphs = layoutManager.glyphRange(forCharacterRange: line, actualCharacterRange: nil)
+            rows = layoutManager.boundingRect(forGlyphRange: glyphs, in: textContainer)
+            layoutManager.enumerateLineFragments(forGlyphRange: glyphs) { rect, _, _, _, _ in
+                rows = rows.union(rect)
+            }
+        }
+        return NSRect(x: bounds.minX, y: rows.minY + textContainerOrigin.y, width: bounds.width, height: rows.height)
     }
 
     override func draw(_ dirtyRect: NSRect) {

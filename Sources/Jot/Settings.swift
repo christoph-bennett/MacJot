@@ -13,6 +13,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let defaultFontSize = 14.0
     static let relativeDatesKey = "relativeDates"
     static let lineNumbersKey = "showLineNumbers"
+    static let currentLineKey = "highlightCurrentLine"
     private static let switcherID = NSToolbarItem.Identifier("SettingsPanes")
 
     /// The Date Prefix toggle changed (on the main thread).
@@ -21,6 +22,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     var onFontSizeChange: (CGFloat) -> Void = { _ in }
     var onRelativeDatesChange: (Bool) -> Void = { _ in }
     var onLineNumbersChange: (Bool) -> Void = { _ in }
+    var onCurrentLineChange: (Bool) -> Void = { _ in }
     /// Reset Size & Position was clicked.
     var onResetPanel: () -> Void = {}
     /// The Notes Folder in use, shown in Settings.
@@ -175,6 +177,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
         case .editor:
             view = AnyView(EditorPane(onFontSizeChange: { [weak self] in self?.onFontSizeChange($0) },
                                       onLineNumbersChange: { [weak self] in self?.onLineNumbersChange($0) },
+                                      onCurrentLineChange: { [weak self] in self?.onCurrentLineChange($0) },
                                       onRelativeDatesChange: { [weak self] in self?.onRelativeDatesChange($0) }))
         case .shortcuts:
             view = AnyView(ShortcutsPane(state: state, onRestoreDefaults: { [weak self] in self?.restoreDefaultHotkeys() }))

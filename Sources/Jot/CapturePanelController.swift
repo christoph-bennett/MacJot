@@ -484,6 +484,12 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         (textView as? EditorTextView)?.leadingInset = on ? 0 : nil
     }
 
+    /// A band behind the cursor's line and its number drawn stronger (Settings > Editor).
+    func setHighlightsCurrentLine(_ on: Bool) {
+        (textView as? EditorTextView)?.highlightsCurrentLine = on
+        gutter.highlightsCurrentLine = on
+    }
+
     /// The Note List's dates: "2h", "Mon", or the short date and time.
     func setRelativeDates(_ on: Bool) {
         noteList.showsRelativeDates = on

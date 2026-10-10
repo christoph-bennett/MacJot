@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             SettingsWindowController.fontSizeKey: SettingsWindowController.defaultFontSize,
             SettingsWindowController.relativeDatesKey: true,
             SettingsWindowController.lineNumbersKey: true,
+            SettingsWindowController.currentLineKey: true,
         ])
         // No preferences yet: opening the Notes Folder below saves the first one.
         let isFirstLaunch = defaults.object(forKey: SavedNotesFolder.pathKey) == nil
@@ -34,6 +35,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         panel.setRelativeDates(defaults.bool(forKey: SettingsWindowController.relativeDatesKey))
         panel.setLineNumbers(defaults.bool(forKey: SettingsWindowController.lineNumbersKey))
         settings.onLineNumbersChange = { [weak panel] in panel?.setLineNumbers($0) }
+        panel.setHighlightsCurrentLine(defaults.bool(forKey: SettingsWindowController.currentLineKey))
+        settings.onCurrentLineChange = { [weak panel] in panel?.setHighlightsCurrentLine($0) }
         settings.onFontSizeChange = { [weak panel] in panel?.setFontSize($0) }
         settings.onRelativeDatesChange = { [weak panel] in panel?.setRelativeDates($0) }
         settings.onResetPanel = { [weak panel] in panel?.resetFrame() }

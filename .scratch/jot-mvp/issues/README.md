@@ -32,9 +32,9 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 26 | [Trash an emptied Note with its full contents](26-trash-full-contents.md) | none | done |
 | 27 | [`install.sh` starts MacJot reliably](27-install-script-starts-macjot.md) | none | done |
 | 28 | [Word wrap on/off](28-word-wrap-setting.md) | none | ready-for-agent |
-| 29 | [Highlight the current line](29-highlight-current-line.md) | none | ready-for-agent |
+| 29 | [Highlight the current line](29-highlight-current-line.md) | none | done |
 | 30 | [MacJot opens `.md` files from its Notes Folder](30-open-md-files.md) | none | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
-Planned order for the rest: 29, 28, 30.
+Planned order for the rest: 28, 30.
