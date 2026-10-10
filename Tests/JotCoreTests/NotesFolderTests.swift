@@ -512,6 +512,62 @@ final class NotesFolderTests {
         #expect(trashedContents == ["Long note\nwith content"])
     }
 
+    // Ticket 26: the Trash gets the longest version saved since the Note was
+    // opened, not the last autosave of a slowly shrinking text.
+
+    @Test func slowlyEmptiedNoteGoesToTheTrashWhole() throws {
+        try writeNote("plan.md", "Plan\nbuy milk\ncall Anna")
+        let folder = try makeFolder()
+        _ = try folder.open(root.appendingPathComponent("plan.md"))
+        for text in ["Plan\nbuy milk\ncall", "Plan\nbuy milk", "Plan\nbuy", "Pl"] {
+            folder.update(text: text)
+            try folder.flush()  // an autosave while deleting
+        }
+        folder.update(text: "")
+        try folder.leave()
+        #expect(trashed == ["plan.md"])
+        #expect(trashedContents == ["Plan\nbuy milk\ncall Anna"])
+    }
+
+    @Test func linesAddedBeforeEmptyingGoToTheTrashToo() throws {
+        try writeNote("plan.md", "Plan\nbuy milk")
+        let folder = try makeFolder()
+        _ = try folder.open(root.appendingPathComponent("plan.md"))
+        folder.update(text: "Plan\nbuy milk\ncall Anna\nbook train")
+        try folder.flush()
+        folder.update(text: "Plan")
+        try folder.flush()
+        folder.update(text: "")
+        try folder.leave()
+        #expect(trashedContents == ["Plan\nbuy milk\ncall Anna\nbook train"])
+    }
+
+    @Test func onlyThisVisitCounts() throws {
+        try writeNote("plan.md", "Plan\nbuy milk\ncall Anna")
+        let folder = try makeFolder()
+        _ = try folder.open(root.appendingPathComponent("plan.md"))
+        folder.update(text: "Plan\nbuy")
+        try folder.leave()  // emptied halfway on an earlier visit
+        _ = try folder.open(root.appendingPathComponent("plan.md"))
+        folder.update(text: "Pl")
+        try folder.flush()
+        folder.update(text: "")
+        try folder.leave()
+        #expect(trashedContents == ["Plan\nbuy"])
+    }
+
+    @Test func aDraftEmptiedAfterGettingItsFileGoesToTheTrashWhole() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Plan\nbuy milk\ncall Anna")
+        try folder.flush()
+        folder.update(text: "Plan")
+        try folder.flush()
+        folder.update(text: "")
+        try folder.leave()
+        #expect(trashedContents == ["Plan\nbuy milk\ncall Anna"])
+    }
+
     @Test func emptiedNoteWhoseFileIsGoneCanStillBeLeft() throws {
         let folder = try makeFolder()
         try folder.startDraft()

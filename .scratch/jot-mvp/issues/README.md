@@ -27,7 +27,11 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 21 | [Note List layout](21-note-list-layout.md) | 19 | done |
 | 22 | [Note List empty states](22-note-list-empty-states.md) | 19 | done |
 | 23 | [Paragraph gaps: no number, no height](23-line-numbers-skip-paragraph-gaps.md) | 16 | done |
+| 24 | [Find and replace in the open Note](24-find-and-replace.md) | none | ready-for-agent |
+| 25 | [Hint while a Note is empty](25-empty-note-hint.md) | 26 | ready-for-agent |
+| 26 | [Trash an emptied Note with its full contents](26-trash-full-contents.md) | none | done |
+| 27 | [`install.sh` starts MacJot reliably](27-install-script-starts-macjot.md) | none | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
-Planned order for the rest: 20, 21, 22.
+Planned order for the rest: 26, 25, 24, 27.

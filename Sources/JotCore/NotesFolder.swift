@@ -48,6 +48,9 @@ public final class NotesFolder {
     /// Text last written, to the Note's file or (while `isInRecovery`) the Recovery Copy.
     private var persistedText = ""
     private var isInRecovery = false
+    /// The longest text the open Note's file has had since it was opened: what
+    /// goes to the Trash if the Note is emptied, however slowly (ticket 26).
+    private var longestSavedText = ""
 
     /// The open Note is a Draft: it has no file in the Notes Folder yet.
     public var isDraft: Bool {
@@ -81,6 +84,7 @@ public final class NotesFolder {
         isOpen = true
         latestText = ""
         persistedText = ""
+        longestSavedText = ""
         isInRecovery = false
         currentNoteURL = nil
         currentSlug = nil
@@ -113,9 +117,13 @@ public final class NotesFolder {
                 wrote = try renameIfNeeded(file) || wrote
                 left = currentNoteURL
             } else if !Title.isBlank(persistedText) {
-                // Emptied by the user: its last non-blank content goes to the Trash,
-                // so it can be restored. A file that was blank when opened stays.
+                // Emptied by the user: its longest content since it was opened goes
+                // to the Trash, so it can be restored. A file that was blank when
+                // opened stays.
                 if FileManager.default.fileExists(atPath: file.path) {
+                    if longestSavedText != persistedText {
+                        try Data(longestSavedText.utf8).write(to: file, options: .atomic)
+                    }
                     try moveToTrash(file)
                     wrote = true
                 }
@@ -215,6 +223,7 @@ public final class NotesFolder {
         isOpen = true
         latestText = text
         persistedText = text
+        longestSavedText = text
         isInRecovery = false
         currentNoteURL = note
         let slug = Title.slug(Title.of(text) ?? "")
@@ -278,6 +287,7 @@ public final class NotesFolder {
             return .unchanged
         }
         persistedText = text  // what's on disk now, so a flush writes local edits over it
+        rememberSaved(text)
         rememberFileIdentity()
         if hasLocalEdits { return latestText == text ? .unchanged : .keptLocal }
         latestText = text
@@ -325,6 +335,7 @@ public final class NotesFolder {
             guard text != persistedText, !Title.isBlank(text) else { return false }
             try Data(text.utf8).write(to: file, options: .atomic)
             persistedText = text
+            rememberSaved(text)
             rememberFileIdentity()
             return true
         }
@@ -342,6 +353,7 @@ public final class NotesFolder {
             currentSlug = slug
             currentPrefix = prefix
             persistedText = text
+            rememberSaved(text)
             try discardRecoveryCopy()
             return true
         }
@@ -351,6 +363,10 @@ public final class NotesFolder {
         persistedText = text
         isInRecovery = true
         return true
+    }
+
+    private func rememberSaved(_ text: String) {
+        if text.utf16.count > longestSavedText.utf16.count { longestSavedText = text }
     }
 
     // MARK: Recovery Copy
