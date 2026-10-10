@@ -44,6 +44,14 @@ _Avoid_: Empty note, unsaved note
 A hidden backup of a Draft's text, kept outside the Notes Folder until the Draft gets its file, so a crash never loses it.
 _Avoid_: Temp file, autosave file, backup
 
+**Search**:
+Looking for text across all Notes, by filtering the Note List.
+_Avoid_: Find (that's within one Note), filter
+
+**Find**:
+Looking for (and optionally replacing) text within the open Note.
+_Avoid_: Search (that's across Notes)
+
 **Formatting Toolbar**:
 The row of controls that applies Markdown formatting to the selection, for users who don't type the syntax.
 _Avoid_: Format bar, ribbon
