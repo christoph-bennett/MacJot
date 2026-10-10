@@ -647,6 +647,40 @@ final class NotesFolderTests {
         return url
     }
 
+    // Files opened from Finder (ticket 30): only the folder's own Notes open.
+    @Test func aTopLevelMarkdownFileIsANote() throws {
+        let folder = try makeFolder()
+        #expect(folder.isNote(try writeNote("Groceries.md", "Groceries")))
+        #expect(folder.isNote(try writeNote("Shouting.MD", "Shouting")))
+    }
+
+    @Test func filesElsewhereAreNotNotes() throws {
+        let folder = try makeFolder()
+        let sub = root.appendingPathComponent("Archive", isDirectory: true)
+        try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+        #expect(!folder.isNote(sub.appendingPathComponent("Old.md")))
+        #expect(!folder.isNote(root.deletingLastPathComponent().appendingPathComponent("Beside.md")))
+        #expect(!folder.isNote(try writeNote("List.txt", "List")))
+        #expect(!folder.isNote(try writeNote(".hidden.md", "Hidden")))
+    }
+
+    // The temporary directory is under /var, a symlink to /private/var; Finder hands over real paths.
+    @Test func aNoteIsRecognisedThroughSymlinks() throws {
+        let folder = try makeFolder()
+        let note = try writeNote("Groceries.md", "Groceries")
+        #expect(folder.isNote(note.resolvingSymlinksInPath()))
+        #expect(folder.isNote(root.appendingPathComponent("../Notes/Groceries.md")))
+    }
+
+    @Test func aSymlinkInTheFolderIsANote() throws {
+        let folder = try makeFolder()
+        let elsewhere = root.deletingLastPathComponent().appendingPathComponent("Elsewhere.md")
+        try "Elsewhere".write(to: elsewhere, atomically: true, encoding: .utf8)
+        let link = root.appendingPathComponent("Linked.md")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: elsewhere)
+        #expect(folder.isNote(link))
+    }
+
     @Test func notesAreListedNewestFirst() throws {
         try writeNote("old.md", "Old", modified: Date(timeIntervalSinceNow: -3600))
         try writeNote("new.md", "New", modified: Date())

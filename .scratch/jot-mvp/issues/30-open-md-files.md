@@ -4,9 +4,9 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Finder > a `.md` file > Open With lists MacJot; the default app for Markdown doesn't change
-- [ ] Opening a Note from the Notes Folder with MacJot shows it in the Capture Panel, MacJot running or not
-- [ ] Opening a `.md` file from elsewhere (or a subfolder) shows the alert naming the Notes Folder, and changes nothing
-- [ ] Several files at once: Notes Folder files open the first one; outside ones get one alert
+- [x] Finder > a `.md` file > Open With lists MacJot; the default app for Markdown doesn't change
+- [x] Opening a Note from the Notes Folder with MacJot shows it in the Capture Panel, MacJot running or not
+- [x] Opening a `.md` file from elsewhere (or a subfolder) shows the alert naming the Notes Folder, and changes nothing
+- [x] Several files at once: Notes Folder files open the first one; outside ones get one alert

@@ -214,6 +214,16 @@ public final class NotesFolder {
         return (try? file.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
     }
 
+    /// Whether `file` is one of the folder's Notes, as `notes()` lists them: a
+    /// visible `.md` file directly in the folder, not in a subfolder (ticket 30).
+    public func isNote(_ file: URL) -> Bool {
+        // Only the folders are resolved: a Note may itself be a symlink to a file elsewhere.
+        let file = file.standardizedFileURL
+        return file.pathExtension.lowercased() == "md" && !file.lastPathComponent.hasPrefix(".")
+            && file.deletingLastPathComponent().resolvingSymlinksInPath().path
+                == url.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
     /// The last `notes()`, by file.
     private var summaries: [URL: NoteSummary] = [:]
 

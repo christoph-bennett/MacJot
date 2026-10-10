@@ -10,6 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let settings = SettingsWindowController()
     private var terminationSignal: DispatchSourceSignal?
     private var firstLaunchHint: NSPopover?
+    /// Files from Finder that launched MacJot: they arrive before launching has
+    /// finished, so before the panel exists (ticket 30).
+    private var filesToOpen: [URL] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let defaults = UserDefaults.standard
@@ -60,7 +63,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         quitNormallyOnTerminationSignal()
         if isFirstLaunch {
             showFirstLaunchHint()
-            panel.showNewDraft()  // after the hint, so typing goes to the Draft
+            // After the hint, so typing goes to the Draft; launched with a file, that instead.
+            if filesToOpen.isEmpty { panel.showNewDraft() }
+        }
+        if !filesToOpen.isEmpty {
+            panel.openFromFinder(filesToOpen)
+            filesToOpen = []
         }
     }
 
@@ -90,6 +98,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         source.setEventHandler { NSApp.terminate(nil) }
         source.resume()
         terminationSignal = source
+    }
+
+    /// Finder > Open With > MacJot. When that launched MacJot, this comes before
+    /// `applicationDidFinishLaunching`, which opens the files once the panel exists.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        if let panel { panel.openFromFinder(urls) } else { filesToOpen += urls }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

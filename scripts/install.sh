@@ -20,6 +20,11 @@ if pkill -x MacJot; then  # MacJot quits normally on SIGTERM, saving the open No
 fi
 rm -rf ~/Applications/MacJot.app
 cp -R build/MacJot.app ~/Applications/
+# MacJot opens Markdown files (ticket 30): only the installed copy should be
+# offered in Finder's Open With, and with this build's document types.
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+"$LSREGISTER" -u "$PWD/build/MacJot.app" 2>/dev/null || true
+"$LSREGISTER" -f ~/Applications/MacJot.app
 tries=0
 until open ~/Applications/MacJot.app 2>/dev/null; do
   tries=$((tries + 1))

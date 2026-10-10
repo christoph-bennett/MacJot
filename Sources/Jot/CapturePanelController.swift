@@ -250,6 +250,26 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         reloadNoteList(keepingOrder: true)
     }
 
+    /// Files opened with MacJot from Finder (ticket 30): the first of them that's
+    /// a Note opens as if picked in the Note List; any others get one alert, as
+    /// MacJot doesn't edit files outside the Notes Folder.
+    func openFromFinder(_ files: [URL]) {
+        if let note = files.first(where: folder.isNote) {
+            open(note)
+            show()
+        }
+        let outside = files.filter { !folder.isNote($0) }
+        guard !outside.isEmpty else { return }
+        let alert = NSAlert()
+        let path = (folder.url.path as NSString).abbreviatingWithTildeInPath
+        alert.messageText = "MacJot only opens notes in your Notes Folder (\(path))."
+        alert.informativeText = outside.count == 1
+            ? "“\(outside[0].lastPathComponent)” wasn’t opened."
+            : "\(outside.count) files weren’t opened."
+        NSApp.activate()
+        alert.runModal()
+    }
+
     /// Asks first unless the user turned that off (Settings, ticket 14).
     private func confirmTrash(_ note: URL, then proceed: @escaping () -> Void) {
         guard UserDefaults.standard.bool(forKey: Self.confirmTrashKey) else { return proceed() }
