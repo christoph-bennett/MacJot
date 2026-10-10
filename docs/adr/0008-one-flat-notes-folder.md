@@ -1,0 +1,3 @@
+# One flat Notes Folder
+
+MacJot's Notes are the top-level `.md` files of a single Notes Folder, and that's deliberate: there are no subfolders, notebooks, tags-as-folders or per-folder hotkeys, and none are planned (decided 2026-10-10). A quick-capture app shouldn't ask where a thought goes before it's written down; Search across all Notes is how things are found again. Supporting subfolders would also touch everything built on one folder: the Note List, Search, renaming after the Title (ADR 0003), the folder watcher and the Outside File rule (ADR 0007, which treats files in subfolders as read-only Outside Files). Users who want structure can keep it in Titles, or in other Markdown tools pointed at the same folder.

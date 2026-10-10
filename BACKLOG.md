@@ -23,6 +23,15 @@ Decided 2026-10-10, after trying ticket 30's alert:
 
 - **Outside Files open read-only**, with a **Move to Notes Folder** button, instead of the alert for files outside the Notes Folder (ADR 0007). → tickets 31 and 32
 
+Picked from Later 2026-10-10 (second round):
+
+- **Line spacing**: Tight / Normal / Relaxed below Font Size. → ticket 33
+- **Show invisible characters**: `·` `→` `¬` `¶`, in Settings > Editor and View > Show Invisibles (⌥⌘I). → ticket 34
+- **Code block button**, with fenced blocks styled monospaced. → ticket 35
+- **Horizontal line** in the heading pop-up, drawn as a thin rule. → ticket 36
+- **Search by several words**, in any order, `"quotes"` for a phrase; instead of an SQLite index. → ticket 37
+- **Setting: custom Date Prefix format**, e.g. `20261009-` or `2026-10-09_` instead of the fixed `2026-10-09-`. Not typed as a format string: the user wants a drag-and-drop style editor, to be designed in its own session before it's ticketed. MacJot also reads the prefix back (`DatePrefix.of`, `DatePrefix.day(of:)`) to keep it on rename and to date the Note List, so Notes named with an earlier format must still be recognised.
+
 Earlier:
 
 - **Rename to MacJot** → ticket 17, ADR 0006 (decided 2026-10-09; replaces the Inbox item "Final app name and bundle ID"). Released on GitHub only, so Apple's rule against "Mac" in third-party names is an accepted risk. User-facing texts, app bundle, executable and process, bundle ID, Application Support folder, scripts and `SERVICES.md`; Swift module and type names stay. New installs default to `~/Documents/MacJot`; an existing Notes Folder is never moved or renamed.
@@ -33,21 +42,24 @@ Earlier:
 
 ## Later
 
-- **Setting: line height** (spacing between lines), next to font size; the paragraph gap and line numbers have to follow it.
-- **Show invisible characters**: spaces, tabs and line breaks as faint symbols, e.g. to check Markdown line breaks; toggle in Settings or the View menu.
-- **Setting: custom Date Prefix format**, e.g. `20261009-` or `2026-10-09_` instead of the fixed `2026-10-09-`; next to the Date Prefix checkbox in Settings > General, with the live example showing the result. MacJot also reads the prefix back (`DatePrefix.of`, `DatePrefix.day(of:)`) to keep it on rename and to date the Note List, so recognising Notes named with an earlier format has to keep working; the format may need limits (must contain year, month and day, only filename-safe characters).
-- **Settings in a config file** at `~/.macjot/config.json` instead of UserDefaults. Postponed 2026-10-09 before deciding why (hand edits, dotfiles, scripts), which settings go in it (settings only, or also state like window frames and cursor positions) and where it lives (`~/.macjot/` or `~/.config/macjot/`). Hotkeys are stored by KeyboardShortcuts itself; the Notes Folder has a binary bookmark next to its path.
-- **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings.
-- Toolbar and editor support for code blocks, tables, images, horizontal rules and `==highlight==`.
-- Subfolders/notebooks and per-folder hotkeys.
-- Pinned sticky windows; multiple editor windows at once.
-- Slash commands and templates; wiki-links.
-- SQLite FTS5 Search Index (ADR 0001: always rebuildable from the files).
+- **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings. Revisit before a public release.
+- Editor support for tables and images.
+- Slash commands and templates; wiki-links (renaming would have to update links, see ADR 0003).
 - Append the selection from any app to a Note ("Clips").
-- Copy a Note as rich text.
-- Conflict-resolution UI for concurrent external edits (MVP: local unsaved edits win).
 
 ## Not planned
+
+Decided 2026-10-10 (second round of Later):
+
+- **Subfolders, notebooks, per-folder hotkeys**: a deliberate absence; one flat Notes Folder, found again with Search (ADR 0008).
+- **Pinned sticky windows; several editor windows at once**: MacJot is one panel showing one Note, summoned and dismissed; separate windows would make it a document-based app.
+- **Settings in a config file**: no reason yet to keep one beside the Settings window (hand edits, dotfiles, scripts); revisit if one comes up.
+- **`==highlight==`**: not standard Markdown; most other tools show the `==` literally.
+- **SQLite FTS5 Search Index**: substring search is the wanted behaviour (ticket 37 adds several words), and it's instant at this size; ADR 0001 would still apply.
+- **Copy a Note as rich text**: Copy as Markdown covers it; faithful rich text for lists and headings needs a converter of its own.
+- **Conflict-resolution UI for concurrent external edits**: local unsaved edits win; a conflict needs two editors on one Note at the same moment.
+
+Earlier:
 
 - **Editing Outside Files in place**: Notes live in one folder, and moving a file there keeps the Note List, Search, renaming and trashing consistent; Outside Files are read-only until moved (ADR 0007, decided 2026-10-10).
 - **App Store / sandboxed build**: MacJot is released on GitHub only (ADR 0006; "Mac" in the name wouldn't pass review), and a sandbox would restrict access to the Notes Folder (decided 2026-10-10).
