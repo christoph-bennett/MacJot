@@ -394,6 +394,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     }
 
     /// Replaces the editor's text (no undo across Notes) and places the cursor.
+    private func updateEmptyNoteHint() {
+        (textView as? EditorTextView)?.hint = folder.wouldTrashOnLeave ? "Leave this note empty to move it to the Trash." : nil
+    }
+
     private func display(_ text: String, cursor: Int) {
         textView.string = text
         if let storage = textView.textStorage { styler.restyleAll(storage) }
@@ -406,6 +410,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         // switching to a shorter Note the previous Note's last lines stayed on
         // screen below the new text.
         textView.needsDisplay = true
+        updateEmptyNoteHint()
     }
 
     /// Runs an operation that may leave the open Note, then remembers the cursor
@@ -544,6 +549,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     func textDidChange(_ notification: Notification) {
         folder.update(text: textView.string)
+        updateEmptyNoteHint()
         if folder.isDraft, !noteListItem.isCollapsed { noteList.updateDraft(textView.string) }
         cancelAutosave()
         autosave = Task { [weak self] in

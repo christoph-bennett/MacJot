@@ -568,6 +568,48 @@ final class NotesFolderTests {
         #expect(trashedContents == ["Plan\nbuy milk\ncall Anna"])
     }
 
+    // Ticket 25: the editor's "Leave this note empty to move it to the Trash."
+    // shows exactly when leaving now would trash the Note.
+
+    @Test func anEmptiedNoteWouldBeTrashed() throws {
+        try writeNote("plan.md", "Plan\nbuy milk")
+        let folder = try makeFolder()
+        _ = try folder.open(root.appendingPathComponent("plan.md"))
+        #expect(!folder.wouldTrashOnLeave)
+        folder.update(text: " \n")
+        #expect(folder.wouldTrashOnLeave)
+        folder.update(text: "P")
+        #expect(!folder.wouldTrashOnLeave)
+    }
+
+    @Test func aBlankDraftWouldNotBeTrashed() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        #expect(!folder.wouldTrashOnLeave)
+        folder.update(text: "Pla")  // not yet a file
+        folder.update(text: "")
+        #expect(!folder.wouldTrashOnLeave)
+    }
+
+    @Test func aDraftEmptiedAfterGettingItsFileWouldBeTrashed() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Plan\nbuy milk")
+        try folder.flush()
+        folder.update(text: "")
+        #expect(folder.wouldTrashOnLeave)
+    }
+
+    @Test func aFileBlankWhenOpenedWouldNotBeTrashed() throws {
+        try writeNote("blank.md", "\n")
+        let folder = try makeFolder()
+        _ = try folder.open(root.appendingPathComponent("blank.md"))
+        folder.update(text: "")
+        #expect(!folder.wouldTrashOnLeave)
+        try folder.leave()
+        #expect(trashed.isEmpty)
+    }
+
     @Test func emptiedNoteWhoseFileIsGoneCanStillBeLeft() throws {
         let folder = try makeFolder()
         try folder.startDraft()

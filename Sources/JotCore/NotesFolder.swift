@@ -62,6 +62,13 @@ public final class NotesFolder {
         isOpen && currentNoteURL == nil && Title.isBlank(latestText)
     }
 
+    /// Leaving now would move the open Note to the Trash: it has a file, the user
+    /// emptied it, and it wasn't blank when saved (a file blank when opened stays).
+    /// The editor shows a hint then (ticket 25).
+    public var wouldTrashOnLeave: Bool {
+        isOpen && currentNoteURL != nil && Title.isBlank(latestText) && !Title.isBlank(persistedText)
+    }
+
     /// Creates the Notes Folder if needed and turns a Recovery Copy left by a
     /// crash into a Note.
     public init(url: URL, recoveryURL: URL, clock: @escaping () -> Date = Date.init, datePrefix: Bool = false,
@@ -116,7 +123,7 @@ public final class NotesFolder {
             if !Title.isBlank(latestText) {
                 wrote = try renameIfNeeded(file) || wrote
                 left = currentNoteURL
-            } else if !Title.isBlank(persistedText) {
+            } else if wouldTrashOnLeave {
                 // Emptied by the user: its longest content since it was opened goes
                 // to the Trash, so it can be restored. A file that was blank when
                 // opened stays.

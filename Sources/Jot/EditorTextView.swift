@@ -30,6 +30,23 @@ final class EditorTextView: NSTextView {
     }
     private var standardInsetWidth: CGFloat?
 
+    /// Dimmed text on the first line while the Note is blank, e.g. that leaving
+    /// it empty trashes it (ticket 25). Drawn, not part of the text.
+    var hint: String? {
+        didSet { if hint != oldValue { needsDisplay = true } }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard let hint, let textContainer else { return }
+        let padding = textContainer.lineFragmentPadding
+        let origin = textContainerOrigin
+        let rect = NSRect(x: origin.x + padding, y: origin.y,
+                          width: textContainer.size.width - 2 * padding, height: bounds.height - origin.y)
+        let font = typingAttributes[.font] as? NSFont ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        (hint as NSString).draw(in: rect, withAttributes: [.font: font, .foregroundColor: NSColor.placeholderTextColor])
+    }
+
     override var textContainerOrigin: NSPoint {
         var origin = super.textContainerOrigin
         if let leadingInset { origin.x = leadingInset }

@@ -4,9 +4,9 @@
 
 **Blocked by:** 26 (same rule, touched there)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Open a Note, delete all its text: the hint appears; type a character: it's gone
-- [ ] A new blank Draft shows no hint
-- [ ] A Note whose file was blank when opened shows no hint
-- [ ] The hint follows the font size setting and light/dark mode, and isn't part of the text (not saved, not selectable)
+- [x] Open a Note, delete all its text: the hint appears; type a character: it's gone
+- [x] A new blank Draft shows no hint
+- [x] A Note whose file was blank when opened shows no hint
+- [x] The hint follows the font size setting and light/dark mode, and isn't part of the text (not saved, not selectable)
