@@ -12,3 +12,8 @@
 - [x] Shift-Return lines and extra blank lines are numbered
 - [x] The gutter stays aligned while typing, scrolling and changing the font size
 - [x] Blank lines' numbers sit level with where their text would be (fixed 2026-10-10: AppKit puts a lone line break's glyph at the bottom of the line, so the gutter takes a blank line's baseline from its font)
+
+**Follow-up (2026-10-10):** a second Shift-Return after a line seemed to do nothing: `text\n\n` is a paragraph gap, whichever keys made it. Now a line break that would turn the empty line it's typed on into a gap inserts two, so an empty line always appears (also Return at the start of a line after a Shift-Return break). Backspace already removes such a pair one visible line at a time.
+
+- [x] Shift-Return three times after a word: the cursor moves down one line each time
+- [x] Shift-Return at the start of a line that follows a Shift-Return line break: that line moves down one line

@@ -37,9 +37,23 @@ struct MarkdownEditingTests {
         #expect(pressReturn(before, soft: true) == after)
     }
 
+    // A break that would turn the empty line it's typed on into a paragraph gap
+    // (no height, ticket 23) gets a second one, so an empty line appears.
+    @Test(arguments: [
+        ("strange\n|", "strange\n\n\n|"),             // Shift-Return twice
+        ("strange\n|more", "strange\n\n\n|more"),     // pushes the next line down
+        ("> quoted\n|", "> quoted\n\n\n|"),
+        ("strange\n\n\n|", "strange\n\n\n\n|"),        // further blank lines: one break
+        ("```\ncode\n|", "```\ncode\n\n|"),          // no gaps in code
+    ])
+    func aBreakNeverOnlyMakesAParagraphGap(before: String, after: String) {
+        #expect(pressReturn(before, soft: true) == after)
+        #expect(pressReturn(before) == after)
+    }
+
     @Test(arguments: [
         ("Para\n\n|", "Para\n\n\n|"),                  // already on a blank line
-        ("Para\n|Next", "Para\n\n|Next"),              // at the start of a line
+        ("Para\n|Next", "Para\n\n\n|Next"),          // at the start of a line: see below
         ("> quoted|", "> quoted\n|"),                  // quote
         ("---\ntags: x|\n---\nTitle", "---\ntags: x\n|\n---\nTitle"),  // inside frontmatter
         ("---|", "---\n|"),                            // opening fence of frontmatter

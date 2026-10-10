@@ -47,8 +47,14 @@ public enum MarkdownEditing {
             || beforeCursor.hasPrefix("    ") || beforeCursor.hasPrefix("\t")         // indented code
             || inCodeOrFrontmatter
         if single {
-            return TextEdit(range: selection, replacement: "\n",
-                            selection: NSRange(location: selection.location + 1, length: 0))
+            // On an empty line right after text, one break would turn that line
+            // into a paragraph gap, which has no height (ticket 23): nothing would
+            // seem to happen. A second break makes the empty line appear.
+            let result = ns.replacingCharacters(in: selection, with: "\n")
+            let breaks = !inCodeOrFrontmatter && MarkdownStyle.isParagraphGap(at: selection.location, in: result)
+                ? "\n\n" : "\n"
+            return TextEdit(range: selection, replacement: breaks,
+                            selection: NSRange(location: selection.location + (breaks as NSString).length, length: 0))
         }
 
         // The new paragraph shouldn't start with the spaces that followed the cursor.
