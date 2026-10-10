@@ -12,12 +12,12 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A `.md` file from the Desktop opens read-only: bar with the "isn't in your Notes Folder" wording, greyed-out toolbar, typing does nothing, text can be copied
-- [ ] A file in a subfolder of the Notes Folder, and a `.markdown` file, open read-only too; the subfolder one with the subfolder wording
-- [ ] The Note List shows it as the selected top row with a lock and its folder; Search doesn't find it; its menus have no Move to Trash and Delete does nothing
-- [ ] ⌘F finds text in it; Replace isn't offered; checklist boxes don't toggle
-- [ ] Opening a Note, starting a Draft or closing the panel forgets it; the file is unchanged on disk
-- [ ] Edited elsewhere, the shown text updates; deleted, the panel shows a Draft
-- [ ] Opening a Note and an outside file together shows the first one, without an alert; launching MacJot with an Outside File shows it
+- [x] A `.md` file from the Desktop opens read-only: bar with the "isn't in your Notes Folder" wording, greyed-out toolbar, typing does nothing, text can be copied
+- [x] A file in a subfolder of the Notes Folder, and a `.markdown` file, open read-only too; the subfolder one with the subfolder wording
+- [x] The Note List shows it as the selected top row with a lock and its folder; Search doesn't find it; its menus have no Move to Trash and Delete does nothing
+- [x] ⌘F finds text in it; Replace isn't offered; checklist boxes don't toggle
+- [x] Opening a Note, starting a Draft or closing the panel forgets it; the file is unchanged on disk
+- [x] Edited elsewhere, the shown text updates; deleted, the panel shows a Draft
+- [x] Opening a Note and an outside file together shows the first one, without an alert; launching MacJot with an Outside File shows it

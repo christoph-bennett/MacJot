@@ -50,3 +50,54 @@ final class FolderWatcher {
         FSEventStreamRelease(stream)
     }
 }
+
+/// Watches one file (an Outside File, ticket 31) and calls `onChange` on the main
+/// queue when it's written, replaced (an atomic save), renamed or deleted. Only
+/// the file and its own folder's entries: FSEvents would report everything below
+/// the folder, which for a file in the home folder never stops.
+@MainActor
+final class FileWatcher {
+    private let file: URL
+    private let onChange: () -> Void
+    private var folderSource: DispatchSourceFileSystemObject?
+    private var fileSource: DispatchSourceFileSystemObject?
+
+    init(_ file: URL, onChange: @escaping () -> Void) {
+        self.file = file
+        self.onChange = onChange
+        // The folder's entries change when a save replaces the file, or it's deleted or renamed.
+        folderSource = Self.source(for: file.deletingLastPathComponent(), events: .write) { [weak self] in
+            self?.changed()
+        }
+        watchFile()
+    }
+
+    isolated deinit {
+        folderSource?.cancel()
+        fileSource?.cancel()
+    }
+
+    private func changed() {
+        watchFile()  // a replaced file is a new one to watch
+        onChange()
+    }
+
+    /// Edits in place change the file, not its folder.
+    private func watchFile() {
+        fileSource?.cancel()
+        fileSource = Self.source(for: file, events: [.write, .extend, .delete, .rename]) { [weak self] in
+            self?.changed()
+        }
+    }
+
+    private static func source(for url: URL, events: DispatchSource.FileSystemEvent,
+                               handler: @escaping @MainActor () -> Void) -> DispatchSourceFileSystemObject? {
+        let descriptor = open(url.path, O_EVTONLY)
+        guard descriptor >= 0 else { return nil }
+        let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: events, queue: .main)
+        source.setEventHandler { MainActor.assumeIsolated { handler() } }
+        source.setCancelHandler { close(descriptor) }
+        source.resume()
+        return source
+    }
+}

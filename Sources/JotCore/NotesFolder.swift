@@ -52,6 +52,12 @@ public final class NotesFolder {
     /// goes to the Trash if the Note is emptied, however slowly (ticket 26).
     private var longestSavedText = ""
 
+    /// The Outside File shown instead of a Note (ticket 31, ADR 0007): read-only,
+    /// never written; forgotten when it's left. While it's shown no Note is open.
+    public private(set) var outsideFileURL: URL?
+    /// Its text as last read, to tell when another app changed it.
+    private var outsideText = ""
+
     /// The open Note is a Draft: it has no file in the Notes Folder yet.
     public var isDraft: Bool {
         isOpen && currentNoteURL == nil
@@ -116,6 +122,8 @@ public final class NotesFolder {
     /// Returns whether anything was written.
     @discardableResult
     public func leave() throws -> Bool {
+        outsideFileURL = nil
+        outsideText = ""
         guard isOpen else { return false }
         var wrote = try persist(materialising: true)
         var left = currentNoteURL
@@ -214,14 +222,33 @@ public final class NotesFolder {
         return (try? file.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
     }
 
-    /// Whether `file` is one of the folder's Notes, as `notes()` lists them: a
-    /// visible `.md` file directly in the folder, not in a subfolder (ticket 30).
-    public func isNote(_ file: URL) -> Bool {
+    /// Where a file opened from Finder sits relative to the Notes Folder
+    /// (tickets 30 and 31). Only a Note can be edited; the rest open read-only.
+    public enum Placement: Equatable {
+        /// One of the folder's Notes, as `notes()` lists them: a visible `.md`
+        /// file directly in the folder.
+        case note
+        /// Directly in the folder, but not a Note (e.g. `.markdown`, hidden).
+        case topLevel
+        /// Somewhere below a subfolder: not a Note, as Notes are top-level files.
+        case subfolder
+        case elsewhere
+    }
+
+    public func placement(of file: URL) -> Placement {
         // Only the folders are resolved: a Note may itself be a symlink to a file elsewhere.
         let file = file.standardizedFileURL
-        return file.pathExtension.lowercased() == "md" && !file.lastPathComponent.hasPrefix(".")
-            && file.deletingLastPathComponent().resolvingSymlinksInPath().path
-                == url.standardizedFileURL.resolvingSymlinksInPath().path
+        let folder = url.standardizedFileURL.resolvingSymlinksInPath().path
+        let parent = file.deletingLastPathComponent().resolvingSymlinksInPath().path
+        if parent == folder {
+            let isNote = file.pathExtension.lowercased() == "md" && !file.lastPathComponent.hasPrefix(".")
+            return isNote ? .note : .topLevel
+        }
+        return parent.hasPrefix(folder + "/") ? .subfolder : .elsewhere
+    }
+
+    public func isNote(_ file: URL) -> Bool {
+        placement(of: file) == .note
     }
 
     /// The last `notes()`, by file.
@@ -247,6 +274,54 @@ public final class NotesFolder {
         currentSlug = slug
         currentPrefix = DatePrefix.of(fileName: note.lastPathComponent, titleSlug: slug) ?? ""
         return text
+    }
+
+    /// Leaves the current Note and shows `file`, a Markdown file that isn't a
+    /// Note, read-only; returns its text. Read first: if it can't be read, the
+    /// current Note stays open.
+    public func openOutside(_ file: URL) throws -> String {
+        if outsideFileURL?.standardizedFileURL == file.standardizedFileURL { return outsideText }
+        let text: String
+        do {
+            text = try String(contentsOf: file, encoding: .utf8)
+        } catch {
+            throw OutsideFileError.unreadable(error)
+        }
+        try leave()
+        outsideFileURL = file
+        outsideText = text
+        return text
+    }
+
+    /// The Outside File couldn't be read, as opposed to the open Note not saving.
+    public enum OutsideFileError: LocalizedError {
+        case unreadable(Error)
+
+        public var errorDescription: String? {
+            switch self { case .unreadable(let error): error.localizedDescription }
+        }
+    }
+
+    /// What `reconcileOutsideFile()` found.
+    public enum OutsideFileChange: Equatable {
+        case unchanged
+        /// Changed by another app: show this text instead.
+        case reloaded(String)
+        /// Deleted or moved away: it's forgotten.
+        case deleted
+    }
+
+    /// Brings the shown Outside File in line with its file on disk. There are
+    /// never local edits, so a change elsewhere always wins.
+    public func reconcileOutsideFile() -> OutsideFileChange {
+        guard let file = outsideFileURL else { return .unchanged }
+        guard FileManager.default.fileExists(atPath: file.path) else {
+            outsideFileURL = nil
+            return .deleted
+        }
+        guard let text = try? String(contentsOf: file, encoding: .utf8), text != outsideText else { return .unchanged }
+        outsideText = text
+        return .reloaded(text)
     }
 
     /// Moves a Note to the Trash. If it's the open Note, it's closed without saving.

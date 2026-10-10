@@ -37,8 +37,17 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     /// in the list straight away rather than once it gets its file.
     private enum Row {
         case draft(title: String)
+        case outside(OutsideFile)
         case note(NoteSummary)
     }
+    /// The Outside File shown in the editor (ticket 31): the selected top row,
+    /// with a lock and its folder; not part of Search.
+    struct OutsideFile {
+        let url: URL
+        let title: String
+        let folder: String
+    }
+    private var outsideFile: OutsideFile?
     private var rows: [Row] = []
     /// Every Note, in display order; `rows` shows those matching the search.
     private var notes: [NoteSummary] = []
@@ -120,13 +129,18 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     }
 
     private var query: String { searchField.stringValue }
+    /// Blank searches match everything: the Draft follows its Title live then,
+    /// and the Outside File is listed.
+    private var isSearchBlank: Bool { query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     /// Shows `notes` that match the search, highlighting the open one without
     /// triggering `onOpen`. `keepingOrder` keeps known rows where they were
     /// (Notes new to the list go first), so rows don't jump while the user arrows
     /// through them. `draftText` non-nil adds the open Draft as the selected top
-    /// row, if it matches the search.
-    func show(_ notes: [NoteSummary], selecting current: URL?, keepingOrder: Bool = false, draftText: String? = nil) {
+    /// row, if it matches the search; `outsideFile` does the same for the Outside
+    /// File, while the search is blank.
+    func show(_ notes: [NoteSummary], selecting current: URL?, keepingOrder: Bool = false, draftText: String? = nil,
+              outsideFile: OutsideFile? = nil) {
         if keepingOrder {
             let previous = Dictionary(self.notes.enumerated().map { ($1.url, $0) }, uniquingKeysWith: { a, _ in a })
             self.notes = notes.filter { previous[$0.url] == nil }
@@ -136,6 +150,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         }
         self.current = current
         self.draftText = draftText
+        self.outsideFile = outsideFile
         filter()
     }
 
@@ -143,12 +158,14 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     private func filter() {
         let query = query
         let draft = draftText.flatMap { NoteSummary.listsDraft($0, query: query) ? $0 : nil }
-        rows = (draft.map { [Row.draft(title: Self.draftTitle($0))] } ?? []) + notes.compactMap { $0.matching(query) }.map(Row.note)
+        let outside = isSearchBlank ? outsideFile : nil
+        rows = (draft.map { [Row.draft(title: Self.draftTitle($0))] } ?? []) + (outside.map { [Row.outside($0)] } ?? [])
+            + notes.compactMap { $0.matching(query) }.map(Row.note)
         showPlaceholder(NoteListPlaceholder(query: query, rowCount: rows.count))
         isSelectingProgrammatically = true
         defer { isSelectingProgrammatically = false }
         tableView.reloadData()
-        let selected = draft != nil ? 0 : current.flatMap { current in
+        let selected = draft != nil || outside != nil ? 0 : current.flatMap { current in
             rows.firstIndex { if case .note(let n) = $0 { n.url.standardizedFileURL == current.standardizedFileURL } else { false } }
         }
         if let selected {
@@ -176,7 +193,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
     /// (re-filtering it while searching, as the Draft may start or stop matching).
     func updateDraft(_ text: String) {
         draftText = text
-        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return filter() }
+        if !isSearchBlank { return filter() }
         // Its row comes with the first text and goes when it's blank again.
         guard case .draft = rows.first, NoteSummary.listsDraft(text, query: "") else { return filter() }
         rows[0] = .draft(title: Self.draftTitle(text))
@@ -200,6 +217,7 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         let cell = tableView.makeView(withIdentifier: NoteRowView.identifier, owner: self) as? NoteRowView ?? NoteRowView()
         switch rows[row] {
         case .draft(let title): cell.showDraft(title: title)
+        case .outside(let file): cell.showOutside(title: file.title, folder: file.folder)
         case .note(let note): cell.show(note, dates: dates)
         }
         return cell
@@ -271,8 +289,13 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        guard let note = note(at: tableView.clickedRow) else { return }
-        menuItems(note.url).forEach(menu.addItem)
+        let row = tableView.clickedRow
+        guard rows.indices.contains(row) else { return }
+        switch rows[row] {
+        case .note(let note): menuItems(note.url).forEach(menu.addItem)
+        case .outside(let file): menuItems(file.url).forEach(menu.addItem)
+        case .draft: break
+        }
     }
 }
 
@@ -344,6 +367,20 @@ private final class NoteRowView: NSTableCellView {
     func showDraft(title: String) {
         self.title.stringValue = title
         detail.stringValue = "New note"
+    }
+
+    /// Its folder after a lock: an SF Symbol drawn like the text, as the menu bar
+    /// icon is (no emoji).
+    func showOutside(title: String, folder: String) {
+        self.title.stringValue = title
+        let lock = NSTextAttachment()
+        lock.image = NSImage(systemSymbolName: "lock", accessibilityDescription: "Read-only")?
+            .withSymbolConfiguration(.init(textStyle: .subheadline))
+        let text = NSMutableAttributedString(attachment: lock)
+        text.append(NSAttributedString(string: " \(folder)"))
+        text.addAttributes([.font: Self.detailFont, .foregroundColor: NSColor.secondaryLabelColor],
+                           range: NSRange(location: 0, length: text.length))
+        detail.attributedStringValue = text
     }
 
     func show(_ note: NoteSummary, dates: RelativeDateFormatter) {

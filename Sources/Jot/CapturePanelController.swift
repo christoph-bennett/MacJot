@@ -20,6 +20,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private let styler = MarkdownStyler()
     private let noteList = NoteListViewController()
     private let gutter: LineNumberGutter
+    private let editor: EditorViewController
     private let noteListItem: NSSplitViewItem
     private let split = NSSplitViewController()
     /// A width for the Note List to take the next time it opens (after Reset
@@ -28,6 +29,9 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private let cursors = CursorPositions()
     private var autosave: Task<Void, Never>?
     private var watcher: FolderWatcher?
+    /// Watches the shown Outside File, for changes made by other apps.
+    private var outsideWatcher: FileWatcher?
+    private var outsideWatchedFile: URL?
     private var isShowingSaveError = false
     /// ⌘, in the panel.
     var onShowSettings: () -> Void = {}
@@ -42,6 +46,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         gutter = LineNumberGutter(textView: textView, scrollView: scrollView)
         scrollView.verticalRulerView = gutter
         scrollView.hasVerticalRuler = true
+        editor = EditorViewController(scrollView: scrollView)
         noteListItem = NSSplitViewItem(sidebarWithViewController: noteList)
         panel = CapturePanel(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
@@ -61,11 +66,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         NotificationCenter.default.addObserver(self, selector: #selector(fitUnwrappedWidth),
                                                name: NSView.frameDidChangeNotification, object: scrollView.contentView)
 
-        let editor = EditorViewController(scrollView: scrollView)
         editor.onFormat = { [weak self] in self?.format($0) }
         editor.menuItems = { [weak self] in
-            guard let self, let note = folder.currentNoteURL else { return [] }
-            return actions(for: note)
+            guard let self, let file = folder.currentNoteURL ?? folder.outsideFileURL else { return [] }
+            return actions(for: file)
         }
         noteList.onOpen = { [weak self] in self?.open($0) }
         noteList.onDelete = { [weak self] note in self?.confirmTrash(note) { self?.trash(note) } }
@@ -250,24 +254,49 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         reloadNoteList(keepingOrder: true)
     }
 
-    /// Files opened with MacJot from Finder (ticket 30): the first of them that's
-    /// a Note opens as if picked in the Note List; any others get one alert, as
-    /// MacJot doesn't edit files outside the Notes Folder.
+    /// Files opened with MacJot from Finder: the first one Finder hands over
+    /// shows, the rest are ignored. A Note opens as if picked in the Note List
+    /// (ticket 30), any other Markdown file as a read-only Outside File (ticket 31).
     func openFromFinder(_ files: [URL]) {
-        if let note = files.first(where: folder.isNote) {
-            open(note)
-            show()
+        guard let file = files.first else { return }
+        if folder.isNote(file) { open(file) } else { openOutside(file) }
+        show()
+    }
+
+    /// Leaves the current Note and shows `file` read-only (ADR 0007). Already
+    /// shown, it stays as it is (cursor, find bar); the panel just comes to the front.
+    private func openOutside(_ file: URL) {
+        guard folder.outsideFileURL?.standardizedFileURL != file.standardizedFileURL else { return }
+        cancelAutosave()
+        let text: String
+        do {
+            text = try leavingCurrentNote { try folder.openOutside(file) }
+        } catch let error as NotesFolder.OutsideFileError {
+            ErrorAlert.show("MacJot couldn't open this file.", error: error)
+            return
+        } catch {
+            // The open Note couldn't be saved: keep it on screen instead of replacing it.
+            reportSaveError(error)
+            return
         }
-        let outside = files.filter { !folder.isNote($0) }
-        guard !outside.isEmpty else { return }
-        let alert = NSAlert()
-        let path = (folder.url.path as NSString).abbreviatingWithTildeInPath
-        alert.messageText = "MacJot only opens notes in your Notes Folder (\(path))."
-        alert.informativeText = outside.count == 1
-            ? "“\(outside[0].lastPathComponent)” wasn’t opened."
-            : "\(outside.count) files weren’t opened."
-        NSApp.activate()
-        alert.runModal()
+        isShowingSaveError = false
+        display(text, cursor: 0)
+        reloadNoteList()
+    }
+
+    /// The Outside File's folder changed: reload it if another app edited it; if
+    /// it's gone, a Draft takes its place, as for a deleted Note.
+    private func outsideFileDidChange() {
+        switch folder.reconcileOutsideFile() {
+        case .unchanged:
+            return
+        case .reloaded(let text):
+            display(text, cursor: textView.selectedRange().location)  // clamped to the new text
+        case .deleted:
+            try? folder.startDraft()
+            display("", cursor: 0)
+        }
+        reloadNoteList()
     }
 
     /// Asks first unless the user turned that off (Settings, ticket 14).
@@ -316,11 +345,13 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         }
     }
 
+    /// An Outside File's menus have no Move to Trash: MacJot never trashes a file it doesn't own.
     private func actions(for note: URL) -> [NSMenuItem] {
-        NoteActions.items(
+        let isOutside = note.standardizedFileURL == folder.outsideFileURL?.standardizedFileURL
+        return NoteActions.items(
             for: note,
             prepare: { [weak self] in self?.save { try $0.flush() } },
-            trash: { [weak self] note in self?.confirmTrash(note) { self?.trash(note) } }
+            trash: isOutside ? nil : { [weak self] note in self?.confirmTrash(note) { self?.trash(note) } }
         )
     }
 
@@ -428,8 +459,13 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private func reloadNoteList(evenIfCollapsed: Bool = false, keepingOrder: Bool = false) {
         guard evenIfCollapsed || !noteListItem.isCollapsed else { return }
         do {
+            let outside = folder.outsideFileURL.map { file in
+                NoteListViewController.OutsideFile(
+                    url: file, title: NoteSummary.displayTitle(of: textView.string) ?? file.lastPathComponent,
+                    folder: file.deletingLastPathComponent().lastPathComponent)
+            }
             noteList.show(try folder.notes(), selecting: folder.currentNoteURL, keepingOrder: keepingOrder,
-                          draftText: folder.isDraft ? textView.string : nil)
+                          draftText: folder.isDraft ? textView.string : nil, outsideFile: outside)
         } catch {
             NSLog("MacJot: couldn't list notes: \(error)")
         }
@@ -455,6 +491,31 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         // screen below the new text.
         textView.needsDisplay = true
         updateEmptyNoteHint()
+        updateReadOnly()
+    }
+
+    /// An Outside File is shown read-only, with the bar saying why; its folder is
+    /// watched while it's shown. A Note is editable as always.
+    private func updateReadOnly() {
+        let outside = folder.outsideFileURL
+        textView.isEditable = outside == nil
+        editor.readOnlyMessage = outside.map {
+            switch folder.placement(of: $0) {
+            case .subfolder: "Read-only: this file is in a subfolder of your Notes Folder."
+            case .topLevel: "Read-only: only .md files in your Notes Folder are notes."
+            case .note, .elsewhere: "Read-only: this file isn’t in your Notes Folder."
+            }
+        }
+        watchOutsideFile(outside)
+    }
+
+    private func watchOutsideFile(_ file: URL?) {
+        guard file != outsideWatchedFile else { return }
+        outsideWatchedFile = file
+        outsideWatcher = file.map {
+            // A turn later: handling it may replace this watcher, which shouldn't go inside its own handler.
+            FileWatcher($0) { [weak self] in Task { @MainActor in self?.outsideFileDidChange() } }
+        }
     }
 
     /// Runs an operation that may leave the open Note, then remembers the cursor
@@ -624,6 +685,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         noteList.cancelSearch()
         cancelAutosave()
         save { folder in try leavingCurrentNote { try folder.leave() } }
+        watchOutsideFile(folder.outsideFileURL)  // an Outside File is forgotten on leave: stop watching it
     }
 
     // MARK: Saving
@@ -752,6 +814,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     /// A Formatting Toolbar command on the editor's text and selection; the
     /// typing goes on in the editor.
     private func format(_ command: FormatCommand) {
+        guard textView.isEditable else { return NSSound.beep() }  // an Outside File (also ⌘B and the like)
         let text = textView.string, selection = textView.selectedRange()
         textView.breakUndoCoalescing()  // its own undo step, separate from the typing before it
         switch command {
@@ -767,7 +830,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     /// own undo (which selects the changed text, inside the hidden brackets), undo
     /// toggles the box again, and that registers the redo.
     private func toggleCheckbox(at location: Int) {
-        guard let edit = MarkdownEditing.toggleCheckbox(in: textView.string, at: location,
+        guard textView.isEditable, let edit = MarkdownEditing.toggleCheckbox(in: textView.string, at: location,
                                                         selection: textView.selectedRange()),
               let storage = textView.textStorage else { return }
         textView.breakUndoCoalescing()
@@ -782,6 +845,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     /// up front, so it doesn't inherit e.g. a heading's font until the next restyle
     /// (which made the caret oversized after Return).
     private func apply(_ edit: TextEdit) {
+        guard textView.isEditable else { return NSSound.beep() }  // an Outside File: Return and ⌫ as typing does
         guard textView.shouldChangeText(in: edit.range, replacementString: edit.replacement),
               let storage = textView.textStorage else { return }
         storage.replaceCharacters(in: edit.range, with: NSAttributedString(string: edit.replacement, attributes: styler.baseAttributes))

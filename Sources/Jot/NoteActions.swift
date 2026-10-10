@@ -21,8 +21,9 @@ final class ClosureMenuItem: NSMenuItem {
 @MainActor
 enum NoteActions {
     /// `prepare` runs first (e.g. to save the open Note so the file is current).
-    static func items(for note: URL, prepare: @escaping () -> Void, trash: @escaping (URL) -> Void) -> [NSMenuItem] {
-        [
+    /// Without `trash` (an Outside File, ticket 31) there's no Move to Trash.
+    static func items(for note: URL, prepare: @escaping () -> Void, trash: ((URL) -> Void)?) -> [NSMenuItem] {
+        let items = [
             ClosureMenuItem("Reveal in Finder", symbol: "folder") {
                 prepare()
                 NSWorkspace.shared.activateFileViewerSelecting([note])
@@ -37,8 +38,8 @@ enum NoteActions {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(text, forType: .string)
             },
-            .separator(),
-            ClosureMenuItem("Move to Trash", symbol: "trash") { trash(note) },
         ]
+        guard let trash else { return items }
+        return items + [.separator(), ClosureMenuItem("Move to Trash", symbol: "trash") { trash(note) }]
     }
 }

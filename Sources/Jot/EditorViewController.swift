@@ -9,7 +9,8 @@ enum FormatCommand {
 }
 
 /// The editor side of the Capture Panel: the Formatting Toolbar on top, with a
-/// `⋯` button for the open Note's actions on its right, and the text view below.
+/// `⋯` button for the open Note's actions on its right, and the text view below;
+/// between them, for an Outside File, the read-only bar.
 @MainActor
 final class EditorViewController: NSViewController {
     /// Items for the `⋯` menu; empty (button disabled) while the Note has no file.
@@ -19,6 +20,27 @@ final class EditorViewController: NSViewController {
 
     private let scrollView: NSScrollView
     private let moreButton = NSButton()
+    private var formatControls: [NSControl] = []
+    private let readOnlyBar = NSBox()
+    private let readOnlyLabel = NSTextField(wrappingLabelWithString: "")
+    /// The text view's top: below the toolbar, or below the read-only bar.
+    private var textBelowToolbar: NSLayoutConstraint?
+    private var textBelowBar: NSLayoutConstraint?
+
+    /// Shown in the read-only bar while an Outside File is shown (ticket 31); nil
+    /// hides the bar. The Formatting Toolbar is greyed out meanwhile, but stays in
+    /// place, so nothing moves when the file becomes editable.
+    var readOnlyMessage: String? {
+        didSet {
+            guard readOnlyMessage != oldValue else { return }
+            loadViewIfNeeded()
+            readOnlyLabel.stringValue = readOnlyMessage ?? ""
+            readOnlyBar.isHidden = readOnlyMessage == nil
+            textBelowToolbar?.isActive = readOnlyMessage == nil
+            textBelowBar?.isActive = readOnlyMessage != nil
+            formatControls.forEach { $0.isEnabled = readOnlyMessage == nil }
+        }
+    }
     /// Grouped like TextEdit's and Pages' format bars: after the heading menu,
     /// text styles, lists and quote, then code and link.
     private static let headings = [("Heading 1", 1), ("Heading 2", 2), ("Heading 3", 3), ("Plain Text", 0)]
@@ -65,7 +87,9 @@ final class EditorViewController: NSViewController {
             control.tag = index
             return control
         }
-        let toolbar = NSStackView(views: [makeHeadingMenu()] + groups)
+        let headingMenu = makeHeadingMenu()
+        formatControls = [headingMenu] + groups
+        let toolbar = NSStackView(views: [headingMenu] + groups)
         toolbar.spacing = 8
         toolbar.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(toolbar)
@@ -78,18 +102,67 @@ final class EditorViewController: NSViewController {
         moreButton.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(moreButton)
 
+        makeReadOnlyBar()
+        container.addSubview(readOnlyBar)
+        textBelowToolbar = scrollView.topAnchor.constraint(equalTo: toolbar.bottomAnchor, constant: 4)
+        textBelowBar = scrollView.topAnchor.constraint(equalTo: readOnlyBar.bottomAnchor)
+
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             toolbar.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
             toolbar.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
-            scrollView.topAnchor.constraint(equalTo: toolbar.bottomAnchor, constant: 4),
+            textBelowToolbar!,
             scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            readOnlyBar.topAnchor.constraint(equalTo: toolbar.bottomAnchor, constant: 8),
+            readOnlyBar.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            readOnlyBar.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             moreButton.centerYAnchor.constraint(equalTo: toolbar.centerYAnchor),
             moreButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
             toolbar.trailingAnchor.constraint(lessThanOrEqualTo: moreButton.leadingAnchor, constant: -8),
         ])
         view = container
+    }
+
+    /// A full-width strip in a quiet fill, with a lock and the message; separators
+    /// above and below set it apart from the toolbar and the text.
+    private func makeReadOnlyBar() {
+        readOnlyBar.boxType = .custom
+        readOnlyBar.borderWidth = 0
+        readOnlyBar.fillColor = .quaternarySystemFill
+        readOnlyBar.contentViewMargins = .zero
+        readOnlyBar.isHidden = true
+        readOnlyBar.translatesAutoresizingMaskIntoConstraints = false
+
+        let lock = NSImageView(image: NSImage(systemSymbolName: "lock", accessibilityDescription: "Read-only")!)
+        lock.symbolConfiguration = .init(textStyle: .callout)
+        lock.contentTintColor = .secondaryLabelColor
+        readOnlyLabel.font = .preferredFont(forTextStyle: .callout)
+        readOnlyLabel.textColor = .secondaryLabelColor
+        let row = NSStackView(views: [lock, readOnlyLabel])
+        row.spacing = 6
+        row.alignment = .firstBaseline
+        let top = NSBox(), bottom = NSBox()
+        for view in [row, top, bottom] as [NSView] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            readOnlyBar.addSubview(view)
+        }
+        top.boxType = .separator
+        bottom.boxType = .separator
+        lock.setContentHuggingPriority(.required, for: .horizontal)
+        NSLayoutConstraint.activate([
+            top.topAnchor.constraint(equalTo: readOnlyBar.topAnchor),
+            top.leadingAnchor.constraint(equalTo: readOnlyBar.leadingAnchor),
+            top.trailingAnchor.constraint(equalTo: readOnlyBar.trailingAnchor),
+            bottom.bottomAnchor.constraint(equalTo: readOnlyBar.bottomAnchor),
+            bottom.leadingAnchor.constraint(equalTo: readOnlyBar.leadingAnchor),
+            bottom.trailingAnchor.constraint(equalTo: readOnlyBar.trailingAnchor),
+            row.topAnchor.constraint(equalTo: readOnlyBar.topAnchor, constant: 8),
+            row.bottomAnchor.constraint(equalTo: readOnlyBar.bottomAnchor, constant: -8),
+            row.leadingAnchor.constraint(equalTo: readOnlyBar.leadingAnchor, constant: 16),
+            // Room on the right for ticket 32's Move to Notes Folder button.
+            row.trailingAnchor.constraint(lessThanOrEqualTo: readOnlyBar.trailingAnchor, constant: -16),
+        ])
     }
 
     /// A pull-down of H1–H3 and plain text, with ⌘1–⌘3 and ⌘0 as its key

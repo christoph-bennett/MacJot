@@ -681,6 +681,98 @@ final class NotesFolderTests {
         #expect(folder.isNote(link))
     }
 
+    // MARK: Outside Files (ticket 31, ADR 0007)
+
+    /// A Markdown file outside the Notes Folder, as Finder would hand it over.
+    private func writeOutside(_ name: String, _ text: String) throws -> URL {
+        let elsewhere = root.deletingLastPathComponent().appendingPathComponent("Desktop", isDirectory: true)
+        try FileManager.default.createDirectory(at: elsewhere, withIntermediateDirectories: true)
+        let url = elsewhere.appendingPathComponent(name)
+        try text.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
+    @Test func openingAnOutsideFileLeavesTheOpenNote() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Plan\nsteps")
+        let outside = try writeOutside("Ideas.md", "Ideas\nfrom elsewhere")
+        #expect(try folder.openOutside(outside) == "Ideas\nfrom elsewhere")
+        #expect(folder.outsideFileURL == outside)
+        #expect(try contents("plan.md") == "Plan\nsteps")
+        #expect(folder.currentNoteURL == nil)
+        #expect(!folder.isDraft)
+    }
+
+    @Test func anOutsideFileIsNeverWritten() throws {
+        let folder = try makeFolder()
+        let outside = try writeOutside("Ideas.md", "Ideas")
+        _ = try folder.openOutside(outside)
+        folder.update(text: "Changed")
+        try folder.flush()
+        try folder.leave()
+        #expect(try String(contentsOf: outside, encoding: .utf8) == "Ideas")
+        #expect(try files().isEmpty)
+        #expect(trashed.isEmpty)
+    }
+
+    @Test func leavingForgetsTheOutsideFile() throws {
+        let folder = try makeFolder()
+        _ = try folder.openOutside(try writeOutside("Ideas.md", "Ideas"))
+        try folder.startDraft()
+        #expect(folder.outsideFileURL == nil)
+        _ = try folder.openOutside(try writeOutside("Ideas.md", "Ideas"))
+        try folder.leave()
+        #expect(folder.outsideFileURL == nil)
+    }
+
+    @Test func anUnreadableOutsideFileKeepsTheOpenNote() throws {
+        let folder = try makeFolder()
+        let note = try writeNote("plan.md", "Plan")
+        _ = try folder.open(note)
+        let missing = root.deletingLastPathComponent().appendingPathComponent("Gone.md")
+        #expect(throws: (any Error).self) { try folder.openOutside(missing) }
+        #expect(folder.currentNoteURL == note)
+        #expect(folder.outsideFileURL == nil)
+    }
+
+    @Test func anOutsideFileChangedElsewhereIsReloaded() throws {
+        let folder = try makeFolder()
+        let outside = try writeOutside("Ideas.md", "Ideas")
+        _ = try folder.openOutside(outside)
+        #expect(folder.reconcileOutsideFile() == .unchanged)
+        try "Ideas\nmore".write(to: outside, atomically: true, encoding: .utf8)
+        #expect(folder.reconcileOutsideFile() == .reloaded("Ideas\nmore"))
+        #expect(folder.reconcileOutsideFile() == .unchanged)
+    }
+
+    @Test func anOutsideFileDeletedElsewhereIsForgotten() throws {
+        let folder = try makeFolder()
+        let outside = try writeOutside("Ideas.md", "Ideas")
+        _ = try folder.openOutside(outside)
+        try FileManager.default.removeItem(at: outside)
+        #expect(folder.reconcileOutsideFile() == .deleted)
+        #expect(folder.outsideFileURL == nil)
+    }
+
+    @Test func whereAFileSits() throws {
+        let folder = try makeFolder()
+        let sub = root.appendingPathComponent("Archive", isDirectory: true)
+        #expect(folder.placement(of: try writeNote("plan.md", "Plan")) == .note)
+        #expect(folder.placement(of: try writeNote("plan.markdown", "Plan")) == .topLevel)
+        #expect(folder.placement(of: sub.appendingPathComponent("Old.md")) == .subfolder)
+        #expect(folder.placement(of: sub.appendingPathComponent("Deeper/Old.md").resolvingSymlinksInPath()) == .subfolder)
+        #expect(folder.placement(of: try writeOutside("Ideas.md", "Ideas")) == .elsewhere)
+        // A sibling folder whose name starts like the Notes Folder's isn't inside it.
+        #expect(folder.placement(of: root.deletingLastPathComponent().appendingPathComponent("Notes2/a.md")) == .elsewhere)
+    }
+
+    @Test func anUnreadableOutsideFileIsReportedAsSuch() throws {
+        let folder = try makeFolder()
+        let missing = root.deletingLastPathComponent().appendingPathComponent("Gone.md")
+        #expect(throws: NotesFolder.OutsideFileError.self) { try folder.openOutside(missing) }
+    }
+
     @Test func notesAreListedNewestFirst() throws {
         try writeNote("old.md", "Old", modified: Date(timeIntervalSinceNow: -3600))
         try writeNote("new.md", "New", modified: Date())
