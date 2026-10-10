@@ -37,11 +37,11 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 31 | [Outside Files open read-only](31-outside-files-read-only.md) | none | done |
 | 32 | [Move to Notes Folder](32-move-to-notes-folder.md) | 31 | done |
 | 33 | [Line spacing](33-line-spacing.md) | none | done |
-| 34 | [Show invisible characters](34-show-invisibles.md) | none | ready-for-agent |
+| 34 | [Show invisible characters](34-show-invisibles.md) | none | done |
 | 35 | [Code block button](35-code-block.md) | none | ready-for-agent |
 | 36 | [Horizontal line](36-horizontal-line.md) | none | ready-for-agent |
 | 37 | [Search by several words](37-search-several-words.md) | none | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
-Planned order for the rest: 34, 35, 36, 37. The custom Date Prefix format (BACKLOG MVP) gets its own design session before it's ticketed.
+Planned order for the rest: 35, 36, 37. The custom Date Prefix format (BACKLOG MVP) gets its own design session before it's ticketed.

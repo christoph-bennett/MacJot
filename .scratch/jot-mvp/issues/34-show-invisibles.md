@@ -4,9 +4,9 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Settings > Editor has "Show invisible characters", off by default; View > Show Invisibles (⌥⌘I) toggles the same setting, with a checkmark while on
-- [ ] Spaces, tabs, single line breaks and paragraph ends show their symbols, faintly, in light and dark mode
-- [ ] Copying, saving and Find are unaffected; the cursor and selection move as before
-- [ ] Works with wrapping off (ticket 28), line numbers and the current-line band
+- [x] Settings > Editor has "Show invisible characters", off by default; View > Show Invisibles (⌥⌘I) toggles the same setting, with a checkmark while on
+- [x] Spaces, tabs, single line breaks and paragraph ends show their symbols, faintly, in light and dark mode
+- [x] Copying, saving and Find are unaffected; the cursor and selection move as before
+- [x] Works with wrapping off (ticket 28), line numbers and the current-line band

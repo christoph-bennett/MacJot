@@ -26,6 +26,11 @@ enum MainMenu {
         let toggleList = view.addItem(withTitle: "Toggle Note List", action: #selector(CapturePanelController.toggleNoteList), keyEquivalent: "s")
         toggleList.keyEquivalentModifierMask = [.control, .command]
         toggleList.target = newNoteTarget
+        // ⌥⌘I as in TextEdit and BBEdit; checked while on (`validateMenuItem`).
+        let invisibles = view.addItem(withTitle: "Show Invisibles", action: #selector(CapturePanelController.toggleInvisibles),
+                                      keyEquivalent: "i")
+        invisibles.keyEquivalentModifierMask = [.option, .command]
+        invisibles.target = newNoteTarget
         main.addItem(submenu: view, title: "View")
 
         let edit = NSMenu(title: "Edit")

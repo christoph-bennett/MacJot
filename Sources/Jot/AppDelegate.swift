@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             SettingsWindowController.relativeDatesKey: true,
             SettingsWindowController.lineNumbersKey: true,
             SettingsWindowController.currentLineKey: true,
+            SettingsWindowController.invisiblesKey: false,
             SettingsWindowController.wrapLinesKey: true,
         ])
         // No preferences yet: opening the Notes Folder below saves the first one.
@@ -44,6 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         settings.onLineNumbersChange = { [weak panel] in panel?.setLineNumbers($0) }
         panel.setHighlightsCurrentLine(defaults.bool(forKey: SettingsWindowController.currentLineKey))
         settings.onCurrentLineChange = { [weak panel] in panel?.setHighlightsCurrentLine($0) }
+        panel.setShowsInvisibles(defaults.bool(forKey: SettingsWindowController.invisiblesKey))
+        settings.onInvisiblesChange = { [weak panel] in panel?.setShowsInvisibles($0) }
         panel.setWrapsLines(defaults.bool(forKey: SettingsWindowController.wrapLinesKey))
         settings.onWrapLinesChange = { [weak panel] in panel?.setWrapsLines($0) }
         settings.onFontSizeChange = { [weak panel] in panel?.setFontSize($0) }

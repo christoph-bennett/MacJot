@@ -172,11 +172,13 @@ struct EditorPane: View {
     @AppStorage(SettingsWindowController.relativeDatesKey) private var relativeDates = true
     @AppStorage(SettingsWindowController.lineNumbersKey) private var lineNumbers = true
     @AppStorage(SettingsWindowController.currentLineKey) private var currentLine = true
+    @AppStorage(SettingsWindowController.invisiblesKey) private var invisibles = false
     @AppStorage(SettingsWindowController.wrapLinesKey) private var wrapLines = true
     let onFontSizeChange: (CGFloat) -> Void
     let onLineSpacingChange: (LineSpacing) -> Void
     let onLineNumbersChange: (Bool) -> Void
     let onCurrentLineChange: (Bool) -> Void
+    let onInvisiblesChange: (Bool) -> Void
     let onWrapLinesChange: (Bool) -> Void
     let onRelativeDatesChange: (Bool) -> Void
 
@@ -216,6 +218,9 @@ struct EditorPane: View {
             Row("Current Line:") {
                 Toggle("Highlight current line", isOn: $currentLine)
             }
+            Row("Invisibles:") {
+                Toggle("Show invisible characters", isOn: $invisibles)
+            }
             Divider()
             Row("Note List:") {
                 VStack(alignment: .leading, spacing: 4) {
@@ -231,6 +236,7 @@ struct EditorPane: View {
         .onChange(of: relativeDates) { _, on in onRelativeDatesChange(on) }
         .onChange(of: lineNumbers) { _, on in onLineNumbersChange(on) }
         .onChange(of: currentLine) { _, on in onCurrentLineChange(on) }
+        .onChange(of: invisibles) { _, on in onInvisiblesChange(on) }
         .onChange(of: wrapLines) { _, on in onWrapLinesChange(on) }
     }
 }

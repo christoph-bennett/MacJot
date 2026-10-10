@@ -157,12 +157,17 @@ extension NSAttributedString {
 }
 
 /// Draws a checkbox symbol over each checklist item's (invisible) `[ ]` / `[x]`:
-/// an empty square, or a filled one with a checkmark in the accent colour.
+/// an empty square, or a filled one with a checkmark in the accent colour. With
+/// `showsInvisibles`, also faint symbols for spaces, tabs and line breaks.
 final class EditorLayoutManager: NSLayoutManager {
+    /// Settings > Editor / View > Show Invisibles (ticket 34).
+    var showsInvisibles = false
+
     override func drawGlyphs(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
         super.drawGlyphs(forGlyphRange: glyphsToShow, at: origin)
         guard let storage = textStorage, let container = textContainers.first else { return }
         let characters = characterRange(forGlyphRange: glyphsToShow, actualGlyphRange: nil)
+        if showsInvisibles { drawInvisibles(in: characters, of: storage, at: origin) }
         storage.enumerateAttribute(.checkbox, in: characters) { value, part, _ in
             // The whole box, even when only part of it is being redrawn.
             guard let checked = value as? Bool, let range = storage.checkboxRange(at: part.location) else { return }
@@ -170,6 +175,29 @@ final class EditorLayoutManager: NSLayoutManager {
             let glyphs = glyphRange(forCharacterRange: range, actualCharacterRange: nil)
             let bounds = boundingRect(forGlyphRange: glyphs, in: container).offsetBy(dx: origin.x, dy: origin.y)
             drawBox(checked: checked, in: bounds, pointSize: font?.pointSize ?? 14)
+        }
+    }
+
+    /// Each symbol in the character's own font, where the character is: centred
+    /// over a space or tab, just after the line's text for a break. Not over a
+    /// checklist box's hidden `[ ]`, whose space isn't one the user typed.
+    private func drawInvisibles(in characters: NSRange, of storage: NSTextStorage, at origin: NSPoint) {
+        for (location, symbol) in Invisibles.symbols(in: storage.string, range: characters) {
+            guard storage.attribute(.checkbox, at: location, effectiveRange: nil) == nil else { continue }
+            let glyph = glyphIndexForCharacter(at: location)
+            let fragment = lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            let glyphPoint = self.location(forGlyphAt: glyph)
+            let font = storage.attribute(.font, at: location, effectiveRange: nil) as? NSFont
+                ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+            let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.tertiaryLabelColor]
+            let string = symbol.rawValue as NSString
+            var x = origin.x + fragment.minX + glyphPoint.x
+            if symbol == .space || symbol == .tab {
+                let width = boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: textContainers[0]).width
+                x += (width - string.size(withAttributes: attributes).width) / 2
+            }
+            let baseline = origin.y + fragment.minY + glyphPoint.y
+            string.draw(at: NSPoint(x: x, y: baseline - font.ascender), withAttributes: attributes)
         }
     }
 

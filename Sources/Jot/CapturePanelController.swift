@@ -6,7 +6,7 @@ import JotCore
 /// Note, with the Note List as a collapsible sidebar. Saving is invisible: ~0.5 s
 /// after typing stops, and when the Note is left (panel closed, another Note opened).
 @MainActor
-final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelegate {
+final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelegate, NSMenuItemValidation {
     private static let autosaveDelay: Duration = .milliseconds(500)
     private static let frameAutosaveName = "CapturePanel"
     private static let defaultSize = NSSize(width: 640, height: 420)
@@ -199,6 +199,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         case ([.control, .command], kVK_ANSI_S): toggleNoteList()
         case ([.command], kVK_ANSI_N): showNewDraft()
         case ([.command], kVK_ANSI_Comma): onShowSettings()
+        case ([.option, .command], kVK_ANSI_I): toggleInvisibles()
         // Find (GLOSSARY: within the open Note), the standard Mac set (ticket 24).
         // Also with focus in the Note List: it always finds in the editor.
         case ([.command], kVK_ANSI_F): find(.showFindInterface)
@@ -593,6 +594,29 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         gutter.refresh()
     }
 
+    /// Faint symbols for spaces, tabs and line breaks (Settings > Editor, ticket 34).
+    func setShowsInvisibles(_ on: Bool) {
+        guard let layoutManager = textView.layoutManager as? EditorLayoutManager, layoutManager.showsInvisibles != on
+        else { return }
+        layoutManager.showsInvisibles = on
+        textView.needsDisplay = true
+    }
+
+    /// View > Show Invisibles (⌥⌘I): the same setting as in Settings, which
+    /// follows it (`@AppStorage`).
+    @objc func toggleInvisibles() {
+        let on = !UserDefaults.standard.bool(forKey: SettingsWindowController.invisiblesKey)
+        UserDefaults.standard.set(on, forKey: SettingsWindowController.invisiblesKey)
+        setShowsInvisibles(on)
+    }
+
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        if item.action == #selector(toggleInvisibles) {
+            item.state = (textView.layoutManager as? EditorLayoutManager)?.showsInvisibles == true ? .on : .off
+        }
+        return true
+    }
+
     /// The line numbers beside the text (Settings > Editor).
     func setLineNumbers(_ on: Bool) {
         textView.enclosingScrollView?.rulersVisible = on
@@ -736,6 +760,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     func textDidChange(_ notification: Notification) {
         folder.update(text: textView.string)
+        // A line's break turns from ¬ to ¶ by an edit on the next line, which may not redraw it.
+        if (textView.layoutManager as? EditorLayoutManager)?.showsInvisibles == true { textView.needsDisplay = true }
         updateEmptyNoteHint()
         if folder.isDraft, !noteListItem.isCollapsed { noteList.updateDraft(textView.string) }
         cancelAutosave()
