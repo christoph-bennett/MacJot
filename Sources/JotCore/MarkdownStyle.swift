@@ -24,6 +24,9 @@ public enum MarkdownStyle {
             case paragraphGap
             /// A fenced code block, fences included (ticket 35): literal, monospaced.
             case codeBlock
+            /// A horizontal rule's line (ticket 36), drawn as a thin line; its
+            /// characters are also a marker.
+            case rule
             /// The language after an opening fence (```` ```swift ````): dimmed like
             /// the fence, but content, so Search finds it.
             case codeInfo
@@ -163,8 +166,13 @@ public enum MarkdownStyle {
             }
             return
         }
-        if rule.firstMatch(in: ns as String, range: line) != nil {
-            spans.append(Span(range: line, kind: .marker))  // a horizontal rule: all syntax
+        if let match = rule.firstMatch(in: ns as String, range: line) {
+            spans.append(Span(range: line, kind: .marker))  // all syntax
+            // `---` right under text underlines it as a heading (setext), as in CommonMark.
+            let isDashes = ns.substring(with: match.range(at: 1)) == "-"
+            let previous = line.location > 0 ? ns.lineRange(for: NSRange(location: line.location - 1, length: 0)) : nil
+            let underText = previous.map { !ns.substring(with: $0).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
+            if !(isDashes && underText) { spans.append(Span(range: line, kind: .rule)) }
             return
         }
         if let match = heading.firstMatch(in: ns as String, range: line) {

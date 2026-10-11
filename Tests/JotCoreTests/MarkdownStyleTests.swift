@@ -64,7 +64,7 @@ struct MarkdownStyleTests {
 
     @Test(arguments: ["***", "* * *", "---", "- - -", "___"])
     func horizontalRuleIsDimmedAsAWhole(rule: String) {
-        #expect(spans(rule) == ["marker:\(rule)"])
+        #expect(spans(rule) == ["marker:\(rule)", "rule:\(rule)"])  // dimmed, and drawn as a line (ticket 36)
     }
 
     @Test func blankLineBetweenParagraphs() {

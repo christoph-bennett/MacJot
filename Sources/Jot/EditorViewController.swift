@@ -8,6 +8,8 @@ enum FormatCommand {
     case link
     /// Fences around lines (ticket 35).
     case codeBlock
+    /// `---` as its own paragraph (ticket 36).
+    case horizontalRule
 }
 
 /// The editor side of the Capture Panel: the Formatting Toolbar on top, with a
@@ -195,6 +197,11 @@ final class EditorViewController: NSViewController {
             item.target = self
             button.menu?.addItem(item)
         }
+        // No room in the toolbar for another button (ticket 36).
+        button.menu?.addItem(.separator())
+        let rule = NSMenuItem(title: "Horizontal Line", action: #selector(horizontalRule), keyEquivalent: "")
+        rule.target = self
+        button.menu?.addItem(rule)
         button.toolTip = "Heading"
         button.refusesFirstResponder = true
         button.widthAnchor.constraint(equalToConstant: 56).isActive = true
@@ -210,6 +217,10 @@ final class EditorViewController: NSViewController {
             return
         }
         onFormat(.line(.heading(sender.tag)))
+    }
+
+    @objc private func horizontalRule() {
+        onFormat(.horizontalRule)
     }
 
     @objc private func format(_ sender: NSSegmentedControl) {

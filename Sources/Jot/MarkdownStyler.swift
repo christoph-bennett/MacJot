@@ -129,6 +129,8 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
                 storage.addAttributes([.foregroundColor: NSColor.clear, .checkbox: checked], range: span.range)
             case .codeBlock:
                 setMonospaced(storage, range: span.range)  // the fences are markers, dimmed below
+            case .rule:
+                storage.addAttribute(.horizontalRule, value: true, range: span.range)  // drawn by `EditorLayoutManager`
             case .codeInfo:
                 storage.addAttribute(.foregroundColor, value: NSColor.tertiaryLabelColor, range: span.range)
             case .heading, .marker:

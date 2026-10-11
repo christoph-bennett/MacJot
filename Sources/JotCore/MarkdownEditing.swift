@@ -143,6 +143,23 @@ public enum MarkdownEditing {
         }
     }
 
+    /// The heading menu's Horizontal Line (ticket 36): `---` as a paragraph of its
+    /// own at the cursor (or in place of the selection), blank lines around it
+    /// (ADR 0004), so it's never read as a heading underline. The cursor goes after it.
+    public static func insertHorizontalRule(in text: String, selection: NSRange) -> TextEdit {
+        let ns = text as NSString
+        let before = ns.substring(to: selection.location)
+        let prefix = before.isEmpty || before.hasSuffix("\n\n") ? "" : before.hasSuffix("\n") ? "\n" : "\n\n"
+        // Spaces and up to one paragraph break after the cursor make way for the rule's own.
+        var end = NSMaxRange(selection)
+        while end < ns.length, [0x20, 0x09].contains(ns.character(at: end)) { end += 1 }
+        var breaks = 0
+        while end < ns.length, breaks < 2, ns.character(at: end) == 0x0A { end += 1; breaks += 1 }
+        let replacement = prefix + "---\n\n"
+        return TextEdit(range: NSRange(location: selection.location, length: end - selection.location), replacement: replacement,
+                        selection: NSRange(location: selection.location + (replacement as NSString).length, length: 0))
+    }
+
     /// The Formatting Toolbar's Code Block (ticket 35): if the selection's lines
     /// touch a fenced block, removes its fences; on an empty line, inserts an
     /// empty block with the cursor in it; otherwise wraps the selection's lines

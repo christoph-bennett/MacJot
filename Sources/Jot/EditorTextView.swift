@@ -5,6 +5,8 @@ extension NSAttributedString.Key {
     /// On a checklist item's `[ ]` / `[x]`: whether it's checked. Set by
     /// `MarkdownStyler`, drawn by `EditorLayoutManager`, clicked in `EditorTextView`.
     static let checkbox = NSAttributedString.Key("JotCheckbox")
+    /// On a horizontal rule's line (`---`): `EditorLayoutManager` draws a thin line after it.
+    static let horizontalRule = NSAttributedString.Key("JotHorizontalRule")
 }
 
 /// The editor's text view: a click on a checklist box toggles it instead of
@@ -168,6 +170,9 @@ final class EditorLayoutManager: NSLayoutManager {
         guard let storage = textStorage, let container = textContainers.first else { return }
         let characters = characterRange(forGlyphRange: glyphsToShow, actualGlyphRange: nil)
         if showsInvisibles { drawInvisibles(in: characters, of: storage, at: origin) }
+        storage.enumerateAttribute(.horizontalRule, in: characters) { value, range, _ in
+            if value != nil { drawRule(after: range, at: origin) }
+        }
         storage.enumerateAttribute(.checkbox, in: characters) { value, part, _ in
             // The whole box, even when only part of it is being redrawn.
             guard let checked = value as? Bool, let range = storage.checkboxRange(at: part.location) else { return }
@@ -176,6 +181,39 @@ final class EditorLayoutManager: NSLayoutManager {
             let bounds = boundingRect(forGlyphRange: glyphs, in: container).offsetBy(dx: origin.x, dy: origin.y)
             drawBox(checked: checked, in: bounds, pointSize: font?.pointSize ?? 14)
         }
+    }
+
+    /// A hairline from just after the rule's dimmed characters to the text's right
+    /// edge (the visible one while lines don't wrap), at the line's middle.
+    private func drawRule(after range: NSRange, at origin: NSPoint) {
+        guard let container = textContainers.first else { return }
+        let glyphs = glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+        guard glyphs.length > 0 else { return }
+        let fragment = lineFragmentRect(forGlyphAt: glyphs.location, effectiveRange: nil)
+        let used = boundingRect(forGlyphRange: glyphs, in: container)
+        let right = min(fragment.maxX, (container.textView?.visibleRect.maxX ?? fragment.maxX) - origin.x)
+            - container.lineFragmentPadding
+        let start = used.maxX + 6
+        guard right > start else { return }
+        // Level with the characters, on a whole pixel: through the middle of `---`
+        // and `***`, but where underscores sit, at the underline position, for `___`.
+        var middle = used.midY
+        if let storage = textStorage,
+           (storage.string as NSString).substring(with: range).trimmingCharacters(in: .whitespaces).hasPrefix("_"),
+           let font = storage.attribute(.font, at: range.location, effectiveRange: nil) as? NSFont {
+            middle = fragment.minY + location(forGlyphAt: glyphs.location).y - font.underlinePosition
+        }
+        let scale = container.textView?.window?.backingScaleFactor ?? 2
+        let y = ((origin.y + middle) * scale).rounded() / scale
+        Self.ruleColor.setFill()
+        NSRect(x: origin.x + start, y: y, width: right - start, height: 1 / scale).fill()
+    }
+
+    /// The separator colour; on a dark background that's too faint to see, as
+    /// with the current-line band (ticket 29).
+    private static let ruleColor = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor.labelColor.withAlphaComponent(0.25) : NSColor.separatorColor
     }
 
     /// Each symbol in the character's own font, where the character is: centred

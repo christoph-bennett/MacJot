@@ -4,8 +4,8 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The heading pop-up ends with a separator and "Horizontal Line"; choosing it inserts `---` as its own paragraph, cursor after it, one undo step
-- [ ] `---`, `***` and `___` lines show as a thin rule with dimmed characters, in light and dark mode
-- [ ] Frontmatter (`---` at the very top) and `---` inside a code block aren't drawn as rules
+- [x] The heading pop-up ends with a separator and "Horizontal Line"; choosing it inserts `---` as its own paragraph, cursor after it, one undo step
+- [x] `---`, `***` and `___` lines show as a thin rule with dimmed characters, in light and dark mode
+- [x] Frontmatter (`---` at the very top) and `---` inside a code block aren't drawn as rules
