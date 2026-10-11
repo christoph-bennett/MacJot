@@ -30,7 +30,7 @@ Picked from Later 2026-10-10 (second round):
 - **Code block button**, with fenced blocks styled monospaced. → ticket 35
 - **Horizontal line** in the heading pop-up, drawn as a thin rule. → ticket 36
 - **Search by several words**, in any order, `"quotes"` for a phrase; instead of an SQLite index. → ticket 37
-- **Setting: custom Date Prefix format**, e.g. `20261009-` or `2026-10-09_` instead of the fixed `2026-10-09-`. Not typed as a format string: the user wants a drag-and-drop style editor, to be designed in its own session before it's ticketed. MacJot also reads the prefix back (`DatePrefix.of`, `DatePrefix.day(of:)`) to keep it on rename and to date the Note List, so Notes named with an earlier format must still be recognised.
+- **Setting: custom Date Prefix format**, configured Hazel-style with tokens (Year, Month, Day, Separator) in a popover from Settings > General; the prefix is found by the Title, never parsed (ADR 0009, designed 2026-10-11). → tickets 38 and 39
 
 Earlier:
 

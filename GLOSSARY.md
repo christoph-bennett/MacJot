@@ -13,8 +13,12 @@ The first non-blank line of a Note, whatever its formatting; it names the Note i
 _Avoid_: Name, heading, subject
 
 **Date Prefix**:
-An optional `yyyy-mm-dd-` at the start of a Note's filename, recording the day the Note was created; enabled in Settings.
+An optional date at the start of a Note's filename, recording the day the Note was created, written in the Date Prefix Format; enabled in Settings.
 _Avoid_: Timestamp, date stamp
+
+**Date Prefix Format**:
+The pattern the Date Prefix is written in, built in Settings from date elements and separators; `2026-10-09-` by default.
+_Avoid_: Template, mask, naming pattern
 
 **Notes Folder**:
 The single user-chosen folder whose top-level `.md` files are the user's Notes.
