@@ -9,6 +9,13 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let datePrefixKey = "datePrefix"
+    /// The Date Prefix Format, as JSON (ticket 38); the standard one until it's configured.
+    static let datePrefixFormatKey = "datePrefixFormat"
+
+    static var datePrefixFormat: DatePrefixFormat {
+        UserDefaults.standard.data(forKey: datePrefixFormatKey)
+            .flatMap { try? JSONDecoder().decode(DatePrefixFormat.self, from: $0) } ?? .standard
+    }
     static let fontSizeKey = "editorFontSize"
     static let defaultFontSize = 14.0
     static let lineSpacingKey = "editorLineSpacing"

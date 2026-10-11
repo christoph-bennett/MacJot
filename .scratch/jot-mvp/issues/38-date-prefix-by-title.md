@@ -8,9 +8,9 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Renaming keeps a prefix in any format (e.g. `20261011_`, `11.10.26 `, `2026-`), and none for a filename that's just the Title's name
-- [ ] A Note whose filename doesn't end with its Title's name keeps a prefix in the current or default format when renamed
-- [ ] New Notes still get `2026-10-11-` style prefixes; existing behaviour and tests otherwise unchanged
-- [ ] The format writes every element option correctly, month names in English and e.g. German and French with the filename rules applied; non-Latin locales offer numbers only
+- [x] Renaming keeps a prefix in any format (e.g. `20261011_`, `11.10.26 `, `2026-`), and none for a filename that's just the Title's name
+- [x] A Note whose filename doesn't end with its Title's name keeps a prefix in the current or default format when renamed
+- [x] New Notes still get `2026-10-11-` style prefixes; existing behaviour and tests otherwise unchanged
+- [x] The format writes every element option correctly, month names in English and e.g. German and French with the filename rules applied; non-Latin locales offer numbers only

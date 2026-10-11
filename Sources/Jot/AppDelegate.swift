@@ -124,7 +124,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let defaults = UserDefaults.standard
         let make = { (url: URL) in
             try NotesFolder(url: url, recoveryURL: Self.recoveryURL,
-                            datePrefix: defaults.bool(forKey: SettingsWindowController.datePrefixKey)) { url in
+                            datePrefix: defaults.bool(forKey: SettingsWindowController.datePrefixKey),
+                            datePrefixFormat: SettingsWindowController.datePrefixFormat) { url in
                 try FileManager.default.trashItem(at: url, resultingItemURL: nil)
             }
         }

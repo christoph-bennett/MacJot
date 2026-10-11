@@ -8,7 +8,7 @@ struct SearchTests {
     private let note = "Friday\n\nBuy oat milk to buy\nCall Müller"
 
     private func summary(_ text: String) -> NoteSummary {
-        NoteSummary(url: URL(fileURLWithPath: "/n.md"), text: text, modified: .distantPast, created: .distantPast)
+        NoteSummary(url: URL(fileURLWithPath: "/n.md"), text: text, modified: .distantPast)
     }
 
     @Test func splitsWordsAndQuotedPhrases() {

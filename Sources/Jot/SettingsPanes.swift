@@ -127,7 +127,7 @@ struct GeneralPane: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle("Start file names with the creation date", isOn: $datePrefix)
                     // Today's date, so the example matches what the next Note gets.
-                    Explanation(text: "Named like “\(DatePrefix.string(for: state.today))plan.md”. "
+                    Explanation(text: "Named like “\(SettingsWindowController.datePrefixFormat.string(for: state.today))plan.md”. "
                                 + "Existing files keep their names.")
                 }
             }

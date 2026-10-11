@@ -1245,7 +1245,7 @@ final class NotesFolderTests {
         // Dated by the copy's file, which was just written: the real today, not the injected clock.
         let written = try #require(try recoveryURL.resourceValues(forKeys: [.creationDateKey]).creationDate)
         _ = try makeFolder(datePrefix: true)
-        #expect(try files() == ["\(DatePrefix.string(for: written))crashed-idea.md"])
+        #expect(try files() == ["\(DatePrefixFormat.standard.string(for: written))crashed-idea.md"])
     }
 
     @Test func recoveryCopyIsDatedByItsFileNotTheRelaunch() throws {
@@ -1266,24 +1266,41 @@ final class NotesFolderTests {
         #expect(try files() == ["2026-10-08-budget.md"])
     }
 
-    @Test func createdDateComesFromTheDatePrefix() throws {
-        try writeNote("2026-10-08-plan.md", "Plan")
-        let note = try #require(try makeFolder().notes().first)
-        #expect(note.created == day(2026, 10, 8, hour: 0))
+    // MARK: Date Prefix Format (ticket 38, ADR 0009)
+
+    /// Whatever precedes the Title's name is the prefix, in any format.
+    @Test func aPrefixInAnyFormatIsKept() throws {
+        try writeNote("20261011_plan.md", "Plan")
+        try writeNote("2026-trip.md", "Trip")
+        try writeNote("Okt 9 idea-2.md", "Idea")
+        let folder = try makeFolder()
+        try edit(folder, "20261011_plan.md", to: "Big plan")
+        try edit(folder, "2026-trip.md", to: "Journey")
+        try edit(folder, "Okt 9 idea-2.md", to: "Thought")
+        #expect(try files() == ["2026-journey.md", "20261011_big-plan.md", "Okt 9 thought.md"])
     }
 
-    @Test func createdDateWithoutPrefixIsTheFilesCreationDate() throws {
-        let url = try writeNote("plan.md", "Plan")
-        let created = day(2025, 3, 1, hour: 9)
-        try FileManager.default.setAttributes([.creationDate: created], ofItemAtPath: url.path)
-        #expect(try makeFolder().notes().first?.created == created)
+    @Test func aNameDriftedFromTheTitleKeepsAPrefixInTheCurrentFormat() throws {
+        try writeNote("11.10.26 notes.md", "Plan")
+        let folder = try makeFolder()
+        folder.datePrefixFormat = DatePrefixFormat([.day(.number), .separator(.dot), .month(.number), .separator(.dot),
+                                                    .year(.short), .separator(.space)])
+        try edit(folder, "11.10.26 notes.md", to: "Budget")
+        #expect(try files() == ["11.10.26 budget.md"])
     }
 
-    @Test func dateInTheTitleIsNotACreatedDate() throws {
-        let url = try writeNote("2026-10-08-meeting.md", "2026-10-08 meeting")
-        let created = day(2025, 3, 1, hour: 9)
-        try FileManager.default.setAttributes([.creationDate: created], ofItemAtPath: url.path)
-        #expect(try makeFolder().notes().first?.created == created)
+    @Test func newNotesUseTheFormat() throws {
+        let folder = try makeFolder(datePrefix: true)
+        folder.datePrefixFormat = DatePrefixFormat([.year(.full), .month(.number), .day(.number), .separator(.underscore)])
+        try writeDraft(folder, "Plan")
+        #expect(try files() == ["20261008_plan.md"])
+    }
+
+    @Test func anEmptyFormatWritesNoPrefix() throws {
+        let folder = try makeFolder(datePrefix: true)
+        folder.datePrefixFormat = DatePrefixFormat([])
+        try writeDraft(folder, "Plan")
+        #expect(try files() == ["plan.md"])
     }
 }
 

@@ -41,9 +41,9 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 35 | [Code block button](35-code-block.md) | none | done |
 | 36 | [Horizontal line](36-horizontal-line.md) | none | done |
 | 37 | [Search by several words](37-search-several-words.md) | none | done |
-| 38 | [Date Prefix found by the Title](38-date-prefix-by-title.md) | none | ready-for-agent |
+| 38 | [Date Prefix found by the Title](38-date-prefix-by-title.md) | none | done |
 | 39 | [Date Prefix Format configurator](39-date-prefix-format-configurator.md) | 38 | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
-Planned order for the rest: 38, 39.
+Planned order for the rest: 39.

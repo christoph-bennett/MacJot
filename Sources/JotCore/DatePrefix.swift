@@ -1,41 +1,45 @@
 import Foundation
 
-/// The optional `yyyy-mm-dd-` at the start of a Note's filename: the local day
-/// the Note was created. See ADR 0003.
+/// The Date Prefix of a Note's filename: the day the Note was created, written
+/// in the Date Prefix Format (`DatePrefixFormat`). Never parsed back into a
+/// date (ADR 0009).
 public enum DatePrefix {
-    /// `2026-10-08-` for any time on that local day.
-    public static func string(for date: Date, calendar: Calendar = .current) -> String {
-        let day = calendar.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d-", day.year ?? 0, day.month ?? 0, day.day ?? 0)
+    /// The prefix of a Note's filename: whatever precedes the Title's own name
+    /// (its slug, or slug-`N`), in whatever format it was written; `""` if the
+    /// filename is just that name, also when the Title itself starts with a date
+    /// (`2026-10-08 meeting` → `2026-10-08-meeting.md`). A prefix found that way
+    /// mustn't end in a letter (`workplan.md` for "Plan" has none), and where
+    /// one of `formats` recognises a shorter prefix at the start, that one wins
+    /// (`2026-10-08-meeting-notes.md` whose Title became "Notes" elsewhere). If
+    /// the name doesn't end with the Title's, the prefix `formats` recognise;
+    /// nil if they recognise none: MacJot can't tell.
+    static func of(fileName: String, titleSlug: String, formats: [DatePrefixFormat], locale: Locale = .current) -> String? {
+        let stem = (fileName.lowercased().hasSuffix(".md") ? String(fileName.dropLast(3)) : fileName) as NSString
+        let recognised = formats.lazy.compactMap { $0.prefix(atStartOf: stem as String, locale: locale) }.first
+        if let nameStart = nameStart(in: stem, slug: titleSlug) {
+            let byTitle = stem.substring(to: nameStart)
+            if byTitle.isEmpty { return "" }
+            if !(byTitle.last?.isLetter ?? false) {
+                if let recognised, recognised.count < byTitle.count, byTitle.hasPrefix(recognised) { return recognised }
+                return byTitle
+            }
+        }
+        return recognised
     }
 
-    /// The Date Prefix of a Note's filename, if it has one. A leading date that
-    /// is just where the Title's own name starts (Title `2026-10-08 meeting`,
-    /// file `2026-10-08-meeting.md`) is part of the name, not a prefix.
-    static func of(fileName: String, titleSlug: String) -> String? {
-        let stem = fileName.hasSuffix(".md") ? String(fileName.dropLast(3)) : fileName
-        let prefix = String(stem.prefix(11))
-        guard stem.count > 11, day(of: prefix) != nil, !isName(stem, of: titleSlug) else { return nil }
-        return prefix
+    /// Where `slug` or `slug-N` starts at the very end of `stem`, if it ends with one.
+    private static func nameStart(in stem: NSString, slug: String) -> Int? {
+        guard !slug.isEmpty else { return nil }
+        var end = stem.length
+        if !(stem as String).hasSuffix(slug), let collision = stem.range(of: #"-\d+$"#, options: .regularExpression).nonEmpty {
+            end = collision.location  // `plan-2`: the name before the collision suffix
+        }
+        let name = stem.substring(to: end)
+        guard name.hasSuffix(slug) else { return nil }
+        return end - (slug as NSString).length
     }
+}
 
-    /// Local midnight of the prefix's day; `nil` if it isn't a valid `yyyy-mm-dd-`.
-    static func day(of prefix: String, calendar: Calendar = .current) -> Date? {
-        let parts = prefix.split(separator: "-", omittingEmptySubsequences: false)
-        guard prefix.count == 11, prefix.hasSuffix("-"), parts.count == 4,
-              parts[0].count == 4, parts[1].count == 2, parts[2].count == 2,
-              parts[0...2].allSatisfy({ $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }),
-              let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2]),
-              let date = calendar.date(from: DateComponents(year: year, month: month, day: day)),
-              calendar.dateComponents([.year, .month, .day], from: date) == DateComponents(year: year, month: month, day: day)
-        else { return nil }
-        return date
-    }
-
-    /// `stem` is `slug` or `slug-N`, a name given for that Title without a prefix.
-    private static func isName(_ stem: String, of slug: String) -> Bool {
-        guard stem.hasPrefix(slug) else { return false }
-        let rest = stem.dropFirst(slug.count)
-        return rest.isEmpty || (rest.first == "-" && rest.count > 1 && rest.dropFirst().allSatisfy { $0.isASCII && $0.isNumber })
-    }
+private extension NSRange {
+    var nonEmpty: NSRange? { location == NSNotFound || length == 0 ? nil : self }
 }
