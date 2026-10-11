@@ -342,5 +342,5 @@ extension KeyboardShortcuts.Recorder {
 	}
 }
 
-// Jot patch: the `#Preview`s are removed; their macro plugin ships only with Xcode.
+// MacJot patch: the `#Preview`s are removed; their macro plugin ships only with Xcode.
 #endif

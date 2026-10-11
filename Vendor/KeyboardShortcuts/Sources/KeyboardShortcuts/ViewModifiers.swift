@@ -87,7 +87,7 @@ extension View {
 
 @available(macOS 12.3, *)
 private struct GlobalKeyboardShortcutViewModifier: ViewModifier {
-	// Jot patch: `State` values without the attribute; `@State` is a macro in the
+	// MacJot patch: `State` values without the attribute; `@State` is a macro in the
 	// macOS 27 SDK, and its plugin ships only with Xcode.
 	private let recorderActive = State(initialValue: false)
 	private let refresh = State(initialValue: false)

@@ -1,8 +1,8 @@
 # KeyboardShortcuts (vendored)
 
-[sindresorhus/KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) 3.1.0 (MIT, see `license`), used for Jot's hotkeys (ADR 0005).
+[sindresorhus/KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) 3.1.0 (MIT, see `license`), used for MacJot's hotkeys (ADR 0005).
 
-Vendored instead of fetched, because 3.x uses SwiftUI macros whose plugins ship only with Xcode, and Jot builds with the Command Line Tools. The changes, each marked "Jot patch":
+Vendored instead of fetched, because 3.x uses SwiftUI macros whose plugins ship only with Xcode, and MacJot builds with the Command Line Tools. The changes, each marked "MacJot patch":
 
 - `ConflictPolicy.swift` declares its environment value with a plain `EnvironmentKey` instead of `@Entry`.
 - `Recorder.swift` has no `#Preview`s.

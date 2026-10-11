@@ -77,7 +77,7 @@ extension KeyboardShortcuts {
 	}
 }
 
-// Jot patch: a plain EnvironmentKey instead of `@Entry`, whose macro plugin
+// MacJot patch: a plain EnvironmentKey instead of `@Entry`, whose macro plugin
 // (SwiftUIMacros) ships only with Xcode, not the Command Line Tools.
 private struct ConflictPolicyKey: EnvironmentKey {
 	static let defaultValue = KeyboardShortcuts.ConflictPolicy.default

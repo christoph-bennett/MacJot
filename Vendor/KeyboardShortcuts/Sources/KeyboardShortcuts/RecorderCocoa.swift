@@ -130,7 +130,7 @@ extension KeyboardShortcuts {
 			return size
 		}
 
-		// Jot patch: no `layout()` override here. Upstream centres the text in the
+		// MacJot patch: no `layout()` override here. Upstream centres the text in the
 		// full field width by mirroring the cancel button's inset on the left; that
 		// leaves too little room (⌃⌥⇧⌘Space was cut off) and, next to the button,
 		// looks off-centre. The search field's own centring, in the area left of
