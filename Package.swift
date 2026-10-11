@@ -15,6 +15,8 @@ let package = Package(
     targets: [
         .target(name: "JotCore"),
         .executableTarget(name: "Jot", dependencies: ["JotCore", "KeyboardShortcuts"]),
+        // Times loading and searching generated Notes (ticket 40): scripts/benchmark-search.sh.
+        .executableTarget(name: "JotBenchmark", dependencies: ["JotCore"]),
         .testTarget(name: "JotCoreTests", dependencies: ["JotCore"]),
     ]
 )

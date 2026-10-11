@@ -43,8 +43,8 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 37 | [Search by several words](37-search-several-words.md) | none | done |
 | 38 | [Date Prefix found by the Title](38-date-prefix-by-title.md) | none | done |
 | 39 | [Date Prefix Format configurator](39-date-prefix-format-configurator.md) | 38 | done |
-| 40 | [Search benchmark](40-search-benchmark.md) | none | ready-for-agent |
+| 40 | [Search benchmark](40-search-benchmark.md) | none | done |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
-Planned order for the rest: 40.
+Planned order for the rest: none ticketed.
