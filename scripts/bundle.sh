@@ -12,6 +12,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp "$BIN_DIR/MacJot" "$APP/Contents/MacOS/MacJot"
+# Made by scripts/make-icon.sh from the artwork.
+cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 # The hotkey recorder's texts; without them it crashes when it shows one.
 cp -R "$BIN_DIR/KeyboardShortcuts_KeyboardShortcuts.bundle" "$APP/Contents/Resources/"
 codesign --force --sign - "$APP"
