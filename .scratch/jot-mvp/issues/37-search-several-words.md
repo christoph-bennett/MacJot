@@ -4,10 +4,10 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `milk friday` finds a Note with "Friday" in its Title and "oat milk" in a line, and not one with only one of them
-- [ ] `"buy milk"` finds only Notes with that exact phrase; `buy milk` also finds "milk to buy"
-- [ ] `rgen` still finds "Morgen"; case and accents are ignored
-- [ ] The preview line shows the first word's match; a Title match shows none
-- [ ] The Draft row is listed by the same rule
+- [x] `milk friday` finds a Note with "Friday" in its Title and "oat milk" in a line, and not one with only one of them
+- [x] `"buy milk"` finds only Notes with that exact phrase; `buy milk` also finds "milk to buy"
+- [x] `rgen` still finds "Morgen"; case and accents are ignored
+- [x] The preview line shows the first word's match; a Title match shows none
+- [x] The Draft row is listed by the same rule

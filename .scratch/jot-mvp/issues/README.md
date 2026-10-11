@@ -40,8 +40,8 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 34 | [Show invisible characters](34-show-invisibles.md) | none | done |
 | 35 | [Code block button](35-code-block.md) | none | done |
 | 36 | [Horizontal line](36-horizontal-line.md) | none | done |
-| 37 | [Search by several words](37-search-several-words.md) | none | ready-for-agent |
+| 37 | [Search by several words](37-search-several-words.md) | none | done |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
-Planned order for the rest: 37. The custom Date Prefix format (BACKLOG MVP) gets its own design session before it's ticketed.
+Planned order for the rest: none ticketed. The custom Date Prefix format (BACKLOG MVP) gets its own design session before it's ticketed.

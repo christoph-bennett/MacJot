@@ -68,24 +68,35 @@ public struct NoteSummary: Equatable {
 
         enum Match { case title, line(String, Range<String.Index>) }
 
-        /// The first body line containing `query`, else the Title. Body first: a
-        /// snippet shows why the Note matched, the Title is on screen anyway.
-        func match(_ query: String) -> Match? {
-            for line in lines {
-                if let range = line.range(of: query, options: NoteSummary.searchOptions) { return .line(line, range) }
+        /// Nil unless every term is in the Title or a body line (ticket 37). Then
+        /// the first body line containing the first term found in the body, else
+        /// the Title. Body first: a snippet shows why the Note matched, the Title
+        /// is on screen anyway.
+        func match(_ terms: [String]) -> Match? {
+            guard terms.allSatisfy(contains) else { return nil }
+            for term in terms {
+                for line in lines {
+                    if let range = line.range(of: term, options: NoteSummary.searchOptions) { return .line(line, range) }
+                }
             }
-            return title?.range(of: query, options: NoteSummary.searchOptions) != nil ? .title : nil
+            return .title
+        }
+
+        private func contains(_ term: String) -> Bool {
+            title?.range(of: term, options: NoteSummary.searchOptions) != nil
+                || lines.contains { $0.range(of: term, options: NoteSummary.searchOptions) != nil }
         }
     }
 
-    /// This Note as a search result: `nil` if neither its Title nor its body
-    /// contains `query` (ignoring case, diacritics and Markdown). A body match
+    /// This Note as a search result: `nil` unless every word or "phrase" of
+    /// `query` is in its Title or body (`SearchQuery`; ignoring case, diacritics
+    /// and Markdown). A body match
     /// becomes the preview, so the row shows why the Note matched. A blank query
     /// matches every Note unchanged.
     public func matching(_ query: String) -> NoteSummary? {
-        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return self }
-        switch content.match(query) {
+        let terms = SearchQuery.terms(query)
+        guard !terms.isEmpty else { return self }
+        switch content.match(terms) {
         case nil: return nil
         case .title: return self
         case .line(let line, let range): return NoteSummary(self, preview: Self.snippet(line, around: range))
@@ -100,8 +111,8 @@ public struct NoteSummary: Equatable {
     }
 
     public static func matches(_ query: String, text: String) -> Bool {
-        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return query.isEmpty || Content(text).match(query) != nil
+        let terms = SearchQuery.terms(query)
+        return terms.isEmpty || Content(text).match(terms) != nil
     }
 
     private static let searchOptions: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
