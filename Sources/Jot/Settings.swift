@@ -13,8 +13,12 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let datePrefixFormatKey = "datePrefixFormat"
 
     static var datePrefixFormat: DatePrefixFormat {
-        UserDefaults.standard.data(forKey: datePrefixFormatKey)
-            .flatMap { try? JSONDecoder().decode(DatePrefixFormat.self, from: $0) } ?? .standard
+        decodeDatePrefixFormat(UserDefaults.standard.data(forKey: datePrefixFormatKey))
+    }
+
+    /// The stored format, or the standard one if there's none (or it can't be read).
+    static func decodeDatePrefixFormat(_ data: Data?) -> DatePrefixFormat {
+        data.flatMap { try? JSONDecoder().decode(DatePrefixFormat.self, from: $0) } ?? .standard
     }
     static let fontSizeKey = "editorFontSize"
     static let defaultFontSize = 14.0
@@ -28,6 +32,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
 
     /// The Date Prefix toggle changed (on the main thread).
     var onDatePrefixChange: (Bool) -> Void = { _ in }
+    var onDatePrefixFormatChange: (DatePrefixFormat) -> Void = { _ in }
     /// Settings > Editor changed (on the main thread).
     var onFontSizeChange: (CGFloat) -> Void = { _ in }
     var onLineSpacingChange: (LineSpacing) -> Void = { _ in }
@@ -59,6 +64,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     }()
 
     func show() {
+        state.showsDatePrefixFormat = false  // never left open from last time
         if window == nil {
             window = makeWindow()
         } else {
@@ -138,6 +144,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
 
     private func select(_ pane: SettingsPane, animated: Bool) {
         guard let window, let container = window.contentView, pane != current else { return }
+        state.showsDatePrefixFormat = false  // its pane is going away
         let old = current.flatMap { hosts[$0] }
         current = pane
         switcher.selectedSegment = SettingsPane.allCases.firstIndex(of: pane) ?? 0
@@ -182,6 +189,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
             view = AnyView(GeneralPane(state: state,
                                        onChooseNotesFolder: { [weak self] in self?.chooseNotesFolder() },
                                        onDatePrefixChange: { [weak self] in self?.onDatePrefixChange($0) },
+                                       onDatePrefixFormatChange: { [weak self] in self?.onDatePrefixFormatChange($0) },
                                        onLaunchAtLoginChange: { [weak self] on in
                                            LaunchAtLogin.set(on)
                                            self?.state.launchAtLogin = LaunchAtLogin.state  // the real outcome

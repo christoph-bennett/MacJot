@@ -12,11 +12,11 @@ Tokens are reordered by dragging and removed with Delete; any token may appear m
 
 **Blocked by:** 38
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Format… sits next to the Date Prefix checkbox, greyed out while it's off; it opens the popover
-- [ ] Tokens are added by click or drag, reordered by drag, removed with Delete; typing adds nothing
-- [ ] Each token's ▾ menu offers its options, first one by default; month names follow the system language
-- [ ] The Example updates with every change; Restore Default brings back `2026-10-11-`
-- [ ] New Notes get the configured prefix; the format is remembered across launches; existing files keep their names
-- [ ] Looks native in light and dark mode
+- [x] Format… sits next to the Date Prefix checkbox, greyed out while it's off; it opens the popover
+- [x] Tokens are added by click or drag, reordered by drag, removed with Delete; typing adds nothing
+- [x] Each token's ▾ menu offers its options, first one by default; month names follow the system language
+- [x] The Example updates with every change; Restore Default brings back `2026-10-11-`
+- [x] New Notes get the configured prefix; the format is remembered across launches; existing files keep their names
+- [x] Looks native in light and dark mode

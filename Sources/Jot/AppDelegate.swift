@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             return
         }
         settings.onDatePrefixChange = { [weak folder] in folder?.usesDatePrefix = $0 }
+        settings.onDatePrefixFormatChange = { [weak folder] in folder?.datePrefixFormat = $0 }
         let panel = CapturePanelController(folder: folder)
         panel.onShowSettings = { [weak self] in self?.showSettings() }
         panel.onFolderMoved = { [weak self] in self?.settings.refresh() }

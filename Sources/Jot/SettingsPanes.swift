@@ -27,6 +27,8 @@ final class SettingsState {
     var launchAtLogin = LaunchAtLogin.State.off
     /// See `Hotkey.unavailable`.
     var unavailableHotkeys: Set<Hotkey> = []
+    /// The Date Prefix Format popover is open (ticket 39).
+    var showsDatePrefixFormat = false
 }
 
 /// All panes share this width, so the window only changes height between them.
@@ -90,15 +92,28 @@ private struct Explanation: View {
 }
 
 struct GeneralPane: View {
+    /// The stored Date Prefix Format (ticket 39), decoded once per update; every
+    /// change is saved and passed on at once, so new Notes use it.
+    private func datePrefixFormat(_ current: DatePrefixFormat) -> Binding<DatePrefixFormat> {
+        Binding(get: { current },
+                set: { format in
+                    datePrefixFormatData = (try? JSONEncoder().encode(format)) ?? Data()
+                    onDatePrefixFormatChange(format)
+                })
+    }
+
     @AppStorage(SettingsWindowController.datePrefixKey) private var datePrefix = false
+    @AppStorage(SettingsWindowController.datePrefixFormatKey) private var datePrefixFormatData = Data()
     @AppStorage(CapturePanelController.confirmTrashKey) private var confirmTrash = true
     let state: SettingsState
     let onChooseNotesFolder: () -> Void
     let onDatePrefixChange: (Bool) -> Void
+    let onDatePrefixFormatChange: (DatePrefixFormat) -> Void
     let onLaunchAtLoginChange: (Bool) -> Void
     let onResetPanel: () -> Void
 
     var body: some View {
+        let format = SettingsWindowController.decodeDatePrefixFormat(datePrefixFormatData)
         Pane {
             Row("Notes Folder:") {
                 VStack(alignment: .leading, spacing: 4) {
@@ -125,9 +140,20 @@ struct GeneralPane: View {
             Divider()
             Row("New Notes:") {
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Start file names with the creation date", isOn: $datePrefix)
+                    HStack {
+                        Toggle("Start file names with the creation date", isOn: $datePrefix)
+                        Button("Format…") { state.showsDatePrefixFormat = true }
+                            .disabled(!datePrefix)
+                            .popover(isPresented: Binding(get: { state.showsDatePrefixFormat },
+                                                          set: { state.showsDatePrefixFormat = $0 }),
+                                     arrowEdge: .bottom) {
+                                DatePrefixFormatEditor(format: datePrefixFormat(format), today: state.today) {
+                                    state.showsDatePrefixFormat = false
+                                }
+                            }
+                    }
                     // Today's date, so the example matches what the next Note gets.
-                    Explanation(text: "Named like “\(SettingsWindowController.datePrefixFormat.string(for: state.today))plan.md”. "
+                    Explanation(text: "Named like “\(format.string(for: state.today))plan.md”. "
                                 + "Existing files keep their names.")
                 }
             }
@@ -162,7 +188,10 @@ struct GeneralPane: View {
                 }
             }
         }
-        .onChange(of: datePrefix) { _, on in onDatePrefixChange(on) }
+        .onChange(of: datePrefix) { _, on in
+            onDatePrefixChange(on)
+            if !on { state.showsDatePrefixFormat = false }
+        }
     }
 }
 
