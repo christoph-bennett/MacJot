@@ -4,12 +4,11 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## Inbox
 
-- **Faster in-memory search** (added 2026-10-11, from ticket 40): search misses 50 ms per keystroke from roughly 200 Notes (about 0.23 ms per Note on an M3), and loading misses 1 s from roughly 2,600. Before any SQLite Search Index: fold each Note's text for comparison (case, accents) once when it's loaded, split the query into terms once per keystroke instead of once per Note, and compare a matching Note's lines once instead of twice (`Content.match`). Loading may need its own fix; ticket 40 didn't break it down. Measure with `scripts/benchmark-search.sh` before and after.
-
 ## MVP
 
 Decided 2026-10-11:
 
+- **Faster in-memory search**: each Note's search text folded once (case, accents) when loaded, then a byte search per keystroke; results unchanged. Ticket 40 showed search over 50 ms from roughly 200 Notes. → ticket 41
 - **Search benchmark**: a script run by hand that times loading and searching 1,000, 5,000 and 10,000 generated Notes, against 50 ms per keystroke and 1 s to load. It decides whether the Search Index (Later) gets built. → ticket 40
 
 Triaged 2026-10-10 (next batch: for daily use, no public release yet):
@@ -49,6 +48,7 @@ Earlier:
 ## Later
 
 - **SQLite FTS5 Search Index** (moved from Not planned 2026-10-11): build it only if ticket 40's benchmark fails 50 ms per keystroke or 1 s to load at up to 10,000 Notes, and the faster in-memory search (Inbox) isn't enough. FTS5's trigram tokenizer would keep matching inside words (ticket 37). ADR 0001 applies: derived, disposable, never a source of truth. One Search Index, for the current Notes Folder only. When the Notes Folder changes, MacJot discards it and rebuilds it from the new folder, and Search falls back to in-memory matching while it rebuilds. It's checked against the files at every launch anyway, as other tools edit them while MacJot isn't running.
+- **Faster loading** (2026-10-11): loading 10,000 Notes takes 3.8 s (limit 1 s; crossed at roughly 2,600 Notes). At 5,000, about 70% of it is finding the Markdown markers to strip from each line (1.19 s of 1.9 s; reading the files is 75 ms). Options: skip stripping on lines without Markdown characters (45% of lines in the real Notes have some, so roughly half the cost); show the Titles first and build the search text in the background; keep the summaries on disk between launches (a light Search Index; a folder change still pays once). Decide when the Notes get near it.
 - **On-device embeddings (seen in Stik, 2026-10-11)**: nothing decided. Candidates: search by meaning (finding "Rechnung" with "invoice"), Related Notes for the open Note, a duplicate hint while capturing, grouping similar Notes (would conflict with ADR 0008). Stik keeps `~/.stik/embeddings.json`: for each Note path a vector, a content hash (only changed Notes are recomputed) and a language; 512 numbers for English, 640 for German, which suggests Apple's NaturalLanguage sentence embeddings, on the Mac, no network. Would reopen part of "AI features" (Not planned).
 - **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings. Revisit before a public release.
 - Editor support for tables and images.
