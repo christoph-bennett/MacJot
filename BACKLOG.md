@@ -4,8 +4,6 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## Inbox
 
-- **App icon**: artwork as a 1024 × 1024 PNG drawn on the macOS icon grid (since macOS 26, other shapes are shrunk into a grey rounded square); `sips` scales it, `iconutil` makes the `.icns`, `bundle.sh` copies it, `Info.plist` names it (`CFBundleIconFile`). No Xcode needed; Icon Composer's layered `.icon` (light/dark/tinted) would need Xcode's `actool`, see Later "Install Xcode". Shows in Finder, Open With, Login Items and alerts; not the menu bar (SF Symbol) or the Dock (none). Waiting for the artwork (added 2026-10-11).
-
 ## MVP
 
 Triaged 2026-10-10 (next batch: for daily use, no public release yet):
