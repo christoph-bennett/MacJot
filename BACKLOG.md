@@ -4,6 +4,8 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## Inbox
 
+- **Faster in-memory search** (added 2026-10-11, from ticket 40): search misses 50 ms per keystroke from roughly 200 Notes (about 0.23 ms per Note on an M3), and loading misses 1 s from roughly 2,600. Before any SQLite Search Index: fold each Note's text for comparison (case, accents) once when it's loaded, split the query into terms once per keystroke instead of once per Note, and compare a matching Note's lines once instead of twice (`Content.match`). Loading may need its own fix; ticket 40 didn't break it down. Measure with `scripts/benchmark-search.sh` before and after.
+
 ## MVP
 
 Decided 2026-10-11:
@@ -46,7 +48,7 @@ Earlier:
 
 ## Later
 
-- **SQLite FTS5 Search Index** (moved from Not planned 2026-10-11): build it only if ticket 40's benchmark fails 50 ms per keystroke or 1 s to load at up to 10,000 Notes, and fixing loading alone isn't enough. FTS5's trigram tokenizer would keep matching inside words (ticket 37). ADR 0001 applies: derived, disposable, never a source of truth. One Search Index, for the current Notes Folder only. When the Notes Folder changes, MacJot discards it and rebuilds it from the new folder, and Search falls back to in-memory matching while it rebuilds. It's checked against the files at every launch anyway, as other tools edit them while MacJot isn't running.
+- **SQLite FTS5 Search Index** (moved from Not planned 2026-10-11): build it only if ticket 40's benchmark fails 50 ms per keystroke or 1 s to load at up to 10,000 Notes, and the faster in-memory search (Inbox) isn't enough. FTS5's trigram tokenizer would keep matching inside words (ticket 37). ADR 0001 applies: derived, disposable, never a source of truth. One Search Index, for the current Notes Folder only. When the Notes Folder changes, MacJot discards it and rebuilds it from the new folder, and Search falls back to in-memory matching while it rebuilds. It's checked against the files at every launch anyway, as other tools edit them while MacJot isn't running.
 - **On-device embeddings (seen in Stik, 2026-10-11)**: nothing decided. Candidates: search by meaning (finding "Rechnung" with "invoice"), Related Notes for the open Note, a duplicate hint while capturing, grouping similar Notes (would conflict with ADR 0008). Stik keeps `~/.stik/embeddings.json`: for each Note path a vector, a content hash (only changed Notes are recomputed) and a language; 512 numbers for English, 640 for German, which suggests Apple's NaturalLanguage sentence embeddings, on the Mac, no network. Would reopen part of "AI features" (Not planned).
 - **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings. Revisit before a public release.
 - Editor support for tables and images.

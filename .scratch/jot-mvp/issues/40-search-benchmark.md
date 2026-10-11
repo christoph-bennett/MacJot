@@ -22,8 +22,9 @@ Measured 2026-10-11 on a Mac15,3, Apple M3, 16 GB, macOS 27.0.1; release build, 
 | 1,000 | 385 ms | 6 ms | 224 ms | 237 ms | 239 ms | 244 ms | 54 ms |
 | 5,000 | **1.91 s** | 31 ms | 1.10 s | 1.19 s | 1.17 s | 1.20 s | 263 ms |
 | 10,000 | **3.81 s** | 62 ms | 2.16 s | 2.30 s | 2.31 s | 2.36 s | 522 ms |
+| 20,000 | **7.56 s** | 129 ms | 4.30 s | 4.59 s | 4.66 s | 4.79 s | 1.04 s |
 
-Every search is over 50 ms at all three sizes; load is over 1 s from 5,000 Notes.
+Every search is over 50 ms at every size; load is over 1 s from 5,000 Notes. The 20,000 row is a separate run (`scripts/benchmark-search.sh 20000`, same Mac and day); it stays linear.
 
 - **Search** grows linearly, about 0.23 ms per Note, so it passes 50 ms at roughly 200 Notes. A search that finds a match early in each Note ("common word") is about 4× faster, so the cost is the comparison itself: case- and diacritic-insensitive `range(of:)` on every body line, on every keystroke. `Content.match` compares a matching Note's lines twice (once to check every term, again to find the preview line), and `NoteSummary.matching` splits the query into terms again for every Note.
 - These are lower bounds for search: only the matching is timed. The Note List's own work per keystroke (building rows, reloading the table) comes on top.
