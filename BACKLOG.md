@@ -6,6 +6,10 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## MVP
 
+Decided 2026-10-11:
+
+- **Search benchmark**: a script run by hand that times loading and searching 1,000, 5,000 and 10,000 generated Notes, against 50 ms per keystroke and 1 s to load. It decides whether the Search Index (Later) gets built. → ticket 40
+
 Triaged 2026-10-10 (next batch: for daily use, no public release yet):
 
 - **Find and replace in the editor** (⌘F): the standard macOS find bar, which NSTextView offers on TextKit 1 (`usesFindBar`, incremental search). The panel's shortcuts go through `CapturePanel.sendEvent`, so ⌘F, ⌘G and ⌘⇧G must be added there. → ticket 24
@@ -42,6 +46,8 @@ Earlier:
 
 ## Later
 
+- **SQLite FTS5 Search Index** (moved from Not planned 2026-10-11): build it only if ticket 40's benchmark fails 50 ms per keystroke or 1 s to load at up to 10,000 Notes, and fixing loading alone isn't enough. FTS5's trigram tokenizer would keep matching inside words (ticket 37). ADR 0001 applies: derived, disposable, never a source of truth. One Search Index, for the current Notes Folder only. When the Notes Folder changes, MacJot discards it and rebuilds it from the new folder, and Search falls back to in-memory matching while it rebuilds. It's checked against the files at every launch anyway, as other tools edit them while MacJot isn't running.
+- **On-device embeddings (seen in Stik, 2026-10-11)**: nothing decided. Candidates: search by meaning (finding "Rechnung" with "invoice"), Related Notes for the open Note, a duplicate hint while capturing, grouping similar Notes (would conflict with ADR 0008). Stik keeps `~/.stik/embeddings.json`: for each Note path a vector, a content hash (only changed Notes are recomputed) and a language; 512 numbers for English, 640 for German, which suggests Apple's NaturalLanguage sentence embeddings, on the Mac, no network. Would reopen part of "AI features" (Not planned).
 - **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings. Revisit before a public release.
 - Editor support for tables and images.
 - Slash commands and templates; wiki-links (renaming would have to update links, see ADR 0003).
@@ -55,7 +61,6 @@ Decided 2026-10-10 (second round of Later):
 - **Pinned sticky windows; several editor windows at once**: MacJot is one panel showing one Note, summoned and dismissed; separate windows would make it a document-based app.
 - **Settings in a config file**: no reason yet to keep one beside the Settings window (hand edits, dotfiles, scripts); revisit if one comes up.
 - **`==highlight==`**: not standard Markdown; most other tools show the `==` literally.
-- **SQLite FTS5 Search Index**: substring search is the wanted behaviour (ticket 37 adds several words), and it's instant at this size; ADR 0001 would still apply.
 - **Copy a Note as rich text**: Copy as Markdown covers it; faithful rich text for lists and headings needs a converter of its own.
 - **Conflict-resolution UI for concurrent external edits**: local unsaved edits win; a conflict needs two editors on one Note at the same moment.
 
@@ -66,7 +71,7 @@ Earlier:
 - **Keep macOS inline predictions in the editor**: they insert line breaks past the Return handling (ADR 0004); catching those reliably is a lot of fragile work for little gain (decided 2026-10-10).
 - **Hotkey to reopen the last Note**: the Search Hotkey already opens the most recently changed Note, and Return continues writing in it (decided 2026-10-10).
 - **Underline**: Markdown has no syntax for it; `<u>` would put HTML in the files.
-- **AI features, dictation, encryption, Git sync, Apple Notes import**: outside the "quick plain-Markdown capture" scope (decided when comparing with Stik).
+- **AI features (except on-device embeddings, Later), dictation, encryption, Git sync, Apple Notes import**: outside the "quick plain-Markdown capture" scope (decided when comparing with Stik).
 - **Streaks/stats, analytics, localisation, custom themes and opacity**: same reason.
 - **Moving Notes when the Notes Folder changes**: the user moves them; MacJot only shows a hint (Q30).
 - **Renaming existing files when the Date Prefix setting changes**: the setting applies to new Notes only (Q22).
