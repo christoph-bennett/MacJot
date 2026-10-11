@@ -179,7 +179,7 @@ for count in sizes {
     print("  reload          \(ms(median(reloads)).padding(toLength: 10, withPad: " ", startingAt: 0)) median of 3 (after each autosave; no limit set)")
     for q in queries {
         var found = 0
-        let search = { time { found = notes.compactMap { $0.matching(q.query) }.count } }
+        let search = { time { let query = SearchQuery.Folded(q.query); found = notes.compactMap { $0.matching(query) }.count } }
         var runs = [search()]
         // Far over the limit, a few runs tell enough.
         let repeats = runs[0] > searchLimit * 10 ? 3 : 15

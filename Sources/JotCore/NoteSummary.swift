@@ -6,26 +6,40 @@ public struct NoteSummary: Equatable {
     /// The Title without its Markdown (`# **Plan**` → `Plan`); "Untitled" if there is none.
     public let title: String
     /// The first non-blank line after the Title, without its Markdown. While
-    /// searching, the snippet around the match instead.
-    public let preview: String
+    /// searching, the snippet around the match instead. Cut when asked for: a
+    /// search can match thousands of Notes, the Note List shows a few (ticket 41).
+    public var preview: String {
+        guard let found else { return String((content.lines.first ?? "").prefix(Self.previewLength)) }
+        let line = content.lines[found.line]
+        return Self.snippet(line, around: Self.index(in: line, atFolded: found.offset))
+    }
     public let modified: Date
     /// What search looks at, held in memory (the in-memory Search Index).
     private let content: Content
+    /// Where in which body line a search found its first term, for the preview;
+    /// `nil` outside a search or when only the Title matched.
+    private let found: Found?
+
+    private struct Found: Equatable {
+        let line: Int
+        /// In the line's folded UTF-8.
+        let offset: Int
+    }
 
     init(url: URL, text: String, modified: Date) {
         self.url = url
         self.modified = modified
         content = Content(text)
         title = content.title ?? "Untitled"
-        preview = String((content.lines.first ?? "").prefix(Self.previewLength))
+        found = nil
     }
 
-    private init(_ note: NoteSummary, preview: String) {
+    private init(_ note: NoteSummary, found: Found) {
         url = note.url
         title = note.title
         modified = note.modified
         content = note.content
-        self.preview = preview
+        self.found = found
     }
 
     private static let previewLength = 200
@@ -46,6 +60,12 @@ public struct NoteSummary: Equatable {
     private struct Content: Equatable {
         var title: String?
         var lines: [String] = []
+        /// The Title and lines folded once (`SearchQuery.fold`), as UTF-8, each
+        /// ended by a NUL so no match spans two lines: what each keystroke
+        /// searches (ticket 41).
+        private var folded: [UInt8] = []
+        /// Where each NUL in `folded` is: the Title's first, then each line's.
+        private var ends: [Int] = []
 
         init(_ text: String) {
             let ns = text as NSString
@@ -60,27 +80,50 @@ public struct NoteSummary: Equatable {
                 lines.append(NoteSummary.plain(ns, line: range, codeBlocks: blocks))
             }
             self.lines = lines
+            for line in [self.title ?? ""] + lines {
+                folded += SearchQuery.fold(line).utf8
+                ends.append(folded.count)
+                folded.append(0)
+            }
         }
 
-        enum Match { case title, line(String, Range<String.Index>) }
+        enum Match { case title, line(Int, offset: Int) }
 
         /// Nil unless every term is in the Title or a body line (ticket 37). Then
         /// the first body line containing the first term found in the body, else
         /// the Title. Body first: a snippet shows why the Note matched, the Title
         /// is on screen anyway.
-        func match(_ terms: [String]) -> Match? {
-            guard terms.allSatisfy(contains) else { return nil }
-            for term in terms {
-                for line in lines {
-                    if let range = line.range(of: term, options: NoteSummary.searchOptions) { return .line(line, range) }
+        func match(_ query: SearchQuery.Folded) -> Match? {
+            guard query.folded.allSatisfy({ offset(of: $0, from: 0) != nil }) else { return nil }
+            for term in query.folded {
+                if let hit = offset(of: term, from: ends[0] + 1) {
+                    let line = lineIndex(at: hit)
+                    return .line(line, offset: hit - (ends[line] + 1))
                 }
             }
             return .title
         }
 
-        private func contains(_ term: String) -> Bool {
-            title?.range(of: term, options: NoteSummary.searchOptions) != nil
-                || lines.contains { $0.range(of: term, options: NoteSummary.searchOptions) != nil }
+        /// Where `term` first is in `folded`, at or after `start`.
+        private func offset(of term: [UInt8], from start: Int) -> Int? {
+            folded.withUnsafeBytes { text in
+                term.withUnsafeBytes { term in
+                    guard start < text.count, let base = text.baseAddress,
+                          let hit = memmem(base + start, text.count - start, term.baseAddress, term.count)
+                    else { return nil }
+                    return base.distance(to: UnsafeRawPointer(hit))
+                }
+            }
+        }
+
+        /// The body line (index into `lines`) that `offset` in `folded` falls in.
+        private func lineIndex(at offset: Int) -> Int {
+            var low = 1, high = ends.count - 1  // ends[0] is the Title's
+            while low < high {
+                let mid = (low + high) / 2
+                if ends[mid] < offset { low = mid + 1 } else { high = mid }
+            }
+            return low - 1
         }
     }
 
@@ -90,12 +133,17 @@ public struct NoteSummary: Equatable {
     /// becomes the preview, so the row shows why the Note matched. A blank query
     /// matches every Note unchanged.
     public func matching(_ query: String) -> NoteSummary? {
-        let terms = SearchQuery.terms(query)
-        guard !terms.isEmpty else { return self }
-        switch content.match(terms) {
+        matching(SearchQuery.Folded(query))
+    }
+
+    /// The same, with the query folded once for all Notes, as the Note List does
+    /// on each keystroke.
+    public func matching(_ query: SearchQuery.Folded) -> NoteSummary? {
+        guard !query.terms.isEmpty else { return self }
+        switch content.match(query) {
         case nil: return nil
         case .title: return self
-        case .line(let line, let range): return NoteSummary(self, preview: Self.snippet(line, around: range))
+        case .line(let line, let offset): return NoteSummary(self, found: Found(line: line, offset: offset))
         }
     }
 
@@ -107,21 +155,31 @@ public struct NoteSummary: Equatable {
     }
 
     public static func matches(_ query: String, text: String) -> Bool {
-        let terms = SearchQuery.terms(query)
-        return terms.isEmpty || Content(text).match(terms) != nil
+        let query = SearchQuery.Folded(query)
+        return query.terms.isEmpty || Content(text).match(query) != nil
     }
 
-    private static let searchOptions: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+    fileprivate static let searchOptions: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
 
     /// The line, starting a few words before the match if it sits far into the line.
-    private static func snippet(_ line: String, around match: Range<String.Index>) -> String {
+    private static func snippet(_ line: String, around match: String.Index) -> String {
         let lead = 20
-        guard line.distance(from: line.startIndex, to: match.lowerBound) > lead + 10 else {
+        guard line.distance(from: line.startIndex, to: match) > lead + 10 else {
             return String(line.prefix(previewLength))
         }
-        var start = line.index(match.lowerBound, offsetBy: -lead)
-        if let space = line[start..<match.lowerBound].firstIndex(of: " ") { start = line.index(after: space) }
+        var start = line.index(match, offsetBy: -lead)
+        if let space = line[start..<match].firstIndex(of: " ") { start = line.index(after: space) }
         return "…" + line[start...].prefix(previewLength)
+    }
+
+    /// The character of `line` that byte `offset` of its folded form came from.
+    private static func index(in line: String, atFolded offset: Int) -> String.Index {
+        var folded = 0
+        for index in line.indices {
+            folded += SearchQuery.fold(String(line[index])).utf8.count
+            if folded > offset { return index }
+        }
+        return line.endIndex
     }
 
     /// The line with its Markdown markers removed, as the editor would dim them.
@@ -138,5 +196,28 @@ public struct NoteSummary: Equatable {
             plain.replaceCharacters(in: local, with: "")
         }
         return (plain as String).trimmingCharacters(in: .whitespaces)
+    }
+}
+
+extension SearchQuery {
+    /// A query's terms, also folded, ready to be searched for in every Note.
+    public struct Folded {
+        let terms: [String]
+        /// As UTF-8, to compare with each Note's folded text.
+        let folded: [[UInt8]]
+
+        public init(_ query: String) {
+            // A term that folds to nothing (a lone accent) would match everything.
+            let pairs = SearchQuery.terms(query).map { ($0, Array(SearchQuery.fold($0).utf8)) }.filter { !$0.1.isEmpty }
+            terms = pairs.map(\.0)
+            folded = pairs.map(\.1)
+        }
+    }
+
+    /// Text as search compares it: case and accents removed (`ß` becomes `ss`,
+    /// `ü` and `u` with a separate accent both `u`, `ﬁ` becomes `fi`), so a plain
+    /// byte comparison matches what a case- and accent-blind one would.
+    static func fold(_ text: String) -> String {
+        text.folding(options: NoteSummary.searchOptions, locale: nil)
     }
 }

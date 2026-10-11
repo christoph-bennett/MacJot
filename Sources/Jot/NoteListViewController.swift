@@ -159,8 +159,9 @@ final class NoteListViewController: NSViewController, NSTableViewDataSource, NST
         let query = query
         let draft = draftText.flatMap { NoteSummary.listsDraft($0, query: query) ? $0 : nil }
         let outside = isSearchBlank ? outsideFile : nil
+        let folded = SearchQuery.Folded(query)  // once, not for every Note (ticket 41)
         rows = (draft.map { [Row.draft(title: Self.draftTitle($0))] } ?? []) + (outside.map { [Row.outside($0)] } ?? [])
-            + notes.compactMap { $0.matching(query) }.map(Row.note)
+            + notes.compactMap { $0.matching(folded) }.map(Row.note)
         showPlaceholder(NoteListPlaceholder(query: query, rowCount: rows.count))
         isSelectingProgrammatically = true
         defer { isSelectingProgrammatically = false }
