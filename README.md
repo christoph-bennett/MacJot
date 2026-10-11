@@ -2,9 +2,11 @@
 
 MacJot is a menu bar app for macOS that lets you write a note the moment you think of it. Press a hotkey in any app, type, and close the panel again. Every note is a plain Markdown file in a folder you choose, so you can open, sync or edit your notes with any other tool, and they outlive the app.
 
-<!-- Screenshot: add docs/screenshot.png (the Capture Panel with the Note List open), then uncomment.
-![MacJot's Capture Panel with the Note List open](docs/screenshot.png)
--->
+<!-- Rendered offscreen with sample notes: .scratch/screenshot/render.sh -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+  <img src="docs/screenshot-light.png" alt="MacJot's Capture Panel with a note open in the editor and the note list beside it" width="720">
+</picture>
 
 ## Features
 
