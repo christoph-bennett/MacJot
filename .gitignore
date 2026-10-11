@@ -24,3 +24,6 @@ build/
 
 # Session handoff for Claude Code (local only, rewritten by /handoff)
 docs/jot-handoff.md
+
+# Claude Code instructions about this Mac's own setup
+CLAUDE.local.md

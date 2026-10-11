@@ -18,6 +18,12 @@ if pkill -x MacJot; then  # MacJot quits normally on SIGTERM, saving the open No
     sleep 0.1
   done
 fi
+# Not every Mac has it. `.localized` lets Finder show it in the user's language,
+# as with the folder macOS creates ("Programme" in German).
+if [ ! -d ~/Applications ]; then
+  mkdir ~/Applications
+  touch ~/Applications/.localized
+fi
 rm -rf ~/Applications/MacJot.app
 cp -R build/MacJot.app ~/Applications/
 # MacJot opens Markdown files (ticket 30): only the installed copy should be
