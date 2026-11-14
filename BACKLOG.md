@@ -4,6 +4,8 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## Inbox
 
+- **Send selected text to MacJot from any app** (requested 2026-11-14): the selected text or area, in any macOS app, goes to MacJot through a hotkey and maybe through the context menu (a Service). Look at the app Jot, which Christoph is testing at the moment, for how it does this. Also to think about: YAML frontmatter in the Markdown of the new Note. More when it is grilled.
+
 ## MVP
 
 Decided 2026-10-11:
