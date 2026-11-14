@@ -561,8 +561,11 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         do { try folder.leave() } catch { NSLog("MacJot: couldn't save on quit: \(error)") }
     }
 
+    private let tooltips = TooltipSuspender()
+
     private func show() {
         if !panel.isVisible { keepOnScreen() }
+        tooltips.restore()
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(textView)
     }
@@ -749,6 +752,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
 
     /// The next summon starts without a stale search.
     func windowWillClose(_ notification: Notification) {
+        tooltips.suspend(panel.contentView)  // no ghost tooltip from a timer that outlives the window
         saveNoteListWidth()
         noteList.cancelSearch()
         cancelAutosave()
