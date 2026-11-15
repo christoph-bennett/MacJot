@@ -59,13 +59,13 @@ Earlier:
 - **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings. Revisit before a public release.
 - Editor support for tables and images.
 - **Rich text to Markdown for Clips**: a selection's bold, links and lists kept as Markdown; the first Clips are plain text.
-- **A Clip's URL in the frontmatter**: browsers don't expose it reliably.
 - Slash commands and templates; wiki-links (renaming would have to update links, see ADR 0003).
 
 ## Not planned
 
 Decided 2026-11-15:
 
+- **AppleScript / System Events for a Clip's page URL or other app details**: a separate Automation permission per app and more moving parts. A Clip takes only what the Accessibility API and the pasteboard give; what isn't there isn't there (Safari has no `url`).
 - **Append the selection to an existing Note ("Clips")**: the Clip Hotkey makes a new Note per selection instead.
 
 Decided 2026-10-10 (second round of Later):

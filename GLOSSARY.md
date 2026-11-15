@@ -41,7 +41,7 @@ A Note created from a selection made in another app; the act is "to clip". It is
 _Avoid_: Snippet, capture (that is writing in the Capture Panel), import
 
 **Source**:
-The app, and the window or page title in it, that a Clip came from; recorded in the Clip's frontmatter as `source` and `page`.
+The app, and the window or page title in it, that a Clip came from; recorded in the Clip's frontmatter as `source` and `page`, plus `url` when the pasteboard carries the page's address.
 _Avoid_: Origin, provenance
 
 **Frontmatter Section**:
