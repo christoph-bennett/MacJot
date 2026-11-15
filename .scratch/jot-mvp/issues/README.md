@@ -1,6 +1,6 @@
 # Jot MVP tickets
 
-One file per ticket, each with its full description and acceptance criteria. This index lists them at a glance; update its Status column whenever a ticket's status changes. Spec: [docs/specs/0001-mvp.md](../../../docs/specs/0001-mvp.md). Not yet ticketed: [BACKLOG.md](../../../BACKLOG.md).
+One file per ticket, each with its full description and acceptance criteria. This index lists them at a glance; update its Status column whenever a ticket's status changes. Specs: [docs/specs/0001-mvp.md](../../../docs/specs/0001-mvp.md), [docs/specs/0002-clips.md](../../../docs/specs/0002-clips.md) (tickets 43 to 48). Not yet ticketed: [BACKLOG.md](../../../BACKLOG.md).
 
 | # | Ticket | Blocked by | Status |
 |---|---|---|---|
@@ -46,7 +46,13 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 40 | [Search benchmark](40-search-benchmark.md) | none | done |
 | 41 | [Faster in-memory search](41-faster-in-memory-search.md) | none | done |
 | 42 | [No tooltip on the status item](42-no-status-item-tooltip.md) | none | done |
+| 43 | [Sign the app with the Apple Development identity](43-sign-with-development-identity.md) | none | ready-for-agent |
+| 44 | [Frontmatter Section](44-frontmatter-section.md) | none | ready-for-agent |
+| 45 | [Pasteboard inspector](45-pasteboard-inspector.md) | none | ready-for-agent |
+| 46 | [Clip Hotkey and the Accessibility permission](46-clip-hotkey-and-permission.md) | 43 | ready-for-agent |
+| 47 | [Clip creation](47-clip-creation.md) | 46 | ready-for-agent |
+| 48 | [Clip Confirmation](48-clip-confirmation.md) | 47 | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
-Planned order for the rest: none ticketed.
+Planned order for the rest: 43, 44 and 45 can start at once; then 46, 47, 48 in a chain. Images follow after a grilling that uses ticket 45's findings.
