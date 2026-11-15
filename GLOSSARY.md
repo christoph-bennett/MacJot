@@ -32,6 +32,26 @@ _Avoid_: Shortcut, keybinding (when meaning this specific one)
 The user-configurable global keystroke that summons the Capture Panel with the Note List open and search focused.
 _Avoid_: Find shortcut
 
+**Clip Hotkey**:
+The user-configurable global keystroke that sends the text selected in the frontmost app to MacJot as a new Note, without opening the Capture Panel.
+_Avoid_: Send shortcut, grab shortcut
+
+**Clip**:
+A Note created from a selection made in another app; the act is "to clip". It is an ordinary Note, not a separate kind.
+_Avoid_: Snippet, capture (that is writing in the Capture Panel), import
+
+**Source**:
+The app, and the window or page title in it, that a Clip came from; recorded in the Clip's frontmatter as `source` and `page`.
+_Avoid_: Origin, provenance
+
+**Frontmatter Section**:
+The visually separate, collapsible block at the top of the editor that shows a Note's frontmatter; collapsed to one summary line unless Settings expands it on opening.
+_Avoid_: Properties, metadata panel, header
+
+**Clip Confirmation**:
+The brief pill-shaped overlay that says a Clip was added; how long it stays is set in Settings.
+_Avoid_: Toast, notification, banner
+
 **Capture Panel**:
 The floating window, summoned by either hotkey, in which a Note is written and the Note List is shown.
 _Avoid_: Popover, editor window, popup

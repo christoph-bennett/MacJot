@@ -4,9 +4,13 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## Inbox
 
-- **Send selected text to MacJot from any app** (requested 2026-11-14): the selected text or area, in any macOS app, goes to MacJot through a hotkey and maybe through the context menu (a Service). Look at the app Jot, which Christoph is testing at the moment, for how it does this. Also to think about: YAML frontmatter in the Markdown of the new Note. More when it is grilled.
+_(empty)_
 
 ## MVP
+
+Decided 2026-11-15 (grilled; spec and tickets follow):
+
+- **Clip Hotkey: send the selection from any app to a new Note** (⌃⌥C by default). The hotkey presses ⌘C in the frontmost app, reads the pasteboard and restores the clipboard (ADR 0011, needs Accessibility); the Note gets `created`, `source` and `page` frontmatter (ADR 0010); a pill, the Clip Confirmation, says it was added, for a duration set in Settings. Plain text only at first. Ticket order: signing prefactor, Frontmatter Section (collapsible, ⌥⌘P, setting), pasteboard inspector, Clip Hotkey recorder, Clip creation, Clip Confirmation. Images come after a grilling that uses the inspector's findings (ADR 0008 and the flat Notes Folder are in tension with attachments).
 
 Decided 2026-10-11:
 
@@ -54,10 +58,16 @@ Earlier:
 - **On-device embeddings (seen in Stik, 2026-10-11)**: nothing decided. Candidates: search by meaning (finding "Rechnung" with "invoice"), Related Notes for the open Note, a duplicate hint while capturing, grouping similar Notes (would conflict with ADR 0008). Stik keeps `~/.stik/embeddings.json`: for each Note path a vector, a content hash (only changed Notes are recomputed) and a language; 512 numbers for English, 640 for German, which suggests Apple's NaturalLanguage sentence embeddings, on the Mac, no network. Would reopen part of "AI features" (Not planned).
 - **Install Xcode.** Needed for notarised distribution; also removes the deprecated `--build-system native` workaround in `scripts/test.sh` and the CLT linker warnings. Revisit before a public release.
 - Editor support for tables and images.
+- **Rich text to Markdown for Clips**: a selection's bold, links and lists kept as Markdown; the first Clips are plain text.
+- **A Clip's URL in the frontmatter**: browsers don't expose it reliably.
+- **Services entry for Clips (ADR 0011)**: only if the Accessibility permission proves a problem.
 - Slash commands and templates; wiki-links (renaming would have to update links, see ADR 0003).
-- Append the selection from any app to a Note ("Clips").
 
 ## Not planned
+
+Decided 2026-11-15:
+
+- **Append the selection to an existing Note ("Clips")**: the Clip Hotkey makes a new Note per selection instead.
 
 Decided 2026-10-10 (second round of Later):
 
