@@ -7,6 +7,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSMenuItemValidation {
     private var statusItem: NSStatusItem?
     private var panel: CapturePanelController?
+    private let frontApps = FrontAppTracker()
     private let settings = SettingsWindowController()
     private var terminationSignal: DispatchSourceSignal?
     private var firstLaunchHint: NSPopover?
@@ -34,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSM
         }
         settings.onDatePrefixChange = { [weak folder] in folder?.usesDatePrefix = $0 }
         settings.onDatePrefixFormatChange = { [weak folder] in folder?.datePrefixFormat = $0 }
+        NSApp.servicesProvider = self
         let panel = CapturePanelController(folder: folder)
         panel.onShowSettings = { [weak self] in self?.showSettings() }
         panel.onFolderMoved = { [weak self] in self?.settings.refresh() }
@@ -111,6 +113,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSM
     /// `applicationDidFinishLaunching`, which opens the files once the panel exists.
     func application(_ application: NSApplication, open urls: [URL]) {
         if let panel { panel.openFromFinder(urls) } else { filesToOpen += urls }
+    }
+
+    // MARK: Service (ticket 50)
+
+    /// "Clip to MacJot" in the Services menu: the app handing over its selection
+    /// needs no permission, no ⌘C and no clipboard change.
+    @objc func clipToMacJot(_ pasteboard: NSPasteboard, userData: String,
+                            error: AutoreleasingUnsafeMutablePointer<NSString>) {
+        guard let text = pasteboard.string(forType: .string), let panel else {
+            error.pointee = "MacJot didn’t get any text."
+            return
+        }
+        // MacJot is already in front when the Service runs: the source is the app before it.
+        let granted = ClipPermission.isGranted
+        let app = frontApps.last.map { SystemCaptureEnvironment.describe($0, readingTitle: granted) }
+        let origin = ClipOrigin.forService(app: app, permissionGranted: granted)
+        guard panel.clipFromService(text: text, source: origin.source, page: origin.page) else {
+            error.pointee = "The selection has no text to clip."
+            return
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

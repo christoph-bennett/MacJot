@@ -666,6 +666,18 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         }
     }
 
+    /// The Service "Clip to MacJot" (ticket 50). Returns whether a Note was made.
+    func clipFromService(text: String, source: String?, page: String?) -> Bool {
+        do {
+            guard try folder.createClip(text: text, source: source, page: page) != nil else { return false }
+            clipMade()
+            return true
+        } catch {
+            ErrorAlert.show("MacJot couldn’t save the clip.", error: error)
+            return false
+        }
+    }
+
     private var isCapturing = false
 
     /// The Clip Hotkey and status menu > Clip Selection: ⌘C in the frontmost app, the

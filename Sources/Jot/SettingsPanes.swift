@@ -321,6 +321,13 @@ struct ShortcutsPane: View {
                 }
             }
             Divider()
+            Row("Service:") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Button("Open Keyboard Shortcuts") { Self.openServicesShortcuts() }
+                    Explanation(text: "“Clip to MacJot” is in the Services menu of apps once it’s turned on in System Settings > Keyboard > Keyboard Shortcuts > Services > Text. There you can also give it a shortcut.")
+                }
+            }
+            Divider()
             Row {
                 VStack(alignment: .leading, spacing: 4) {
                     Button("Restore Defaults", action: onRestoreDefaults)
@@ -329,6 +336,15 @@ struct ShortcutsPane: View {
                 }
             }
         }
+    }
+
+    /// System Settings at Keyboard, where the Shortcuts button leads to Services.
+    private static func openServicesShortcuts() {
+        NotificationCenter.default.post(name: ClipPermission.willOpenSettings, object: nil)
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension") else { return }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.open(url, configuration: configuration)
     }
 
     @ViewBuilder

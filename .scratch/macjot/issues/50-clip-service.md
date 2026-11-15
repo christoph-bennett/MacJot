@@ -6,10 +6,18 @@ The Note is made like every other Clip (ticket 47's creation, the Clip Confirmat
 
 **Blocked by:** 47 (Clip from the clipboard), 48 (Clip Confirmation and Last Clip).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The Service is registered by the installed app and appears under Services in Safari, Chrome, Pages and Terminal when text is selected, and not when nothing is selected.
 - [ ] Choosing it makes a Note with the selection, the right `source`, no `page` without the permission, and the Clip Confirmation; the clipboard is untouched.
 - [ ] A shortcut assigned in System Settings runs it from the keyboard.
 - [ ] Settings > Shortcuts explains where the shortcut is set and the button opens the right pane.
 - [ ] `scripts/bundle.sh` and the Info.plist declare the Service so that a reinstall keeps it registered, and the ticket records how to refresh the Services cache if it doesn't appear.
+
+## Notes
+
+- The Service is declared in `Resources/Info.plist` (`NSServices`: menu item "Clip to MacJot", message `clipToMacJot`, port `MacJot`, send types plain text); `scripts/bundle.sh` copies the plist and `scripts/install.sh` registers the installed app, so a reinstall keeps it.
+- If it doesn't appear in an app's Services menu: `/System/Library/CoreServices/pbs -update`, then restart that app (or log out and in). `pbs -dump_pboard | grep -A8 "Clip to MacJot"` shows whether it is registered.
+- The Service sets no `url` (the Service hands over text only). `source` is the frontmost app; `page` only with the permission granted.
+- macOS 27 does not turn a new Service on by itself (checked 2026-11-15): it appears in an app's Services menu only after it is ticked in System Settings > Keyboard > Keyboard Shortcuts > Services > Text (the entry was there after `pbs -update`; restarting Safari alone didn't help). Settings > Shortcuts says so.
+- When the Service runs, MacJot is already the frontmost app (the first build got no `source`), so `source` comes from the app that was in front before MacJot (`FrontAppTracker`, from workspace activation notifications).

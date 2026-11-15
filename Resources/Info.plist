@@ -58,6 +58,26 @@
 			</dict>
 		</dict>
 	</array>
+	<!-- "Clip to MacJot" in the Services menu of apps that offer selected text (ticket 50). -->
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Clip to MacJot</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>clipToMacJot</string>
+			<key>NSPortName</key>
+			<string>MacJot</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+				<string>public.utf8-plain-text</string>
+			</array>
+		</dict>
+	</array>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHighResolutionCapable</key>

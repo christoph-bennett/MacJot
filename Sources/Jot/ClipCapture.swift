@@ -20,11 +20,17 @@ struct SystemCaptureEnvironment: CaptureEnvironment {
 
     var isTrusted: Bool { ClipPermission.isGranted }
 
-    func frontmostApp() -> FrontmostApp? {
+    func frontmostApp() -> FrontmostApp? { frontmostApp(readingTitle: true) }
+
+    func frontmostApp(readingTitle: Bool) -> FrontmostApp? {
         guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        return Self.describe(app, readingTitle: readingTitle)
+    }
+
+    static func describe(_ app: NSRunningApplication, readingTitle: Bool) -> FrontmostApp {
         let isMacJot = app.processIdentifier == ProcessInfo.processInfo.processIdentifier
         return FrontmostApp(name: app.localizedName ?? app.bundleIdentifier ?? "Unknown",
-                            windowTitle: isMacJot ? nil : Self.frontWindowTitle(of: app), isMacJot: isMacJot)
+                            windowTitle: isMacJot || !readingTitle ? nil : frontWindowTitle(of: app), isMacJot: isMacJot)
     }
 
     /// The front window's title as the Accessibility API gives it.
@@ -97,5 +103,25 @@ struct SystemCaptureEnvironment: CaptureEnvironment {
         return (bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
             ?? (bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String)
             ?? url.deletingPathExtension().lastPathComponent
+    }
+}
+
+/// The app that was in front before MacJot: when the Services menu runs MacJot's
+/// Service, MacJot is already the frontmost app, so the source is the one before it (ticket 50).
+@MainActor
+final class FrontAppTracker {
+    private(set) var last: NSRunningApplication?
+    private var observer: NSObjectProtocol?
+
+    init() {
+        let me = ProcessInfo.processInfo.processIdentifier
+        last = NSWorkspace.shared.frontmostApplication.flatMap { $0.processIdentifier == me ? nil : $0 }
+        observer = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  app.processIdentifier != me else { return }
+            MainActor.assumeIsolated { self?.last = app }
+        }
     }
 }
