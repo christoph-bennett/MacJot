@@ -17,6 +17,9 @@ enum ClipPermission {
 
     private static let askedKey = "clipPermissionAsked"
 
+    /// Whether the system's prompt has been shown already.
+    static var hasAsked: Bool { UserDefaults.standard.bool(forKey: askedKey) }
+
     /// Asks the system to show its prompt, once: a second press without the
     /// permission does nothing visible (the Clip itself reports it, ticket 49).
     /// Returns whether it was granted already.

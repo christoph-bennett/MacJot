@@ -10,7 +10,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 46 | [Clip Hotkey and the Accessibility permission](46-clip-hotkey-and-permission.md) | 43 | done |
 | 47 | [Clip from the clipboard](47-clip-from-clipboard.md) | none | done |
 | 48 | [Clip Confirmation and Last Clip](48-clip-confirmation.md) | 47 | done |
-| 49 | [Clip Hotkey captures the selection](49-clip-hotkey-capture.md) | 45, 46, 47, 48 | ready-for-agent |
+| 49 | [Clip Hotkey captures the selection](49-clip-hotkey-capture.md) | 45, 46, 47, 48 | done |
 | 50 | ["Clip to MacJot" Service](50-clip-service.md) | 47, 48 | ready-for-agent |
 | 51 | [Frontmatter Section: auto-expand setting and Find](51-frontmatter-section-setting-and-find.md) | 44 | done |
 | 52 | [Find expands Note metadata when only hidden text matches](52-find-expands-note-metadata.md) | none | ready-for-agent |
@@ -18,4 +18,4 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `done` → `done` (checked by hand).
 
-Planned order for the rest: 53 and 52 (soon), then 50, then 49. Images follow after a grilling that uses ticket 45's findings.
+Planned order for the rest: 53 and 52 (soon), then 50. Images follow after a grilling that uses ticket 45's findings.

@@ -23,8 +23,8 @@ public enum Clip {
 
     /// The YAML frontmatter block, with its fences and a line break after the
     /// closing one: `created` (ISO 8601, local time with offset, seconds), then
-    /// `source` and `page` when given. Unknown values are left out.
-    public static func frontmatter(created: Date, source: String?, page: String?,
+    /// `source`, `page` and `url` when given. Unknown values are left out.
+    public static func frontmatter(created: Date, source: String?, page: String?, url: String? = nil,
                                    timeZone: TimeZone = .current) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -34,6 +34,7 @@ public enum Clip {
         var lines = ["---", "created: \(formatter.string(from: created))"]
         if let source = value(source) { lines.append("source: \(source)") }
         if let page = value(page) { lines.append("page: \(page)") }
+        if let url = value(url) { lines.append("url: \(url)") }
         lines.append("---")
         return lines.joined(separator: "\n") + "\n"
     }

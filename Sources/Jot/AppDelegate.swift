@@ -166,6 +166,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSM
         let menu = NSMenu()
         menu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Show Notes", action: #selector(showNotes), keyEquivalent: "").target = self
+        let clipItem = menu.addItem(withTitle: "Clip Selection", action: #selector(clipSelection), keyEquivalent: "")
+        clipItem.target = self
+        clipItem.setShortcut(for: Hotkey.clip.name)
         menu.addItem(withTitle: "Clip from Clipboard", action: #selector(clipFromClipboard), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Last Clip", action: #selector(showLastClip), keyEquivalent: "").target = self
         menu.addItem(.separator())
@@ -197,6 +200,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSM
         panel?.openLastClip()
     }
 
+    @objc private func clipSelection() {
+        panel?.clipSelection()
+    }
+
     @objc private func clipFromClipboard() {
         panel?.clipFromClipboard()
     }
@@ -216,8 +223,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSM
         for hotkey in Hotkey.allCases { hotkey.checkAvailableBeforeRegistering() }
         KeyboardShortcuts.onKeyDown(for: Hotkey.capture.name) { [weak self] in self?.panel?.toggleCapture() }
         KeyboardShortcuts.onKeyDown(for: Hotkey.search.name) { [weak self] in self?.panel?.toggleNotes() }
-        // Ticket 46: only asks for the permission; the capture itself is ticket 49.
-        KeyboardShortcuts.onKeyDown(for: Hotkey.clip.name) { ClipPermission.requestOnce() }
+        KeyboardShortcuts.onKeyDown(for: Hotkey.clip.name) { [weak self] in self?.panel?.clipSelection() }
     }
 
     /// Holds a Draft's text until its Title is finished; outside the Notes Folder on purpose.

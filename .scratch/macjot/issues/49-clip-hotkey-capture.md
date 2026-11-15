@@ -10,14 +10,20 @@ Failures show an alert that says what happened (the permission is called “Devi
 
 **Blocked by:** 45 (Pasteboard and ⌘C inspector), 46 (Clip Hotkey and the Accessibility permission), 47 (Clip from the clipboard), 48 (Clip Confirmation and Last Clip).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Seam 3 tests with fakes for the pasteboard, key sender, clock and frontmost app: the clipboard is restored in every outcome that changed it; no change within the wait gives "no selection" and leaves the clipboard untouched; MacJot in front fails with its own reason; the restore is marked transient; the ⌘C carries only the Command flag and waits for the modifiers to be released; a pasteboard still changing is read only after it settles; concealed items are never read.
-- [ ] Seam 2 tests for the window-title cleaning: Chrome with a profile, Firefox, Safari, Pages, Terminal and iTerm (`page` left out), and no title.
-- [ ] In Safari, Chrome, Pages and Terminal, the hotkey makes a Note with the right `source` and a clean `page`; the pill shows; the clipboard holds what it held before, including a non-text item (an image copied beforehand).
-- [ ] Holding ⌃⌥ while pressing the hotkey still copies in all four apps.
-- [ ] Focus stays in the source app and the Capture Panel doesn't open; "Clip Selection" in the status menu works the same.
-- [ ] Each failure shows its alert; the missing-permission alert points to Settings > Shortcuts.
-- [ ] Manual check of the three failure modes in each of the four apps: the hotkey fires, the pill shows, and the Note's Title is what was expected.
-- [ ] A Clip from Chrome or Edge has a `url` line with the page's address; one from Safari, Pages or Terminal has none; the frontmatter writer is tested with and without `url` (quoting for a URL with a colon, `#` or `&`).
-- [ ] A Clip from Clipboard whose pasteboard carries `org.nspasteboard.source` (e.g. after pasting from Raycast's history) gets that app's name as `source`; without the marker it still has none.
+- [x] Seam 3 tests with fakes for the pasteboard, key sender, clock and frontmost app: the clipboard is restored in every outcome that changed it; no change within the wait gives "no selection" and leaves the clipboard untouched; MacJot in front fails with its own reason; the restore is marked transient; the ⌘C carries only the Command flag and waits for the modifiers to be released; a pasteboard still changing is read only after it settles; concealed items are never read.
+- [x] Seam 2 tests for the window-title cleaning: Chrome with a profile, Firefox, Safari, Pages, Terminal and iTerm (`page` left out), and no title.
+- [x] In Safari, Chrome, Pages and Terminal, the hotkey makes a Note with the right `source` and a clean `page`; the pill shows; the clipboard holds what it held before, including a non-text item (an image copied beforehand).
+- [x] Holding ⌃⌥ while pressing the hotkey still copies in all four apps.
+- [x] Focus stays in the source app and the Capture Panel doesn't open; "Clip Selection" in the status menu works the same.
+- [x] Each failure shows its alert; the missing-permission alert points to Settings > Shortcuts.
+- [x] Manual check of the three failure modes in each of the four apps: the hotkey fires, the pill shows, and the Note's Title is what was expected.
+- [x] A Clip from Chrome or Edge has a `url` line with the page's address; one from Safari, Pages or Terminal has none; the frontmatter writer is tested with and without `url` (quoting for a URL with a colon, `#` or `&`).
+- [-] Cancelled (2026-11-15, not testable the same way: copying from Raycast and then pressing the hotkey isn't the real case): a Clip from Clipboard whose pasteboard carries `org.nspasteboard.source` (e.g. after pasting from Raycast's history) gets that app's name as `source`; without the marker it still has none.
+
+## Notes from the manual check (2026-11-15)
+
+Worked in Safari, Chrome and Pages. In Terminal the first press did nothing; a second try (with Terminal as the last app used) worked. Accepted for now; the user monitors it. If it recurs, suspect a slow ⌘C answer beyond the 0.5 s wait, or the first press after a fresh install, and look at how the front window is picked when Terminal has several.
+
+Also confirmed 2026-11-15: a real image on the clipboard shows the "no text" alert (Clip from Clipboard); selecting an image in a browser and clipping saves its alt text (fine until images are dealt with); status menu "Clip Selection" works; macOS does not ask before MacJot reads the pasteboard; the failure alerts were accepted as working (not each tried by hand). The `org.nspasteboard.source` path is covered only by code and has no manual or unit test.

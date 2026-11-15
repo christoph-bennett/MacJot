@@ -649,7 +649,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         let board = NSPasteboard.general
         let concealed = board.types?.contains(NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")) ?? false
         do {
-            guard !concealed, let text = board.string(forType: .string), try folder.createClip(text: text) != nil else {
+            // An app that marked its copy (Raycast does) names where it came from.
+            let source = SystemCaptureEnvironment.markedSourceApp(on: board)
+            guard !concealed, let text = board.string(forType: .string),
+                  try folder.createClip(text: text, source: source) != nil else {
                 let alert = NSAlert()
                 alert.messageText = "The clipboard has no text."
                 alert.informativeText = "Copy some text first, then choose Clip from Clipboard again."
@@ -661,6 +664,49 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         } catch {
             ErrorAlert.show("MacJot couldn’t save the clip.", error: error)
         }
+    }
+
+    private var isCapturing = false
+
+    /// The Clip Hotkey and status menu > Clip Selection: ⌘C in the frontmost app, the
+    /// selection becomes a Note, the clipboard comes back (ticket 49). Focus stays put.
+    func clipSelection() {
+        guard !isCapturing else { return }
+        isCapturing = true
+        Task { @MainActor in
+            defer { isCapturing = false }
+            let result = await SelectionCapture.run(SystemCaptureEnvironment())
+            switch result {
+            case .clip(let selection):
+                do {
+                    try folder.createClip(text: selection.text, source: selection.source,
+                                          page: selection.page, url: selection.url)
+                    clipMade()
+                } catch {
+                    ErrorAlert.show("MacJot couldn’t save the clip.", error: error)
+                }
+            case .permissionMissing:
+                // The first press asks the system; after that the alert says what to do.
+                if ClipPermission.hasAsked {
+                    clipAlert("MacJot isn’t allowed to copy from other apps.",
+                              "Turn on MacJot under “\(ClipPermission.settingsName)” in System Settings > Privacy & Security. Settings > Shortcuts in MacJot has a button for it.")
+                } else {
+                    ClipPermission.requestOnce()
+                }
+            case .ownApp:
+                clipAlert("Select text in another app.", "The Clip Hotkey copies the selection of the app in front, and MacJot is in front.")
+            case .noSelection:
+                clipAlert("Nothing was copied.", "Select some text first. Some fields don’t allow copying; Clip from Clipboard works after you copy by hand.")
+            }
+        }
+    }
+
+    private func clipAlert(_ message: String, _ detail: String) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.informativeText = detail
+        NSApp.activate()
+        alert.runModal()
     }
 
     private let confirmation = ClipConfirmationPill()

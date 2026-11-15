@@ -97,3 +97,34 @@ struct ClipConfirmationDurationTests {
         #expect(ClipConfirmation.duration(stored: stored) == expected)
     }
 }
+
+/// A Clip's `url` line (ticket 49).
+struct ClipURLTests {
+    private let date = Date(timeIntervalSince1970: 1_700_000_000)
+    private let utc = TimeZone(identifier: "UTC")!
+
+    @Test func urlComesAfterPage() {
+        let text = Clip.frontmatter(created: date, source: "Google Chrome", page: "Docs",
+                                    url: "https://example.com/a", timeZone: utc)
+        #expect(text.contains("page: Docs\nurl: https://example.com/a\n---\n"))
+    }
+
+    @Test func noUrlNoLine() {
+        #expect(!Clip.frontmatter(created: date, source: "Safari", page: "Docs", url: nil, timeZone: utc).contains("url:"))
+        #expect(!Clip.frontmatter(created: date, source: "Safari", page: "Docs", url: "  ", timeZone: utc).contains("url:"))
+    }
+
+    @Test(arguments: [
+        "https://example.com/?a=1&b=2", "https://example.com/page#section", "http://localhost:8080/x",
+    ])
+    func awkwardAddressesStayOneReadableLine(_ url: String) {
+        let text = Clip.frontmatter(created: date, source: nil, page: nil, url: url, timeZone: utc)
+        let line = text.split(separator: "\n").first { $0.hasPrefix("url:") }!
+        #expect(line == "url: \(url)" || line == "url: \"\(url)\"")
+    }
+
+    @Test func aTitleWithSpaceHashIsQuoted() {
+        let text = Clip.frontmatter(created: date, source: nil, page: nil, url: "https://a.com/x #y", timeZone: utc)
+        #expect(text.contains("url: \"https://a.com/x #y\""))
+    }
+}

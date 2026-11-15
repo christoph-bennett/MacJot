@@ -108,10 +108,10 @@ public final class NotesFolder {
     /// that gives no name (only Cyrillic, say) makes it `clip-<source>`, or `clip`.
     /// Returns the file, or `nil` if the text has nothing in it (no Note is made).
     @discardableResult
-    public func createClip(text: String, source: String? = nil, page: String? = nil) throws -> URL? {
+    public func createClip(text: String, source: String? = nil, page: String? = nil, url: String? = nil) throws -> URL? {
         guard let body = Clip.body(from: text) else { return nil }
         let now = clock()
-        let content = Clip.frontmatter(created: now, source: source, page: page)
+        let content = Clip.frontmatter(created: now, source: source, page: page, url: url)
             + body.trimmingCharacters(in: .whitespacesAndNewlines) + "\n"
         var slug = Title.slug(Title.of(content) ?? "")
         if slug == "untitled" {
