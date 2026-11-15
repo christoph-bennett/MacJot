@@ -6,7 +6,7 @@ The sequence, written against ticket 45's findings: record the frontmost app and
 
 The Note gets `source` (the app) and `page` (the window title with a trailing app name and browser profile removed; left out for Terminal and iTerm). A status-menu item "Clip Selection", showing the hotkey, does the same, so a hotkey that doesn't fire can be told apart from a capture that fails.
 
-Failures show an alert that says what happened: nothing selected (or a field that blocks copying), MacJot itself in front ("Select text in another app"), or the Accessibility permission missing (pointing to Settings > Shortcuts). A whitespace-only selection counts as empty. If ticket 45 found that macOS asks before a program reads the pasteboard, this ticket handles that flow first.
+Failures show an alert that says what happened (the permission is called “Device Control and Data Access” in System Settings on macOS 27, so the alert says that): nothing selected (or a field that blocks copying), MacJot itself in front ("Select text in another app"), or the Accessibility permission missing (pointing to Settings > Shortcuts). A whitespace-only selection counts as empty. If ticket 45 found that macOS asks before a program reads the pasteboard, this ticket handles that flow first.
 
 **Blocked by:** 45 (Pasteboard and ⌘C inspector), 46 (Clip Hotkey and the Accessibility permission), 47 (Clip from the clipboard), 48 (Clip Confirmation and Last Clip).
 

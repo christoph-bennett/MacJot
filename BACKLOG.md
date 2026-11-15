@@ -1,12 +1,12 @@
 # Backlog
 
-Ideas and requirements not yet built. New items go to **Inbox**; when triaged they move to **MVP** (and become a ticket in `.scratch/jot-mvp/issues/`), **Later**, or **Not planned** (with the reason). Vocabulary: [GLOSSARY.md](./GLOSSARY.md). MVP scope: [spec 0001](./docs/specs/0001-mvp.md).
+Ideas and requirements not yet built. New items go to **Inbox**; when triaged they move to **Planned** (and become a ticket in `.scratch/macjot/issues/`), **Later**, or **Not planned** (with the reason). Vocabulary: [GLOSSARY.md](./GLOSSARY.md). The MVP ([spec 0001](./docs/specs/0001-mvp.md)) is complete (git tag `mvp`); its decided items stay listed below.
 
 ## Inbox
 
-_(empty)_
+- **The Capture Panel stays in front, greyed out, when another app is activated.** With the panel open, switching to another app (e.g. ⌘-Tab to Terminal) gives that app the keyboard focus but the panel keeps floating above it, dimmed as an inactive window. That looks wrong. Open: hide it when MacJot loses focus (as Spotlight does), or let it step back behind the other app's windows; how this meets the "pinned while writing" use and the rule that an untouched Draft hides on focus loss (ticket 2) is to be decided. Reported 2026-11-15.
 
-## MVP
+## Planned
 
 Decided 2026-11-15 (grilled; spec and tickets follow):
 

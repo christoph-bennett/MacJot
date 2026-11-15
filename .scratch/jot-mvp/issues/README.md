@@ -1,6 +1,6 @@
-# Jot MVP tickets
+# Jot MVP tickets (1 to 42)
 
-One file per ticket, each with its full description and acceptance criteria. This index lists them at a glance; update its Status column whenever a ticket's status changes. Specs: [docs/specs/0001-mvp.md](../../../docs/specs/0001-mvp.md), [docs/specs/0002-clips.md](../../../docs/specs/0002-clips.md) (tickets 43 to 51). Not yet ticketed: [BACKLOG.md](../../../BACKLOG.md).
+One file per ticket, each with its full description and acceptance criteria. This index lists them at a glance; update its Status column whenever a ticket's status changes. Spec: [docs/specs/0001-mvp.md](../../../docs/specs/0001-mvp.md). The MVP is complete (git tag `mvp`); later tickets continue the numbering in [../../macjot/issues/](../../macjot/issues/README.md). Not yet ticketed: [BACKLOG.md](../../../BACKLOG.md).
 
 | # | Ticket | Blocked by | Status |
 |---|---|---|---|
@@ -46,16 +46,5 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 40 | [Search benchmark](40-search-benchmark.md) | none | done |
 | 41 | [Faster in-memory search](41-faster-in-memory-search.md) | none | done |
 | 42 | [No tooltip on the status item](42-no-status-item-tooltip.md) | none | done |
-| 43 | [Sign the app with the Apple Development identity](43-sign-with-development-identity.md) | none | done |
-| 44 | [Frontmatter Section: display and toggle](44-frontmatter-section.md) | none | done |
-| 45 | [Pasteboard and ⌘C inspector](45-pasteboard-inspector.md) | none | done |
-| 46 | [Clip Hotkey and the Accessibility permission](46-clip-hotkey-and-permission.md) | 43 | ready-for-agent |
-| 47 | [Clip from the clipboard](47-clip-from-clipboard.md) | none | ready-for-agent |
-| 48 | [Clip Confirmation and Last Clip](48-clip-confirmation.md) | 47 | ready-for-agent |
-| 49 | [Clip Hotkey captures the selection](49-clip-hotkey-capture.md) | 45, 46, 47, 48 | ready-for-agent |
-| 50 | ["Clip to MacJot" Service](50-clip-service.md) | 47, 48 | ready-for-agent |
-| 51 | [Frontmatter Section: auto-expand setting and Find](51-frontmatter-section-setting-and-find.md) | 44 | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `done` → `done` (checked by hand).
-
-Planned order for the rest: 43, 44, 45 and 47 can start at once (45 first is cheapest: it tests the riskiest assumption); then 46, 48, 50, 51; then 49. Images follow after a grilling that uses ticket 45's findings.
