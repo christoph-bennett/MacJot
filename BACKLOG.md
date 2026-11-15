@@ -10,7 +10,7 @@ _(empty)_
 
 Decided 2026-11-15 (grilled; spec and tickets follow):
 
-- **Clip Hotkey: send the selection from any app to a new Note** (⌃⌥C by default). The hotkey presses ⌘C in the frontmost app, reads the pasteboard and restores the clipboard (ADR 0011, needs Accessibility); the Note gets `created`, `source` and `page` frontmatter (ADR 0010); a pill, the Clip Confirmation, says it was added, for a duration set in Settings. Plain text only at first. Ticket order: signing prefactor, Frontmatter Section (collapsible, ⌥⌘P, setting), pasteboard inspector, Clip Hotkey recorder, Clip creation, Clip Confirmation. Images come after a grilling that uses the inspector's findings (ADR 0008 and the flat Notes Folder are in tension with attachments).
+- **Clip Hotkey: send the selection from any app to a new Note** (⌃⌥C by default). The hotkey presses ⌘C in the frontmost app, reads the pasteboard and restores the clipboard (ADR 0011, needs Accessibility); the Note gets `created`, `source` and `page` frontmatter (ADR 0010); a pill, the Clip Confirmation, says it was added, for a duration set in Settings. Plain text only at first. Tickets 43 to 51 (spec 0002, revised after a sparring session): signing, Frontmatter Section (two tickets), pasteboard and ⌘C inspector, Clip Hotkey recorder, Note from clipboard text, Clip Confirmation and Last Clip, hotkey capture, Service. Images come after a grilling that uses the inspector's findings (ADR 0008 and the flat Notes Folder are in tension with attachments).
 
 Decided 2026-10-11:
 
@@ -60,7 +60,6 @@ Earlier:
 - Editor support for tables and images.
 - **Rich text to Markdown for Clips**: a selection's bold, links and lists kept as Markdown; the first Clips are plain text.
 - **A Clip's URL in the frontmatter**: browsers don't expose it reliably.
-- **Services entry for Clips (ADR 0011)**: only if the Accessibility permission proves a problem.
 - Slash commands and templates; wiki-links (renaming would have to update links, see ADR 0003).
 
 ## Not planned

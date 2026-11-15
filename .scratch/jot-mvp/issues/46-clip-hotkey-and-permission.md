@@ -2,7 +2,7 @@
 
 **What to build:** A third global hotkey, the **Clip Hotkey**, can be recorded, cleared and restored in Settings > Shortcuts (decided 2026-11-15, spec 0002, ADR 0005, ADR 0011). It defaults to ⌃⌥C, uses the same recorder and conflict warnings as the Capture and Search Hotkeys, and is included in Restore Defaults (a default another app holds isn't restored, as today).
 
-Under the recorder, a status line shows "Accessibility access: granted" or "not granted" and an "Open Privacy Settings" button that opens the Accessibility pane. The status updates when the permission changes while Settings is open. Pressing the Clip Hotkey does nothing visible yet beyond asking the system for the permission once when it's missing; the Clip itself is ticket 47. This slice is demoable on its own: the hotkey registers, is configurable and warns about conflicts, and the permission status is right.
+Under the recorder, a status line shows "Accessibility access: granted" or "not granted" and an "Open Privacy Settings" button that opens the Accessibility pane. The status updates when the permission changes while Settings is open. Pressing the Clip Hotkey does nothing visible yet beyond asking the system for the permission once when it's missing; the capture itself is ticket 49. This slice is demoable on its own: the hotkey registers, is configurable and warns about conflicts, and the permission status is right.
 
 **Blocked by:** 43 (Sign the app with the Apple Development identity): without a stable signature the grant resets at every install, so the status couldn't be checked meaningfully.
 

@@ -9,7 +9,7 @@ The check that matters runs on a real permission: grant any signature-bound perm
 **Status:** ready-for-agent
 
 - [ ] With the Apple Development identity in the keychain, the bundle script signs with it, and `codesign -dv` on the built app shows that identity, not ad-hoc.
-- [ ] Without a usable identity the script still produces an ad-hoc-signed app and says so.
+- [ ] Without a usable identity the script still produces an ad-hoc-signed app and says so loudly: "Accessibility and similar grants will reset on every install". It also warns when the identity expires within 30 days, so the fallback never happens unnoticed after the certificate lapses.
 - [ ] The vendored KeyboardShortcuts resource bundle and everything else the script copies are signed in a way that keeps the app launching (the app starts and the hotkeys work after install).
 - [ ] Manual check: Accessibility granted to the installed MacJot is still granted after `scripts/install.sh` installs a rebuilt copy.
 - [ ] `SERVICES.md` and the registry manifest are updated if the install or process details changed.
