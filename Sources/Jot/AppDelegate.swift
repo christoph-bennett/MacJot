@@ -4,7 +4,7 @@ import KeyboardShortcuts
 import SwiftUI
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSMenuItemValidation {
     private var statusItem: NSStatusItem?
     private var panel: CapturePanelController?
     private let settings = SettingsWindowController()
@@ -167,6 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         menu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Show Notes", action: #selector(showNotes), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Clip from Clipboard", action: #selector(clipFromClipboard), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Last Clip", action: #selector(showLastClip), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
@@ -177,6 +178,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     @objc private func newNote() {
         panel?.showNewDraft()
+    }
+
+    /// "Last Clip" shows the latest Clip's Title and is greyed out before any (or
+    /// when its file is gone).
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        guard item.action == #selector(showLastClip) else { return true }
+        guard let clip = panel?.lastClip, FileManager.default.fileExists(atPath: clip.url.path) else {
+            item.title = "Last Clip"
+            return false
+        }
+        let title = clip.title.count > 40 ? clip.title.prefix(40) + "…" : clip.title
+        item.title = "Last Clip: \(title)"
+        return true
+    }
+
+    @objc private func showLastClip() {
+        panel?.openLastClip()
     }
 
     @objc private func clipFromClipboard() {

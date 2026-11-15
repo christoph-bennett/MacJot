@@ -105,6 +105,7 @@ struct GeneralPane: View {
     @AppStorage(SettingsWindowController.datePrefixKey) private var datePrefix = false
     @AppStorage(SettingsWindowController.datePrefixFormatKey) private var datePrefixFormatData = Data()
     @AppStorage(CapturePanelController.confirmTrashKey) private var confirmTrash = true
+    @AppStorage(ClipConfirmationPill.durationKey) private var clipSeconds = ClipConfirmation.defaultDuration
     let state: SettingsState
     let onChooseNotesFolder: () -> Void
     let onDatePrefixChange: (Bool) -> Void
@@ -179,6 +180,14 @@ struct GeneralPane: View {
                     case .on, .off:
                         EmptyView()
                     }
+                }
+            }
+            Row("Clips:") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Stepper(value: $clipSeconds, in: ClipConfirmation.durations, step: ClipConfirmation.step) {
+                        Text("Show the confirmation for \(clipSeconds.formatted(.number.precision(.fractionLength(0...1)))) seconds")
+                    }
+                    Explanation(text: "The small “Added to MacJot” message after a clip.")
                 }
             }
             Row("Capture Panel:") {

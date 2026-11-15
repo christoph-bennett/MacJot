@@ -96,6 +96,11 @@ public final class NotesFolder {
         try restoreRecoveryCopy()
     }
 
+    /// The Clip made last since this Notes Folder was opened (ticket 48), for the
+    /// status menu's "Last Clip": its file, which follows a rename made in MacJot,
+    /// and its Title as it was when made.
+    public private(set) var lastClip: (url: URL, title: String)?
+
     /// Writes a Clip (ticket 47): a Note made from `text`, straight into the Notes
     /// Folder with a finished Title, without touching the open Note or Draft. It
     /// starts with frontmatter (`created` from the clock, `source` and `page` when
@@ -113,7 +118,9 @@ public final class NotesFolder {
             let app = source.map(Title.slug)
             slug = app.flatMap { $0 == "untitled" ? nil : "clip-\($0)" } ?? "clip"
         }
-        return try create(Data(content.utf8), name: newPrefix(createdAt: now) + slug)
+        let file = try create(Data(content.utf8), name: newPrefix(createdAt: now) + slug)
+        lastClip = (file, Title.of(content) ?? "")
+        return file
     }
 
     /// Leaves the current Note (saving it) and opens an empty Draft.
@@ -555,6 +562,7 @@ public final class NotesFolder {
         let slug = Title.slug(Title.of(latestText) ?? "")
         guard slug != currentSlug else { return false }
         currentNoteURL = try place(file, name: currentPrefix + slug)
+        if lastClip?.url == file, let renamed = currentNoteURL { lastClip?.url = renamed }  // "Last Clip" finds it by its new name
         currentSlug = slug
         return true
     }

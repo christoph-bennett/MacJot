@@ -1534,6 +1534,33 @@ extension NotesFolderTests {
         #expect(try files() == ["clip-text.md", "draft-text.md"])
     }
 
+    @Test func theLastClipIsRememberedWithItsTitle() throws {
+        let folder = try makeFolder()
+        #expect(folder.lastClip == nil)
+        try folder.createClip(text: "First clip\nbody")
+        let url = try #require(try folder.createClip(text: "***\nSecond clip"))
+        #expect(folder.lastClip?.url == url)
+        #expect(folder.lastClip?.title == "Second clip")
+    }
+
+    @Test func noClipLeavesTheLastClipAlone() throws {
+        let folder = try makeFolder()
+        try folder.createClip(text: "Kept")
+        try folder.createClip(text: "  \n")
+        #expect(folder.lastClip?.title == "Kept")
+    }
+
+    @Test func theLastClipFollowsARenameOfItsNote() throws {
+        let folder = try makeFolder()
+        let url = try #require(try folder.createClip(text: "Old title\nbody"))
+        _ = try folder.open(url)
+        folder.update(text: try contents("old-title.md").replacingOccurrences(of: "Old title", with: "New title"))
+        try folder.leave()
+        #expect(try files() == ["new-title.md"])
+        #expect(folder.lastClip?.url.lastPathComponent == "new-title.md")
+        #expect(folder.lastClip?.title == "Old title")  // as it was when made
+    }
+
     @Test func theNoteEndsWithOneLineBreak() throws {
         let folder = try makeFolder()
         try folder.createClip(text: "Plan\n\n\n")

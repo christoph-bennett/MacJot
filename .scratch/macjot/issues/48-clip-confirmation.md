@@ -6,7 +6,7 @@ Because the pill is the only success signal and a missed pill looks like a failu
 
 **Blocked by:** 47 (Clip from the clipboard).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] After a Clip from the clipboard the pill shows "Added to MacJot" and the Title; a long Title is cut and the pill stays one line.
 - [ ] It appears on the screen the mouse is on, bottom centre, also over a full-screen app and on a second display, and doesn't steal focus or catch clicks.

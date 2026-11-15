@@ -78,3 +78,22 @@ struct ClipFrontmatterTests {
         #expect(!text.contains("page"))
     }
 }
+
+/// How long the Clip Confirmation stays (ticket 48): 1 to 5 seconds in half-second steps, 2 by default.
+struct ClipConfirmationDurationTests {
+    @Test func defaultsToTwoSeconds() {
+        #expect(ClipConfirmation.duration(stored: nil) == 2)
+        #expect(ClipConfirmation.duration(stored: 0) == 2)       // nothing stored yet
+        #expect(ClipConfirmation.duration(stored: .nan) == 2)
+    }
+
+    @Test(arguments: [(1.0, 1.0), (1.5, 1.5), (3.0, 3.0), (5.0, 5.0)])
+    func validValuesAreKept(_ stored: Double, _ expected: Double) {
+        #expect(ClipConfirmation.duration(stored: stored) == expected)
+    }
+
+    @Test(arguments: [(0.2, 1.0), (0.9, 1.0), (7.0, 5.0), (2.2, 2.0), (2.3, 2.5), (-1.0, 2.0)])
+    func otherValuesAreClampedAndSnappedToHalfSeconds(_ stored: Double, _ expected: Double) {
+        #expect(ClipConfirmation.duration(stored: stored) == expected)
+    }
+}

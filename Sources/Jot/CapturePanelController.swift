@@ -654,10 +654,26 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
                 alert.runModal()
                 return
             }
-            reloadNoteList()
+            clipMade()
         } catch {
             ErrorAlert.show("MacJot couldn’t save the clip.", error: error)
         }
+    }
+
+    private let confirmation = ClipConfirmationPill()
+
+    /// Whatever way a Clip was made: the list catches up and the pill says so.
+    func clipMade() {
+        reloadNoteList()
+        confirmation.show(title: folder.lastClip?.title ?? "")
+    }
+
+    /// Status menu > Last Clip: the Note of the most recent Clip, under its present name.
+    var lastClip: (url: URL, title: String)? { folder.lastClip }
+
+    func openLastClip() {
+        guard let url = folder.lastClip?.url else { return }
+        openFromFinder([url])
     }
 
     // MARK: Frontmatter Section (ticket 44)
