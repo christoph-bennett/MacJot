@@ -162,7 +162,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func makeStatusItem() -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(systemSymbolName: "note.text", accessibilityDescription: "MacJot")
-        item.button?.toolTip = "MacJot"
 
         let menu = NSMenu()
         menu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "").target = self

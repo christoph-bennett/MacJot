@@ -45,6 +45,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 39 | [Date Prefix Format configurator](39-date-prefix-format-configurator.md) | 38 | done |
 | 40 | [Search benchmark](40-search-benchmark.md) | none | done |
 | 41 | [Faster in-memory search](41-faster-in-memory-search.md) | none | done |
+| 42 | [No tooltip on the status item](42-no-status-item-tooltip.md) | none | done |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
 
