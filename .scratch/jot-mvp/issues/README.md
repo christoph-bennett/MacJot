@@ -48,7 +48,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 42 | [No tooltip on the status item](42-no-status-item-tooltip.md) | none | done |
 | 43 | [Sign the app with the Apple Development identity](43-sign-with-development-identity.md) | none | ready-for-agent |
 | 44 | [Frontmatter Section: display and toggle](44-frontmatter-section.md) | none | ready-for-agent |
-| 45 | [Pasteboard and ⌘C inspector](45-pasteboard-inspector.md) | none | ready-for-agent |
+| 45 | [Pasteboard and ⌘C inspector](45-pasteboard-inspector.md) | none | done |
 | 46 | [Clip Hotkey and the Accessibility permission](46-clip-hotkey-and-permission.md) | 43 | ready-for-agent |
 | 47 | [Clip from the clipboard](47-clip-from-clipboard.md) | none | ready-for-agent |
 | 48 | [Clip Confirmation and Last Clip](48-clip-confirmation.md) | 47 | ready-for-agent |
@@ -56,6 +56,6 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 50 | ["Clip to MacJot" Service](50-clip-service.md) | 47, 48 | ready-for-agent |
 | 51 | [Frontmatter Section: auto-expand setting and Find](51-frontmatter-section-setting-and-find.md) | 44 | ready-for-agent |
 
-Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `implemented, awaiting manual UI check` → `done` (checked by hand).
+Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `done` → `done` (checked by hand).
 
 Planned order for the rest: 43, 44, 45 and 47 can start at once (45 first is cheapest: it tests the riskiest assumption); then 46, 48, 50, 51; then 49. Images follow after a grilling that uses ticket 45's findings.
