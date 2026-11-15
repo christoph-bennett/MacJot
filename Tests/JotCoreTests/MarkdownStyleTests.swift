@@ -99,3 +99,30 @@ struct MarkdownStyleTests {
         #expect(ContinuousClock.now - start < .seconds(1))
     }
 }
+
+/// Which lines the styler redoes after an edit: a blank line's gap styling
+/// depends on the line before it, so a change can ripple down a run of blank lines.
+struct RestyleRangeTests {
+    private func restyled(_ text: String, edited: String) -> String {
+        let ns = text as NSString
+        let range = MarkdownStyle.linesToRestyle(in: text, edited: ns.range(of: edited))
+        return ns.substring(with: range)
+    }
+
+    @Test func theEditedLineAndTheNextOne() {
+        #expect(restyled("one\ntwo\nthree\nfour", edited: "two") == "two\nthree\n")
+    }
+
+    // "a⏎" typed before a gap: the old gap is now a second blank line and loses its gap styling.
+    @Test func aRunOfBlankLinesAfterTheEditIsRestyledToItsEnd() {
+        #expect(restyled("a\n\n\n\nGamma", edited: "a") == "a\n\n\n\nGamma")
+    }
+
+    @Test func aWhitespaceOnlyLineCountsAsBlank() {
+        #expect(restyled("a\n\n  \n\nb\nc", edited: "a") == "a\n\n  \n\nb\n")
+    }
+
+    @Test func stopsAtTheEndOfTheText() {
+        #expect(restyled("a\n\n\n", edited: "a") == "a\n\n\n")
+    }
+}

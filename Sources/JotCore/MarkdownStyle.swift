@@ -234,6 +234,21 @@ public enum MarkdownStyle {
         return !ns.substring(with: previous).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// The lines to restyle after an edit in `edited`: its own lines and the line
+    /// after. A blank line's gap styling depends on the line before it, so the
+    /// change ripples on through a run of blank lines (a line break typed before a
+    /// gap makes the old gap an ordinary blank line, which then needs its full height).
+    public static func linesToRestyle(in text: String, edited: NSRange) -> NSRange {
+        let ns = text as NSString
+        var lines = ns.lineRange(for: edited)
+        while NSMaxRange(lines) < ns.length {
+            let next = ns.lineRange(for: NSRange(location: NSMaxRange(lines), length: 0))
+            lines = NSUnionRange(lines, next)
+            if !ns.substring(with: next).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { break }
+        }
+        return lines
+    }
+
     // MARK: Inline constructs
 
     private static let code = regex(#"(`+)(?!`)(.+?)(?<!`)\1(?!`)"#)

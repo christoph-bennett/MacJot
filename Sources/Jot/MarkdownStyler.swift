@@ -78,12 +78,9 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
 
     private func style(_ storage: NSTextStorage, range: NSRange, frontmatter: NSRange?, codeBlocks: [NSRange]) {
         let ns = storage.string as NSString
-        var lines = ns.lineRange(for: range)
-        // A blank line's gap styling depends on the line before it, so the line
-        // after an edit is restyled too.
-        if NSMaxRange(lines) < ns.length {
-            lines = NSUnionRange(lines, ns.lineRange(for: NSRange(location: NSMaxRange(lines), length: 0)))
-        }
+        // A blank line's gap styling depends on the line before it, so the lines
+        // after an edit are restyled too, through a run of blank lines.
+        let lines = MarkdownStyle.linesToRestyle(in: storage.string, edited: range)
         guard lines.length > 0 else { return }
         storage.setAttributes(baseAttributes, range: lines)
 
