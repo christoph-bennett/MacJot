@@ -8,7 +8,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 44 | [Frontmatter Section: display and toggle](44-frontmatter-section.md) | none | done |
 | 45 | [Pasteboard and ⌘C inspector](45-pasteboard-inspector.md) | none | done |
 | 46 | [Clip Hotkey and the Accessibility permission](46-clip-hotkey-and-permission.md) | 43 | done |
-| 47 | [Clip from the clipboard](47-clip-from-clipboard.md) | none | ready-for-agent |
+| 47 | [Clip from the clipboard](47-clip-from-clipboard.md) | none | done |
 | 48 | [Clip Confirmation and Last Clip](48-clip-confirmation.md) | 47 | ready-for-agent |
 | 49 | [Clip Hotkey captures the selection](49-clip-hotkey-capture.md) | 45, 46, 47, 48 | ready-for-agent |
 | 50 | ["Clip to MacJot" Service](50-clip-service.md) | 47, 48 | ready-for-agent |

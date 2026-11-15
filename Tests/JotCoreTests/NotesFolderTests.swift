@@ -1453,6 +1453,94 @@ extension NotesFolderTests {
     }
 }
 
+// MARK: Clips (ticket 47)
+
+extension NotesFolderTests {
+    @Test func aClipIsANoteWithCreatedFrontmatterAndTheText() throws {
+        let folder = try makeFolder()
+        let url = try #require(try folder.createClip(text: "Hello world\nsecond line"))
+        #expect(url.lastPathComponent == "hello-world.md")
+        let text = try contents("hello-world.md")
+        #expect(text.hasPrefix("---\ncreated: 2026-10-08T12:00:00"))
+        #expect(text.hasSuffix("---\nHello world\nsecond line\n"))
+        #expect(!text.contains("source:"))
+        #expect(!text.contains("page:"))
+    }
+
+    @Test func theTitleIsTheFirstLineAfterTheFrontmatter() throws {
+        let folder = try makeFolder()
+        try folder.createClip(text: "Some Title\nbody")
+        let summary = try #require(try folder.notes().first)
+        #expect(summary.title == "Some Title")
+    }
+
+    @Test func leadingDecorationIsDroppedFromTheNote() throws {
+        let folder = try makeFolder()
+        try folder.createClip(text: "───────\n\n   Real title\nrest")
+        #expect(try files() == ["real-title.md"])
+        #expect(try contents("real-title.md").hasSuffix("---\nReal title\nrest\n"))
+    }
+
+    @Test func sourceAndPageAreWrittenAndQuoted() throws {
+        let folder = try makeFolder()
+        try folder.createClip(text: "Text", source: "Safari", page: "Re: Plan")
+        let text = try contents("text.md")
+        #expect(text.contains("\nsource: Safari\n"))
+        #expect(text.contains("\npage: \"Re: Plan\"\n"))
+    }
+
+    @Test func aTitleWithNoLettersOrDigitsUsesTheClipName() throws {
+        let folder = try makeFolder()
+        // Cyrillic is text but gives no filename.
+        try folder.createClip(text: "Привет мир", source: "Safari")
+        try folder.createClip(text: "Привет мир")
+        #expect(try files() == ["clip-safari.md", "clip.md"])
+    }
+
+    @Test func theUnnameableSourceFallsBackToClip() throws {
+        let folder = try makeFolder()
+        try folder.createClip(text: "Привет", source: "Заметки")
+        #expect(try files() == ["clip.md"])
+    }
+
+    @Test func theDatePrefixAppliesLikeForAnyNote() throws {
+        let folder = try makeFolder(datePrefix: true)
+        try folder.createClip(text: "Plan")
+        try folder.createClip(text: "Привет")
+        #expect(try files() == ["2026-10-08-clip.md", "2026-10-08-plan.md"])
+    }
+
+    @Test func repeatingTheSameTextMakesASecondNote() throws {
+        let folder = try makeFolder()
+        try folder.createClip(text: "Plan")
+        try folder.createClip(text: "Plan")
+        #expect(try files() == ["plan-2.md", "plan.md"])
+    }
+
+    @Test func whitespaceOnlyAndDecorationOnlyMakeNoNote() throws {
+        let folder = try makeFolder()
+        #expect(try folder.createClip(text: "  \n\t\n") == nil)
+        #expect(try folder.createClip(text: "───\n***") == nil)
+        #expect(try files().isEmpty)
+    }
+
+    @Test func aClipLeavesAnOpenDraftAlone() throws {
+        let folder = try makeFolder()
+        try folder.startDraft()
+        folder.update(text: "Draft text\n")
+        try folder.createClip(text: "Clip text")
+        #expect(folder.isDraft)
+        try folder.leave()
+        #expect(try files() == ["clip-text.md", "draft-text.md"])
+    }
+
+    @Test func theNoteEndsWithOneLineBreak() throws {
+        let folder = try makeFolder()
+        try folder.createClip(text: "Plan\n\n\n")
+        #expect(try contents("plan.md").hasSuffix("---\nPlan\n"))
+    }
+}
+
 /// A local time on a given day, as the clock would report it.
 private func day(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12, minute: Int = 0) -> Date {
     Calendar.current.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!

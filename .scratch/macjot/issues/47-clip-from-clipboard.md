@@ -11,11 +11,11 @@ There's no confirmation yet (ticket 48). The demo: the Note appears in the Note 
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Seam 1 tests over a temporary Notes Folder with an injected clock: the `created` key and its format, the Title after the frontmatter, dropped leading decoration lines and trimmed whitespace, the `clip-<app>` and `clip` filenames for an unnameable Title, the filename with and without a Date Prefix, the collision suffix for a repeated text, and no file for whitespace-only text; the optional `source` and `page` keys written and quoted correctly when given (a title with a colon, a quote, a leading symbol).
-- [ ] Seam 2 tests (table-driven) for the text cleaning: leading blank and symbol-only lines, whitespace trimming, a first line of only Cyrillic or emoji, a selection that is only decoration.
-- [ ] Text copied from Safari, Chrome, Pages and Terminal makes a Note whose Title reads sensibly; a terminal selection starting with a rule of box characters doesn't get that rule as its Title.
-- [ ] An open Capture Panel shows the new Note in its list without a reload; focus stays where it was.
-- [ ] The empty and non-text clipboard cases show the alert and create nothing.
-- [ ] The Note's frontmatter shows in the Frontmatter Section if ticket 44 is done, and as plain YAML otherwise.
+- [x] Seam 1 tests over a temporary Notes Folder with an injected clock: the `created` key and its format, the Title after the frontmatter, dropped leading decoration lines and trimmed whitespace, the `clip-<app>` and `clip` filenames for an unnameable Title, the filename with and without a Date Prefix, the collision suffix for a repeated text, and no file for whitespace-only text; the optional `source` and `page` keys written and quoted correctly when given (a title with a colon, a quote, a leading symbol).
+- [x] Seam 2 tests (table-driven) for the text cleaning: leading blank and symbol-only lines, whitespace trimming, a first line of only Cyrillic or emoji, a selection that is only decoration.
+- [x] Text copied from Safari, Chrome, Pages and Terminal makes a Note whose Title reads sensibly; a terminal selection starting with a rule of box characters doesn't get that rule as its Title.
+- [x] An open Capture Panel shows the new Note in its list without a reload; focus stays where it was.
+- [x] The empty and non-text clipboard cases show the alert and create nothing.
+- [x] The Note's frontmatter shows in the Frontmatter Section if ticket 44 is done, and as plain YAML otherwise.

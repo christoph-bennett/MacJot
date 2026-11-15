@@ -637,6 +637,29 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         return true
     }
 
+    // MARK: Clips (ticket 47)
+
+    /// Status menu > Clip from Clipboard: the clipboard's text becomes a new Note,
+    /// written straight to the Notes Folder, with no focus change and no permission.
+    /// Concealed items (a password manager's) and non-text (an image) count as no text.
+    func clipFromClipboard() {
+        let board = NSPasteboard.general
+        let concealed = board.types?.contains(NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")) ?? false
+        do {
+            guard !concealed, let text = board.string(forType: .string), try folder.createClip(text: text) != nil else {
+                let alert = NSAlert()
+                alert.messageText = "The clipboard has no text."
+                alert.informativeText = "Copy some text first, then choose Clip from Clipboard again."
+                NSApp.activate()
+                alert.runModal()
+                return
+            }
+            reloadNoteList()
+        } catch {
+            ErrorAlert.show("MacJot couldn’t save the clip.", error: error)
+        }
+    }
+
     // MARK: Frontmatter Section (ticket 44)
 
     /// Whether the open Note's frontmatter shows. Kept only while the Note stays

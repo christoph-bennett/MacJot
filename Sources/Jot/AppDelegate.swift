@@ -166,6 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let menu = NSMenu()
         menu.addItem(withTitle: "New Note", action: #selector(newNote), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Show Notes", action: #selector(showNotes), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Clip from Clipboard", action: #selector(clipFromClipboard), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
@@ -176,6 +177,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     @objc private func newNote() {
         panel?.showNewDraft()
+    }
+
+    @objc private func clipFromClipboard() {
+        panel?.clipFromClipboard()
     }
 
     @objc private func showNotes() {

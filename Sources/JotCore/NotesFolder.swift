@@ -96,6 +96,26 @@ public final class NotesFolder {
         try restoreRecoveryCopy()
     }
 
+    /// Writes a Clip (ticket 47): a Note made from `text`, straight into the Notes
+    /// Folder with a finished Title, without touching the open Note or Draft. It
+    /// starts with frontmatter (`created` from the clock, `source` and `page` when
+    /// known). The file is named from the Title like any Note (ADR 0003); a Title
+    /// that gives no name (only Cyrillic, say) makes it `clip-<source>`, or `clip`.
+    /// Returns the file, or `nil` if the text has nothing in it (no Note is made).
+    @discardableResult
+    public func createClip(text: String, source: String? = nil, page: String? = nil) throws -> URL? {
+        guard let body = Clip.body(from: text) else { return nil }
+        let now = clock()
+        let content = Clip.frontmatter(created: now, source: source, page: page)
+            + body.trimmingCharacters(in: .whitespacesAndNewlines) + "\n"
+        var slug = Title.slug(Title.of(content) ?? "")
+        if slug == "untitled" {
+            let app = source.map(Title.slug)
+            slug = app.flatMap { $0 == "untitled" ? nil : "clip-\($0)" } ?? "clip"
+        }
+        return try create(Data(content.utf8), name: newPrefix(createdAt: now) + slug)
+    }
+
     /// Leaves the current Note (saving it) and opens an empty Draft.
     public func startDraft() throws {
         try leave()
