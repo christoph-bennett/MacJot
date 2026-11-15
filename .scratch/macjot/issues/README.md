@@ -13,7 +13,9 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 49 | [Clip Hotkey captures the selection](49-clip-hotkey-capture.md) | 45, 46, 47, 48 | ready-for-agent |
 | 50 | ["Clip to MacJot" Service](50-clip-service.md) | 47, 48 | ready-for-agent |
 | 51 | [Frontmatter Section: auto-expand setting and Find](51-frontmatter-section-setting-and-find.md) | 44 | done |
+| 52 | [Find expands Note metadata when only hidden text matches](52-find-expands-note-metadata.md) | none | ready-for-agent |
+| 53 | [Global search also searches Note metadata](53-global-search-note-metadata.md) | none | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `done` → `done` (checked by hand).
 
-Planned order for the rest: 46, 47, then 48, 50, 51; then 49. Images follow after a grilling that uses ticket 45's findings.
+Planned order for the rest: 53 and 52 (soon), then 50, then 49. Images follow after a grilling that uses ticket 45's findings.
