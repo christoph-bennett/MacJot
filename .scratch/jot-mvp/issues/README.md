@@ -47,7 +47,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 41 | [Faster in-memory search](41-faster-in-memory-search.md) | none | done |
 | 42 | [No tooltip on the status item](42-no-status-item-tooltip.md) | none | done |
 | 43 | [Sign the app with the Apple Development identity](43-sign-with-development-identity.md) | none | done |
-| 44 | [Frontmatter Section: display and toggle](44-frontmatter-section.md) | none | ready-for-agent |
+| 44 | [Frontmatter Section: display and toggle](44-frontmatter-section.md) | none | done |
 | 45 | [Pasteboard and ⌘C inspector](45-pasteboard-inspector.md) | none | done |
 | 46 | [Clip Hotkey and the Accessibility permission](46-clip-hotkey-and-permission.md) | 43 | ready-for-agent |
 | 47 | [Clip from the clipboard](47-clip-from-clipboard.md) | none | ready-for-agent |

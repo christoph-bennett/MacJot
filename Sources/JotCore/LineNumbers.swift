@@ -4,7 +4,8 @@ import Foundation
 /// Lines are the file's: every line break starts one (a trailing break starts
 /// an empty last line); how the editor wraps a line doesn't matter. A paragraph
 /// gap, the blank line Return puts between paragraphs (ADR 0004), takes
-/// practically no space in the editor, so it gets no number and isn't counted.
+/// practically no space in the editor, so it gets no number and isn't counted;
+/// nor are the lines of closed frontmatter, so the Title is line 1.
 /// Positions are UTF-16 offsets, as in `NSString` and the text view.
 public struct LineNumbers {
     /// The start of every line, ascending.
@@ -26,8 +27,11 @@ public struct LineNumbers {
         }
         self.starts = starts
         var next = 1
+        // The Frontmatter Section's lines aren't the Note's text lines (ticket 44).
+        let frontmatterEnd = MarkdownEditing.frontmatterRange(in: text).map(NSMaxRange) ?? 0
         let blocks = MarkdownStyle.codeBlocks(in: text)
         numbers = starts.map { start in
+            if start < frontmatterEnd { return nil }
             // The empty last line is never a gap: the cursor goes there after Return.
             let line = ns.lineRange(for: NSRange(location: start, length: 0))
             let isGap = start < ns.length

@@ -123,6 +123,52 @@ public enum MarkdownEditing {
         return range
     }
 
+    /// What a collapsed Frontmatter Section hides (ticket 44): the block through the
+    /// line break after its closing fence. `nil` without closed frontmatter, and
+    /// when the closing fence ends the text with no break: typing would then land
+    /// right after the fence, so that Note shows its frontmatter in full.
+    public static func frontmatterHiddenRange(in text: String) -> NSRange? {
+        guard let range = frontmatterRange(in: text) else { return nil }
+        let end = (text as NSString).lineRange(for: NSRange(location: NSMaxRange(range), length: 0)).upperBound
+        return end > NSMaxRange(range) ? NSRange(location: 0, length: end) : nil
+    }
+
+    /// The Frontmatter Section's header text (ticket 44): `source · page` when
+    /// either key has a value. `nil` when neither has (the editor then shows its
+    /// own wording) and without closed frontmatter.
+    public static func frontmatterSummary(in text: String) -> String? {
+        guard let range = frontmatterRange(in: text) else { return nil }
+        let ns = text as NSString
+        var values: [String: String] = [:]
+        ns.enumerateSubstrings(in: range, options: .byLines) { line, _, _, _ in
+            guard let line, let colon = line.firstIndex(of: ":") else { return }
+            let key = String(line[..<colon])
+            guard key == "source" || key == "page" else { return }  // top-level keys only: no indent
+            let value = yamlScalar(line[line.index(after: colon)...])
+            if !value.isEmpty { values[key] = value }
+        }
+        let parts = ["source", "page"].compactMap { values[$0] }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// A YAML scalar as written after `key:`: trimmed, with one level of quotes undone.
+    private static func yamlScalar(_ raw: Substring) -> String {
+        let value = raw.trimmingCharacters(in: .whitespaces)
+        if value.count >= 2, value.hasPrefix("\""), value.hasSuffix("\"") {
+            var out = "", escaped = false
+            for character in value.dropFirst().dropLast() {
+                if escaped { out.append(character); escaped = false }
+                else if character == "\\" { escaped = true }
+                else { out.append(character) }
+            }
+            return out
+        }
+        if value.count >= 2, value.hasPrefix("'"), value.hasSuffix("'") {
+            return value.dropFirst().dropLast().replacingOccurrences(of: "''", with: "'")
+        }
+        return value
+    }
+
     // MARK: Helpers
 
     /// A line indented by a tab or four spaces is code, unless it continues a

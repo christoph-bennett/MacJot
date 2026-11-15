@@ -31,6 +31,11 @@ enum MainMenu {
                                       keyEquivalent: "i")
         invisibles.keyEquivalentModifierMask = [.option, .command]
         invisibles.target = newNoteTarget
+        // Greyed out in a Note without frontmatter; the title follows the state (`validateMenuItem`).
+        let frontmatter = view.addItem(withTitle: "Show Note Metadata", action: #selector(CapturePanelController.toggleFrontmatter),
+                                       keyEquivalent: "p")
+        frontmatter.keyEquivalentModifierMask = [.option, .command]
+        frontmatter.target = newNoteTarget
         main.addItem(submenu: view, title: "View")
 
         let edit = NSMenu(title: "Edit")

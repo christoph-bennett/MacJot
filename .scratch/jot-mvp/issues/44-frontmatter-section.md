@@ -11,12 +11,14 @@ The Note stays one text buffer, so saving, undo and the Recovery Copy behave as 
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Seam 2 tests: the frontmatter range, the summary line (with both `source` and `page`, with one, with neither), and line numbering that skips the frontmatter so the Title is line 1; existing frontmatter and line-number tests pass unchanged.
-- [ ] A Note with frontmatter opens collapsed; a Note without frontmatter looks exactly as before.
-- [ ] Chevron and ⌥⌘P toggle the section; the menu item is disabled without frontmatter; the toggle isn't remembered when the Note is closed and reopened.
-- [ ] The cursor skips the collapsed lines with arrows, clicks, ⌘A and typing; nothing can be typed into hidden text.
-- [ ] Editing the expanded YAML saves, undoes and autosaves like any text; the file on disk is byte-identical to what the editor holds.
-- [ ] A random-edit run with the offscreen harness (Return, Backspace, typing, collapsing and expanding in and around the section) shows no overlapping or doubled line numbers.
-- [ ] Manual check in light and dark: the band, hairline and summary line read as a separate section; the Notes in `~/Documents/MacJot` with frontmatter look right.
+- [x] Seam 2 tests: the frontmatter range, the summary line (with both `source` and `page`, with one, with neither), and line numbering that skips the frontmatter so the Title is line 1; existing frontmatter and line-number tests pass unchanged.
+- [x] A Note with frontmatter opens collapsed; a Note without frontmatter looks exactly as before.
+- [x] Chevron and ⌥⌘P toggle the section; the menu item is disabled without frontmatter; the toggle isn't remembered when the Note is closed and reopened.
+- [x] The cursor skips the collapsed lines with arrows, clicks, ⌘A and typing; nothing can be typed into hidden text.
+- [x] Editing the expanded YAML saves, undoes and autosaves like any text; the file on disk is byte-identical to what the editor holds.
+- [x] A random-edit run with the offscreen harness (Return, Backspace, typing, collapsing and expanding in and around the section) shows no overlapping or doubled line numbers.
+- [x] Manual check in light and dark: the band, hairline and summary line read as a separate section; the Notes in `~/Documents/MacJot` with frontmatter look right.
+
+**Notes (2026-11-15):** the UI never says "frontmatter": the section is "Note metadata" (View > Show/Hide Note Metadata, ⌥⌘P). The collapsed header always reads "Click to view Note metadata"; expanded it shows `source · page`, or "Note metadata" without them; all semibold. The band is a faint accent-colour tint, distinct from the neutral current-line highlight, with 8 pt padding below the section.

@@ -84,3 +84,37 @@ struct LineNumbersTests {
         #expect(lines.number(ofLineStartingAt: 99) == nil)
     }
 }
+
+/// A closed frontmatter block is the Frontmatter Section (ticket 44): its lines
+/// get no numbers and aren't counted, so the Title is line 1.
+struct FrontmatterLineNumbersTests {
+    private let note = "---\nsource: Safari\n---\nTitle\nBody"
+
+    @Test func titleAfterFrontmatterIsLineOne() {
+        let lines = LineNumbers(note)
+        #expect(lines.number(ofLineStartingAt: 0) == nil)    // ---
+        #expect(lines.number(ofLineStartingAt: 4) == nil)    // source: Safari
+        #expect(lines.number(ofLineStartingAt: 19) == nil)   // closing ---
+        #expect(lines.number(ofLineStartingAt: 23) == 1)     // Title
+        #expect(lines.number(ofLineStartingAt: 29) == 2)     // Body
+        #expect(lines.count == 2)
+    }
+
+    @Test func openFrontmatterIsOrdinaryText() {
+        let lines = LineNumbers("---\nsource: Safari")
+        #expect(lines.number(ofLineStartingAt: 0) == 1)
+        #expect(lines.number(ofLineStartingAt: 4) == 2)
+    }
+
+    @Test func ruleIsNotFrontmatter() {
+        let lines = LineNumbers("---\n\nBody")
+        #expect(lines.number(ofLineStartingAt: 0) == 1)
+    }
+
+    @Test func frontmatterOnlyNoteHasNoNumbersButTheLastEmptyLine() {
+        let lines = LineNumbers("---\na: b\n---\n")
+        #expect(lines.number(ofLineStartingAt: 0) == nil)
+        #expect(lines.number(ofLineStartingAt: 13) == 1)  // the empty line after it
+        #expect(lines.count == 1)
+    }
+}

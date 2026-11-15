@@ -62,6 +62,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         configure(textView)
         textView.delegate = self
         (textView as? EditorTextView)?.onCheckboxClick = { [weak self] in self?.toggleCheckbox(at: $0) }
+        (textView as? EditorTextView)?.onToggleFrontmatter = { [weak self] in self?.toggleFrontmatter() }
         scrollView.contentView.postsFrameChangedNotifications = true
         NotificationCenter.default.addObserver(self, selector: #selector(fitTextWidth),
                                                name: NSView.frameDidChangeNotification, object: scrollView.contentView)
@@ -200,6 +201,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         case ([.command], kVK_ANSI_N): showNewDraft()
         case ([.command], kVK_ANSI_Comma): onShowSettings()
         case ([.option, .command], kVK_ANSI_I): toggleInvisibles()
+        case ([.option, .command], kVK_ANSI_P): toggleFrontmatter()
         // Find (GLOSSARY: within the open Note), the standard Mac set (ticket 24).
         // Also with focus in the Note List: it always finds in the editor.
         case ([.command], kVK_ANSI_F): find(.showFindInterface)
@@ -293,7 +295,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         case .unchanged:
             return
         case .reloaded(let text):
-            display(text, cursor: textView.selectedRange().location)  // clamped to the new text
+            display(text, cursor: textView.selectedRange().location, sameNote: true)  // clamped to the new text
         case .deleted:
             try? folder.startDraft()
             display("", cursor: 0)
@@ -386,7 +388,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             switch try folder.reconcileOpenNote() {
             case .reloaded(let text):
                 cancelAutosave()
-                display(text, cursor: textView.selectedRange().location)  // clamped to the new text
+                display(text, cursor: textView.selectedRange().location, sameNote: true)  // clamped to the new text
             case .deleted:
                 // Its file is gone (e.g. moved to the Trash in Finder): move on, as when trashed in MacJot.
                 if let before { cursors.forget(before) }
@@ -498,10 +500,14 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         (textView as? EditorTextView)?.hint = folder.wouldTrashOnLeave ? "Leave this note empty to move it to the Trash." : nil
     }
 
-    private func display(_ text: String, cursor: Int) {
+    private func display(_ text: String, cursor: Int, sameNote: Bool = false) {
         // Find is for the Note it was opened on: never matches left from another.
         find(.hideFindInterface)
+        // The Frontmatter Section opens collapsed; it stays as the user left it
+        // while the same Note is reloaded after an outside change.
+        if !sameNote { setFrontmatterExpanded(false, restyle: false) }
         textView.string = text
+        (textView as? EditorTextView)?.refreshFrontmatterSpace()
         if let storage = textView.textStorage { styler.restyleAll(storage) }
         textView.typingAttributes = styler.baseAttributes
         textView.undoManager?.removeAllActions()
@@ -617,7 +623,54 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         if item.action == #selector(toggleInvisibles) {
             item.state = (textView.layoutManager as? EditorLayoutManager)?.showsInvisibles == true ? .on : .off
         }
+        if item.action == #selector(toggleFrontmatter) {
+            item.title = frontmatterExpanded ? "Hide Note Metadata" : "Show Note Metadata"
+            return MarkdownEditing.frontmatterRange(in: textView.string) != nil
+        }
         return true
+    }
+
+    // MARK: Frontmatter Section (ticket 44)
+
+    /// Whether the open Note's frontmatter shows. Kept only while the Note stays
+    /// open, stored nowhere; every Note opens collapsed.
+    private var frontmatterExpanded = false
+
+    /// View > Show/Hide Frontmatter (⌥⌘P) and a click on the header row.
+    @objc func toggleFrontmatter() {
+        guard MarkdownEditing.frontmatterRange(in: textView.string) != nil else { return NSSound.beep() }
+        setFrontmatterExpanded(!frontmatterExpanded, restyle: true)
+    }
+
+    private func setFrontmatterExpanded(_ expanded: Bool, restyle: Bool) {
+        frontmatterExpanded = expanded
+        styler.collapsesFrontmatter = !expanded
+        (textView as? EditorTextView)?.frontmatterExpanded = expanded
+        guard restyle, let storage = textView.textStorage else { return }
+        styler.restyleAll(storage)
+        textView.typingAttributes = styler.baseAttributes
+        // Collapsing while the cursor was in the YAML: on to the Title.
+        if let hidden = hiddenFrontmatter() {
+            let selection = textView.selectedRange()
+            if selection.location < hidden.length {
+                textView.setSelectedRange(NSRange(location: hidden.length, length: max(0, NSMaxRange(selection) - hidden.length)))
+            }
+        }
+        textView.needsDisplay = true
+        gutter.refresh()
+    }
+
+    /// What is hidden right now: the frontmatter block while collapsed.
+    private func hiddenFrontmatter() -> NSRange? {
+        frontmatterExpanded ? nil : MarkdownEditing.frontmatterHiddenRange(in: textView.string)
+    }
+
+    /// An edit that reaches into hidden text (⌫ at the Title's start would remove
+    /// the closing fence's break) is refused.
+    func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange, replacementString: String?) -> Bool {
+        guard let hidden = hiddenFrontmatter(), range.location < hidden.length else { return true }
+        NSSound.beep()
+        return false
     }
 
     /// The line numbers beside the text (Settings > Editor).
@@ -844,6 +897,11 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     /// paragraph above or the start of the one below, by direction.
     func textView(_ textView: NSTextView, willChangeSelectionFromCharacterRange old: NSRange,
                   toCharacterRange new: NSRange) -> NSRange {
+        // Collapsed frontmatter isn't there to the cursor: arrows, clicks and ⌘A
+        // start at the Title instead.
+        if let hidden = hiddenFrontmatter(), new.location < hidden.length {
+            return NSRange(location: hidden.length, length: max(0, NSMaxRange(new) - hidden.length))
+        }
         guard new.length == 0 else { return new }
         // Inside a box's hidden `[ ]` or the spaces after it: to the far side, by
         // direction (before the box, or where the item's text starts).
@@ -851,7 +909,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             return NSRange(location: new.location < old.location ? zone.box.location : zone.textStart, length: 0)
         }
         guard !isMovingVertically, isOnParagraphGap(new) else { return new }
-        return NSRange(location: new.location < old.location ? new.location - 1 : new.location + 1, length: 0)
+        let target = new.location < old.location ? new.location - 1 : new.location + 1
+        // A gap right under collapsed frontmatter: backwards would be hidden text.
+        if let hidden = hiddenFrontmatter(), target < hidden.length { return NSRange(location: new.location + 1, length: 0) }
+        return NSRange(location: target, length: 0)
     }
 
     /// The checklist box at or just before `location` (spaces apart), and where

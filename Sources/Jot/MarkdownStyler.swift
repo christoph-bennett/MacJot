@@ -1,6 +1,14 @@
 import AppKit
 import JotCore
 
+/// The Frontmatter Section's geometry (ticket 44): the text view leaves this
+/// room above the text and draws the header row into it.
+enum FrontmatterSection {
+    static let headerHeight: CGFloat = 26
+    /// Space between the section's hairline and the first line below it.
+    static let bottomPadding: CGFloat = 8
+}
+
 /// Styles the editor's text as Markdown without changing a character: markers
 /// stay visible but dimmed. Restyles only the lines an edit touched (plus the
 /// next one), the frontmatter block, and everything when frontmatter appears
@@ -11,6 +19,10 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
     var baseSize: CGFloat = 14
     /// Settings > Editor > Line Spacing (ticket 33).
     var lineSpacing = LineSpacing.normal
+
+    /// The Frontmatter Section is collapsed (ticket 44): its lines take no height.
+    /// Changing it needs `restyleAll`.
+    var collapsesFrontmatter = true
 
     private var lastFrontmatter: NSRange?
     /// Code blocks span lines (ticket 35): when a fence line comes or goes, every
@@ -145,6 +157,34 @@ final class MarkdownStyler: NSObject, NSTextStorageDelegate {
             let range = NSIntersectionRange(frontmatter, lines)
             setMonospaced(storage, range: range)
             storage.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: range)
+            styleFrontmatterSection(storage, lines: lines)
+        }
+    }
+
+    /// Collapsed, every line of the block, its closing break included, takes
+    /// practically no height (as a paragraph gap does), and is invisible besides.
+    private func styleFrontmatterSection(_ storage: NSTextStorage, lines: NSRange) {
+        let text = storage.string
+        let hidden = collapsesFrontmatter ? MarkdownEditing.frontmatterHiddenRange(in: text) : nil
+        if let hidden {
+            let range = NSIntersectionRange(hidden, lines)
+            let collapsed = NSMutableParagraphStyle()
+            collapsed.lineSpacing = 0
+            collapsed.maximumLineHeight = 0.01
+            storage.addAttributes([.font: NSFont.systemFont(ofSize: 1), .paragraphStyle: collapsed,
+                                   .foregroundColor: NSColor.clear], range: range)
+        }
+        // A little air under the section, collapsed or not: on the line after it.
+        guard let block = MarkdownEditing.frontmatterRange(in: text) else { return }
+        let ns = text as NSString
+        let after = NSMaxRange(ns.lineRange(for: NSRange(location: NSMaxRange(block), length: 0)))
+        guard after < ns.length else { return }
+        let next = NSIntersectionRange(ns.lineRange(for: NSRange(location: after, length: 0)), lines)
+        guard next.length > 0 else { return }
+        storage.enumerateAttribute(.paragraphStyle, in: next) { value, subrange, _ in
+            let style = ((value as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
+            style.paragraphSpacingBefore = FrontmatterSection.bottomPadding
+            storage.addAttribute(.paragraphStyle, value: style, range: subrange)
         }
     }
 

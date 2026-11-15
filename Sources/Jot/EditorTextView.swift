@@ -33,6 +33,14 @@ final class EditorTextView: NSTextView {
     }
     private var standardInsetWidth: CGFloat?
 
+    /// The Frontmatter Section (ticket 44): whether its YAML shows. Only the view's
+    /// state, never the file's; the controller keeps it per open Note.
+    var frontmatterExpanded = false {
+        didSet { if frontmatterExpanded != oldValue { needsDisplay = true } }
+    }
+    /// The header row (or the chevron) was clicked.
+    var onToggleFrontmatter: () -> Void = {}
+
     /// Dimmed text on the first line while the Note is blank, e.g. that leaving
     /// it empty trashes it (ticket 25). Drawn, not part of the text.
     var hint: String? {
@@ -69,12 +77,79 @@ final class EditorTextView: NSTextView {
 
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
+        drawFrontmatterSection(in: rect)
         // Measured afresh: resizing or restyling may have rewrapped the line
         // (and redraws the whole view anyway).
         guard let band = currentLineRect() else { return }
         bandRect = band
         Self.bandColor.setFill()
         band.intersection(rect).fill(using: .sourceOver)
+    }
+
+    // MARK: Frontmatter Section
+
+    /// A faint band behind the header row and, expanded, the YAML below it, with a
+    /// hairline under it all: chevron and summary in the row. Drawn, not text.
+    /// The user's accent colour, faint: a different hue from the neutral
+    /// current-line band, which sits right below the header when the Title is
+    /// the cursor's line. Dynamic, so it follows light, dark and the accent setting;
+    /// a dark background needs more of it to show.
+    private static let sectionColor = NSColor(name: nil) { appearance in
+        let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return NSColor.controlAccentColor.withAlphaComponent(isDark ? 0.18 : 0.10)
+    }
+
+    /// The section's rows: from the top of the text to the bottom of the header, or
+    /// of the closing fence when expanded. Nil without closed frontmatter.
+    private func frontmatterRect() -> NSRect? {
+        guard let layoutManager, let textContainer, let range = MarkdownEditing.frontmatterRange(in: string) else { return nil }
+        let top = textContainerOrigin.y - FrontmatterSection.headerHeight
+        var bottom = top + FrontmatterSection.headerHeight
+        if frontmatterExpanded || MarkdownEditing.frontmatterHiddenRange(in: string) == nil {
+            let glyphs = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            bottom = max(bottom, layoutManager.boundingRect(forGlyphRange: glyphs, in: textContainer).maxY + textContainerOrigin.y)
+        }
+        return NSRect(x: bounds.minX, y: top, width: bounds.width, height: bottom - top)
+    }
+
+    /// The header row alone.
+    private func headerRect() -> NSRect? {
+        guard let rect = frontmatterRect() else { return nil }
+        return NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: FrontmatterSection.headerHeight)
+    }
+
+    private func drawFrontmatterSection(in dirty: NSRect) {
+        guard let section = frontmatterRect(), section.intersects(dirty), let header = headerRect() else { return }
+        Self.sectionColor.setFill()
+        section.fill(using: .sourceOver)
+        let scale = window?.backingScaleFactor ?? 2
+        NSColor.separatorColor.setFill()
+        NSRect(x: section.minX, y: section.maxY - 1 / scale, width: section.width, height: 1 / scale).fill()
+
+        let collapsed = !frontmatterExpanded && MarkdownEditing.frontmatterHiddenRange(in: string) != nil
+        let padding = textContainer?.lineFragmentPadding ?? 5
+        let left = textContainerOrigin.x + padding
+        let symbol = NSImage(systemSymbolName: collapsed ? "chevron.right" : "chevron.down", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 10, weight: .semibold).applying(.init(paletteColors: [.secondaryLabelColor])))
+        var x = left
+        if let symbol {
+            let size = symbol.size
+            symbol.draw(in: NSRect(x: left, y: header.midY - size.height / 2, width: size.width, height: size.height),
+                        from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+            x += max(size.width, 10) + 6
+        }
+        // No "frontmatter" in the UI: it is the Note's metadata.
+        // Collapsed it always invites; expanded it names where the Note came from.
+        let source = collapsed ? nil : MarkdownEditing.frontmatterSummary(in: string)
+        let summary = source ?? (collapsed ? "Click to view Note metadata" : "Note metadata")
+        let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        let style = NSMutableParagraphStyle()
+        style.lineBreakMode = .byTruncatingTail
+        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.secondaryLabelColor,
+                                                         .paragraphStyle: style]
+        let height = ceil(font.ascender - font.descender)
+        (summary as NSString).draw(in: NSRect(x: x, y: header.midY - height / 2, width: max(0, header.maxX - x - padding), height: height),
+                                   withAttributes: attributes)
     }
 
     /// The band: every row of the cursor's line, across the whole width. Nil
@@ -94,6 +169,15 @@ final class EditorTextView: NSTextView {
                 rows = rows.union(rect)
             }
         }
+        // The line right under the Frontmatter Section has its padding above it in
+        // its row; the band covers the text only.
+        if let block = MarkdownEditing.frontmatterRange(in: string) {
+            let ns = string as NSString
+            if line.location == NSMaxRange(ns.lineRange(for: NSRange(location: NSMaxRange(block), length: 0))) {
+                rows.origin.y += FrontmatterSection.bottomPadding
+                rows.size.height -= FrontmatterSection.bottomPadding
+            }
+        }
         return NSRect(x: bounds.minX, y: rows.minY + textContainerOrigin.y, width: bounds.width, height: rows.height)
     }
 
@@ -111,10 +195,30 @@ final class EditorTextView: NSTextView {
     override var textContainerOrigin: NSPoint {
         var origin = super.textContainerOrigin
         if let leadingInset { origin.x = leadingInset }
+        origin.y += headerSpace
         return origin
     }
 
+    /// Room for the Frontmatter Section's header row above the first line.
+    private var headerSpace: CGFloat {
+        MarkdownEditing.frontmatterRange(in: string) == nil ? 0 : FrontmatterSection.headerHeight
+    }
+
+    /// The text gained or lost its frontmatter: the room above it changes.
+    func refreshFrontmatterSpace() {
+        invalidateTextContainerOrigin()
+        needsDisplay = true
+    }
+
+    override func didChangeText() {
+        super.didChangeText()
+        refreshFrontmatterSpace()
+    }
+
     override func mouseDown(with event: NSEvent) {
+        if let header = headerRect(), header.contains(convert(event.locationInWindow, from: nil)) {
+            return onToggleFrontmatter()  // the row is no text: no cursor, no selection
+        }
         guard event.modifierFlags.intersection([.shift, .command, .option, .control]).isEmpty,
               let box = checkbox(at: convert(event.locationInWindow, from: nil)) else {
             return super.mouseDown(with: event)
