@@ -4,7 +4,7 @@
 
 **Blocked by:** 44 (Frontmatter Section: display and toggle).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The setting is off by default; with it on, Notes with frontmatter open expanded, and the choice survives a restart; Notes without frontmatter are unaffected.
 - [ ] A Find match inside the collapsed section expands it and shows the match; clearing Find doesn't collapse it again.

@@ -512,7 +512,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         find(.hideFindInterface)
         // The Frontmatter Section opens collapsed; it stays as the user left it
         // while the same Note is reloaded after an outside change.
-        if !sameNote { setFrontmatterExpanded(false, restyle: false) }
+        if !sameNote {
+            setFrontmatterExpanded(UserDefaults.standard.bool(forKey: SettingsWindowController.expandFrontmatterKey),
+                                   restyle: false)
+        }
         textView.string = text
         (textView as? EditorTextView)?.refreshFrontmatterSpace()
         if let storage = textView.textStorage { styler.restyleAll(storage) }
@@ -679,7 +682,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     // MARK: Frontmatter Section (ticket 44)
 
     /// Whether the open Note's frontmatter shows. Kept only while the Note stays
-    /// open, stored nowhere; every Note opens collapsed.
+    /// open, stored nowhere; every Note opens collapsed, or expanded with Settings > Editor > Note Metadata.
     private var frontmatterExpanded = false
 
     /// View > Show/Hide Frontmatter (⌥⌘P) and a click on the header row.
@@ -704,6 +707,15 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         }
         textView.needsDisplay = true
         gutter.refresh()
+    }
+
+    /// Expands the section for a Find match inside it; clearing Find doesn't collapse it again.
+    private func revealFindMatch(_ match: NSRange) {
+        guard !frontmatterExpanded, NSMaxRange(match) <= (textView.string as NSString).length else { return }
+        setFrontmatterExpanded(true, restyle: true)
+        textView.setSelectedRange(match)
+        textView.scrollRangeToVisible(match)
+        textView.showFindIndicator(for: match)
     }
 
     /// What is hidden right now: the frontmatter block while collapsed.
@@ -946,6 +958,12 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         // Collapsed frontmatter isn't there to the cursor: arrows, clicks and ⌘A
         // start at the Title instead.
         if let hidden = hiddenFrontmatter(), new.location < hidden.length {
+            // Only Find selects text in there: a match in the collapsed section
+            // expands it (ticket 51), so no match stays hidden.
+            if new.length > 0, NSMaxRange(new) <= hidden.length {
+                DispatchQueue.main.async { [weak self] in self?.revealFindMatch(new) }
+                return new
+            }
             return NSRange(location: hidden.length, length: max(0, NSMaxRange(new) - hidden.length))
         }
         guard new.length == 0 else { return new }

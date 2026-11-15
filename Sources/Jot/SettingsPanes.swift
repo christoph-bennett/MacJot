@@ -212,6 +212,7 @@ struct EditorPane: View {
     @AppStorage(SettingsWindowController.currentLineKey) private var currentLine = true
     @AppStorage(SettingsWindowController.invisiblesKey) private var invisibles = false
     @AppStorage(SettingsWindowController.wrapLinesKey) private var wrapLines = true
+    @AppStorage(SettingsWindowController.expandFrontmatterKey) private var expandMetadata = false
     let onFontSizeChange: (CGFloat) -> Void
     let onLineSpacingChange: (LineSpacing) -> Void
     let onLineNumbersChange: (Bool) -> Void
@@ -258,6 +259,12 @@ struct EditorPane: View {
             }
             Row("Invisibles:") {
                 Toggle("Show invisible characters", isOn: $invisibles)
+            }
+            Row("Note Metadata:") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Expand when a note opens", isOn: $expandMetadata)
+                    Explanation(text: "The frontmatter block at the top of a note, like a Clip’s source.")
+                }
             }
             Divider()
             Row("Note List:") {

@@ -28,6 +28,7 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
     static let currentLineKey = "highlightCurrentLine"
     static let invisiblesKey = "showInvisibles"
     static let wrapLinesKey = "wrapLines"
+    static let expandFrontmatterKey = "expandNoteMetadata"
     private static let switcherID = NSToolbarItem.Identifier("SettingsPanes")
 
     /// The Date Prefix toggle changed (on the main thread).

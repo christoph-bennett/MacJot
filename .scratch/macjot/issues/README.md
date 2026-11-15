@@ -12,7 +12,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 48 | [Clip Confirmation and Last Clip](48-clip-confirmation.md) | 47 | done |
 | 49 | [Clip Hotkey captures the selection](49-clip-hotkey-capture.md) | 45, 46, 47, 48 | ready-for-agent |
 | 50 | ["Clip to MacJot" Service](50-clip-service.md) | 47, 48 | ready-for-agent |
-| 51 | [Frontmatter Section: auto-expand setting and Find](51-frontmatter-section-setting-and-find.md) | 44 | ready-for-agent |
+| 51 | [Frontmatter Section: auto-expand setting and Find](51-frontmatter-section-setting-and-find.md) | 44 | done |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `done` → `done` (checked by hand).
 
