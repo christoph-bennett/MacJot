@@ -1,17 +1,17 @@
-/// MacJot's two global hotkeys.
+/// MacJot's three global hotkeys.
 public enum Hotkey: String, CaseIterable, Sendable {
-    case capture, search
+    case capture, search, clip
 
     public var title: String {
         switch self {
         case .capture: "Capture Hotkey"
         case .search: "Search Hotkey"
+        case .clip: "Clip Hotkey"
         }
     }
 
-    public var other: Hotkey {
-        self == .capture ? .search : .capture
-    }
+    /// The other hotkeys, whose combinations this one must not take.
+    public var others: [Hotkey] { Hotkey.allCases.filter { $0 != self } }
 }
 
 /// Whether a newly recorded combination may become a hotkey. Checked before it's
@@ -27,8 +27,8 @@ public enum HotkeyCheck {
         recording candidate: Combination, for hotkey: Hotkey,
         current: (Hotkey) -> Combination?, canRegister: (Combination) -> Bool
     ) -> String? {
-        if current(hotkey.other) == candidate {
-            return "This combination is already the \(hotkey.other.title)."
+        if let taken = hotkey.others.first(where: { current($0) == candidate }) {
+            return "This combination is already the \(taken.title)."
         }
         guard canRegister(candidate) else {
             return "MacJot can’t use this combination. Another app may be using it."

@@ -98,6 +98,17 @@ final class SettingsWindowController: NSObject, NSToolbarDelegate {
                                                queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
+        // Settings floats, which would hide System Settings opened from it (the
+        // permission's button): it steps back to a normal window until MacJot is
+        // active again.
+        NotificationCenter.default.addObserver(forName: ClipPermission.willOpenSettings, object: nil,
+                                               queue: .main) { [weak window] _ in
+            MainActor.assumeIsolated { window?.level = .normal }
+        }
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil,
+                                               queue: .main) { [weak window] _ in
+            MainActor.assumeIsolated { window?.level = .floating }
+        }
         // It opens on General next time; while open (or hidden with the app) it keeps
         // its pane. After it's off screen, so the switch isn't seen.
         NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window,

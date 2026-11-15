@@ -296,11 +296,20 @@ struct ShortcutsPane: View {
                 }
             }
             Divider()
+            Row("Clip:") {
+                VStack(alignment: .leading, spacing: 4) {
+                    recorder(for: .clip)
+                    unavailableNote(for: .clip)
+                    Explanation(text: "Adds the text you’ve selected in any app as a new note.")
+                    PermissionStatus()
+                }
+            }
+            Divider()
             Row {
                 VStack(alignment: .leading, spacing: 4) {
                     Button("Restore Defaults", action: onRestoreDefaults)
-                    Explanation(text: "Sets the hotkeys back to \(Hotkey.capture.defaultDisplayString) "
-                                + "and \(Hotkey.search.defaultDisplayString).")
+                    Explanation(text: "Sets the hotkeys back to \(Hotkey.capture.defaultDisplayString), "
+                                + "\(Hotkey.search.defaultDisplayString) and \(Hotkey.clip.defaultDisplayString).")
                 }
             }
         }
@@ -325,5 +334,33 @@ struct ShortcutsPane: View {
         .shortcutValidation { shortcut in
                 hotkey.problem(recording: shortcut).map { .disallow(reason: $0) } ?? .allow
             }
+    }
+}
+
+/// Whether MacJot may press ⌘C in other apps, as the Clip Hotkey needs. Follows
+/// changes made in System Settings while this is showing, and when MacJot comes
+/// to the front again afterwards.
+private struct PermissionStatus: View {
+    @State private var granted = ClipPermission.isGranted
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("\(ClipPermission.settingsName): \(granted ? "granted" : "not granted")")
+                .font(.callout)
+                .foregroundStyle(granted ? Color.secondary : Color.red)
+            Button("Open Privacy Settings") { ClipPermission.openPrivacySettings() }
+                .controlSize(.small)
+        }
+        .onReceive(DistributedNotificationCenter.default().publisher(for: ClipPermission.changedNotification)) { _ in refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
+        // The notification doesn't fire for every change (switching the permission off
+        // and straight on again left "not granted" showing): ask once a second too.
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in refresh() }
+        .onAppear(perform: refresh)
+    }
+
+    private func refresh() {
+        let now = ClipPermission.isGranted
+        if now != granted { granted = now }
     }
 }

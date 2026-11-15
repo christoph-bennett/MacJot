@@ -92,6 +92,13 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         // Floats above normal windows and follows the user to the active Space,
         // including over full-screen apps.
         panel.level = .floating
+        // Like Settings, it steps back while System Settings is opened from there.
+        NotificationCenter.default.addObserver(forName: ClipPermission.willOpenSettings, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.panel.level = .normal }
+        }
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.panel.level = .floating }
+        }
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         panel.contentViewController = split
         panel.initialFirstResponder = textView

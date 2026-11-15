@@ -193,6 +193,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         for hotkey in Hotkey.allCases { hotkey.checkAvailableBeforeRegistering() }
         KeyboardShortcuts.onKeyDown(for: Hotkey.capture.name) { [weak self] in self?.panel?.toggleCapture() }
         KeyboardShortcuts.onKeyDown(for: Hotkey.search.name) { [weak self] in self?.panel?.toggleNotes() }
+        // Ticket 46: only asks for the permission; the capture itself is ticket 49.
+        KeyboardShortcuts.onKeyDown(for: Hotkey.clip.name) { ClipPermission.requestOnce() }
     }
 
     /// Holds a Draft's text until its Title is finished; outside the Notes Folder on purpose.

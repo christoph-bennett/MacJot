@@ -4,7 +4,7 @@ import Testing
 /// Whether a newly recorded combination may become a hotkey. A rejected one
 /// isn't saved, so the previous hotkey stays active.
 struct HotkeyCheckTests {
-    private let current: [Hotkey: String] = [.capture: "⌃⌥N", .search: "⌃⌥F"]
+    private let current: [Hotkey: String] = [.capture: "⌃⌥N", .search: "⌃⌥F", .clip: "⌃⌥C"]
 
     private func problem(_ candidate: String, for hotkey: Hotkey, registrable: Bool = true) -> String? {
         HotkeyCheck.problem(recording: candidate, for: hotkey, current: { current[$0] },
@@ -18,6 +18,14 @@ struct HotkeyCheckTests {
     @Test func theOtherHotkeysCombinationIsRejected() {
         #expect(problem("⌃⌥F", for: .capture) == "This combination is already the Search Hotkey.")
         #expect(problem("⌃⌥N", for: .search) == "This combination is already the Capture Hotkey.")
+    }
+
+    @Test func theClipHotkeyIsCheckedAgainstBothOthers() {
+        #expect(problem("⌃⌥N", for: .clip) == "This combination is already the Capture Hotkey.")
+        #expect(problem("⌃⌥F", for: .clip) == "This combination is already the Search Hotkey.")
+        #expect(problem("⌃⌥C", for: .capture) == "This combination is already the Clip Hotkey.")
+        #expect(problem("⌃⌥C", for: .search) == "This combination is already the Clip Hotkey.")
+        #expect(problem("⌃⌥C", for: .clip) == nil)  // its own combination again
     }
 
     @Test func aCombinationThatCantBeRegisteredIsRejected() {
@@ -37,8 +45,10 @@ struct HotkeyCheckTests {
         #expect(none == nil)
     }
 
-    @Test func eachHotkeyHasATitleAndAnOther() {
+    @Test func eachHotkeyHasATitleAndTheOthers() {
         #expect(Hotkey.capture.title == "Capture Hotkey")
-        #expect(Hotkey.search.other == .capture)
+        #expect(Hotkey.clip.title == "Clip Hotkey")
+        #expect(Hotkey.search.others == [.capture, .clip])
+        #expect(Hotkey.clip.others == [.capture, .search])
     }
 }

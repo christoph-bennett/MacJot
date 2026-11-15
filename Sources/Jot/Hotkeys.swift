@@ -9,6 +9,7 @@ import KeyboardShortcuts
 extension KeyboardShortcuts.Name {
     static let capture = Self("captureHotkey", initial: .init(.n, modifiers: [.control, .option]))
     static let search = Self("searchHotkey", initial: .init(.f, modifiers: [.control, .option]))
+    static let clip = Self("clipHotkey", initial: .init(.c, modifiers: [.control, .option]))
 }
 
 @MainActor
@@ -17,6 +18,7 @@ extension Hotkey {
         switch self {
         case .capture: .capture
         case .search: .search
+        case .clip: .clip
         }
     }
 
