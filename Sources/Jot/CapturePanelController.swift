@@ -21,6 +21,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private let noteList = NoteListViewController()
     private let gutter: LineNumberGutter
     private let editor: EditorViewController
+    private var collapseObservation: NSKeyValueObservation?
     private let noteListItem: NSSplitViewItem
     private let split = NSSplitViewController()
     /// A width for the Note List to take the next time it opens (after Reset
@@ -73,12 +74,17 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
             guard let self, let file = folder.currentNoteURL ?? folder.outsideFileURL else { return [] }
             return actions(for: file)
         }
+        editor.onToggleNoteList = { [weak self] in self?.toggleNoteList() }
         noteList.onOpen = { [weak self] in self?.open($0) }
         noteList.onDelete = { [weak self] note in self?.confirmTrash(note) { self?.trash(note) } }
         noteList.menuItems = { [weak self] in self?.actions(for: $0) ?? [] }
         noteList.onReturn = { [weak self] in self?.focusEditor() }
         noteList.onCancel = { [weak self] in self?.hide() }
         noteList.onNewNote = { [weak self] in self?.showNewDraft() }
+        collapseObservation = noteListItem.observe(\.isCollapsed, options: [.initial, .new]) { [weak self] _, change in
+            let collapsed = change.newValue ?? true
+            MainActor.assumeIsolated { self?.editor.noteListIsShown = !collapsed }
+        }
         noteListItem.minimumThickness = 180
         noteListItem.maximumThickness = 320
         noteListItem.isCollapsed = true
@@ -534,6 +540,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.needsDisplay = true
         updateEmptyNoteHint()
         updateReadOnly()
+        editor.refreshNoteActions()
     }
 
     /// An Outside File is shown read-only, with the bar saying why; its folder is
@@ -969,6 +976,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         do {
             let wrote = try operation(folder)
             if wrote { isShowingSaveError = false }
+            editor.refreshNoteActions()  // a Draft that just got its file has actions now
             return wrote
         } catch {
             reportSaveError(error)

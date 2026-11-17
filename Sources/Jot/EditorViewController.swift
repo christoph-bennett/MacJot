@@ -19,6 +19,10 @@ enum FormatCommand {
 final class EditorViewController: NSViewController {
     /// Items for the `⋯` menu; empty (button disabled) while the Note has no file.
     var menuItems: () -> [NSMenuItem] = { [] }
+    /// The sidebar button was clicked (ticket 55): shows or hides the Note List.
+    var onToggleNoteList: () -> Void = {}
+    /// Drives the sidebar button's tooltip.
+    var noteListIsShown = false { didSet { updateSidebarTooltip() } }
     /// A Formatting Toolbar control was clicked.
     var onFormat: (FormatCommand) -> Void = { _ in }
     /// The read-only bar's Move to Notes Folder button was clicked (ticket 32).
@@ -26,6 +30,9 @@ final class EditorViewController: NSViewController {
 
     private let scrollView: NSScrollView
     private let moreButton = NSButton()
+    private let sidebarButton = NSSegmentedControl(
+        images: [NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: "Note List")!],
+        trackingMode: .momentary, target: nil, action: nil)
     private var formatControls: [NSControl] = []
     private let readOnlyBar = NSBox()
     private let readOnlyLabel = NSTextField(wrappingLabelWithString: "")
@@ -96,7 +103,13 @@ final class EditorViewController: NSViewController {
         }
         let headingMenu = makeHeadingMenu()
         formatControls = [headingMenu] + groups
-        let toolbar = NSStackView(views: [headingMenu] + groups)
+        // Not a format control: stays enabled while an Outside File is read-only.
+        sidebarButton.target = self
+        sidebarButton.action = #selector(toggleNoteList)
+        sidebarButton.setWidth(30, forSegment: 0)
+        updateSidebarTooltip()
+        sidebarButton.refusesFirstResponder = true  // typing stays in the editor
+        let toolbar = NSStackView(views: [sidebarButton, headingMenu] + groups)
         toolbar.spacing = 8
         toolbar.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(toolbar)
@@ -225,6 +238,20 @@ final class EditorViewController: NSViewController {
 
     @objc private func format(_ sender: NSSegmentedControl) {
         onFormat(Self.toolbar[sender.tag][sender.selectedSegment].command)
+    }
+
+    private func updateSidebarTooltip() {
+        sidebarButton.setToolTip(noteListIsShown ? "Hide Note List (⌃⌘S)" : "Show Note List (⌃⌘S)", forSegment: 0)
+    }
+
+    @objc private func toggleNoteList() {
+        onToggleNoteList()
+    }
+
+    /// `⋯` has nothing to offer for a Draft (no file yet): dimmed, not clickable (ticket 55).
+    func refreshNoteActions() {
+        loadViewIfNeeded()
+        moreButton.isEnabled = !menuItems().isEmpty
     }
 
     @objc private func showMenu() {

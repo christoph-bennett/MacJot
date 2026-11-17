@@ -8,6 +8,7 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 Decided 2026-11-17 (grilled):
 
+- **A sidebar button in the editor toolbar, and `⋯` disabled for a Draft.** A hotkey summon opens the Note List collapsed, and ⌃⌘S was the only way to show it, so a `sidebar.left` button joins the Formatting Toolbar row. The `⋯` Note actions button did nothing on a Draft (no file, no actions) while looking clickable; it is now disabled until the Note has a file. → ticket 55
 - **The Capture Panel steps back when another app takes focus**, instead of floating dimmed above it. A panel with content drops to normal level (behind the other app's windows) when it loses Key to another app, and returns to floating on Key or on summon; an untouched Draft still hides (ticket 2). Triggered by Key status, not app activation, because the panel is non-activating. → ticket 54
 
 Decided 2026-11-15 (grilled; spec and tickets follow):

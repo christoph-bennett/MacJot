@@ -16,6 +16,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 52 | [Find expands Note metadata when only hidden text matches](52-find-expands-note-metadata.md) | none | done |
 | 53 | [Global search also searches Note metadata](53-global-search-note-metadata.md) | none | done |
 | 54 | [Capture Panel steps back when another app takes focus](54-capture-panel-steps-back.md) | none | done |
+| 55 | [Sidebar button in the editor toolbar; `⋯` disabled for a Draft](55-sidebar-button-and-disabled-more-button.md) | none | done |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `done` → `done` (checked by hand).
 
