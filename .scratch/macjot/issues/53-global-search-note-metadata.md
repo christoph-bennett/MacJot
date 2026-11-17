@@ -6,11 +6,13 @@
 
 **Blocked by:** None (can start immediately). Related: 52.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A word found only in a Note's frontmatter makes the Note a search result; a Note without it is not.
-- [ ] The row's preview shows the matching metadata line when nothing in the Title or body matches; a body match wins when both match.
-- [ ] Multi-word queries match across Title, body and metadata together.
-- [ ] Searching stays fast: the existing thousand-Notes performance test still passes (ticket 41).
-- [ ] Unit tests cover metadata-only, body-only, both, and Notes without frontmatter, in `NoteSummary` tests.
-- [ ] Manual check in light and dark.
+- [x] A word found only in a Note's frontmatter makes the Note a search result; a Note without it is not.
+- [x] The row's preview shows the matching metadata line when nothing in the Title or body matches; a body match wins when both match.
+- [x] Multi-word queries match across Title, body and metadata together.
+- [x] Searching stays fast: the existing thousand-Notes performance test still passes (ticket 41).
+- [x] Unit tests cover metadata-only, body-only, both, and Notes without frontmatter, in `NoteSummary` tests.
+- [x] Manual check in light and dark.
+
+Decided 2026-11-17: only values are searched, not keys (every Clip has `created`, `source`, `page`); the preview shows the whole `key: value` line.

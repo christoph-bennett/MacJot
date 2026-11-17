@@ -10,14 +10,14 @@ public struct NoteSummary: Equatable {
     /// search can match thousands of Notes, the Note List shows a few (ticket 41).
     public var preview: String {
         guard let found else { return String((content.lines.first ?? "").prefix(Self.previewLength)) }
-        let line = content.lines[found.line]
+        let line = content.line(found.line)
         return Self.snippet(line, around: Self.index(in: line, atFolded: found.offset))
     }
     public let modified: Date
     /// What search looks at, held in memory (the in-memory Search Index).
     private let content: Content
-    /// Where in which body line a search found its first term, for the preview;
-    /// `nil` outside a search or when only the Title matched.
+    /// Where in which body (or metadata) line a search found its first term, for
+    /// the preview; `nil` outside a search or when only the Title matched.
     private let found: Found?
 
     private struct Found: Equatable {
@@ -56,10 +56,18 @@ public struct NoteSummary: Equatable {
     // MARK: Search
 
     /// A Note's text as search sees it: the Title and the non-blank lines after
-    /// it, without their Markdown. Frontmatter isn't searched.
+    /// it, without their Markdown; then the frontmatter's lines, whose values (not
+    /// keys, which every Clip shares) are searched too (ticket 53).
     private struct Content: Equatable {
         var title: String?
         var lines: [String] = []
+        /// The frontmatter's non-blank lines, as written, between its fences.
+        var metadata: [String] = []
+
+        /// Body line `index`, or past the body, a metadata line.
+        func line(_ index: Int) -> String {
+            index < lines.count ? lines[index] : metadata[index - lines.count]
+        }
         /// The Title and lines folded once (`SearchQuery.fold`), as UTF-8, each
         /// ended by a NUL so no match spans two lines: what each keystroke
         /// searches (ticket 41).
@@ -69,19 +77,37 @@ public struct NoteSummary: Equatable {
 
         init(_ text: String) {
             let ns = text as NSString
-            guard let titleLine = NoteStructure(ns).titleLine else { return }
-            let blocks = MarkdownStyle.codeBlocks(in: text)  // once, not for every line
-            let title = NoteSummary.plain(ns, line: titleLine, codeBlocks: blocks)
-            self.title = title.isEmpty ? nil : title
-            let rest = NSRange(location: NSMaxRange(titleLine), length: ns.length - NSMaxRange(titleLine))
-            var lines: [String] = []
-            ns.enumerateSubstrings(in: rest, options: .byLines) { line, range, _, _ in
-                guard let line, !line.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                lines.append(NoteSummary.plain(ns, line: range, codeBlocks: blocks))
+            let structure = NoteStructure(ns)
+            if let titleLine = structure.titleLine {
+                let blocks = MarkdownStyle.codeBlocks(in: text)  // once, not for every line
+                let title = NoteSummary.plain(ns, line: titleLine, codeBlocks: blocks)
+                self.title = title.isEmpty ? nil : title
+                let rest = NSRange(location: NSMaxRange(titleLine), length: ns.length - NSMaxRange(titleLine))
+                var lines: [String] = []
+                ns.enumerateSubstrings(in: rest, options: .byLines) { line, range, _, _ in
+                    guard let line, !line.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                    lines.append(NoteSummary.plain(ns, line: range, codeBlocks: blocks))
+                }
+                self.lines = lines
             }
-            self.lines = lines
+            if case .closed(let range) = structure.frontmatter {
+                var all: [String] = []
+                ns.enumerateSubstrings(in: range, options: .byLines) { line, _, _, _ in
+                    if let line { all.append(line.trimmingCharacters(in: .whitespaces)) }
+                }
+                metadata = all.dropFirst().dropLast().filter { !$0.isEmpty }
+            }
             for line in [self.title ?? ""] + lines {
                 folded += SearchQuery.fold(line).utf8
+                ends.append(folded.count)
+                folded.append(0)
+            }
+            for line in metadata {
+                // The key stays out of reach: filler bytes no term contains, so the
+                // folded offsets still line up with the line shown as the preview.
+                let value = NoteSummary.valueStart(in: line)
+                folded += [UInt8](repeating: 1, count: SearchQuery.fold(String(line[..<value])).utf8.count)
+                folded += SearchQuery.fold(String(line[value...])).utf8
                 ends.append(folded.count)
                 folded.append(0)
             }
@@ -89,14 +115,22 @@ public struct NoteSummary: Equatable {
 
         enum Match { case title, line(Int, offset: Int) }
 
-        /// Nil unless every term is in the Title or a body line (ticket 37). Then
-        /// the first body line containing the first term found in the body, else
-        /// the Title. Body first: a snippet shows why the Note matched, the Title
-        /// is on screen anyway.
+        /// Nil unless every term is in the Title, a body line or a metadata value
+        /// (tickets 37, 53). Then the first body line containing the first term
+        /// found in the body; else the first metadata line with a term the Title
+        /// lacks; else the Title. Body first: a snippet shows why the Note matched,
+        /// the Title is on screen anyway.
         func match(_ query: SearchQuery.Folded) -> Match? {
             guard query.folded.allSatisfy({ offset(of: $0, from: 0) != nil }) else { return nil }
+            let bodyEnd = ends[lines.count]  // the last body line's NUL, or the Title's
             for term in query.folded {
-                if let hit = offset(of: term, from: ends[0] + 1) {
+                if let hit = offset(of: term, from: ends[0] + 1, to: bodyEnd) {
+                    let line = lineIndex(at: hit)
+                    return .line(line, offset: hit - (ends[line] + 1))
+                }
+            }
+            for term in query.folded where offset(of: term, from: 0, to: ends[0]) == nil {
+                if let hit = offset(of: term, from: bodyEnd + 1) {
                     let line = lineIndex(at: hit)
                     return .line(line, offset: hit - (ends[line] + 1))
                 }
@@ -104,19 +138,20 @@ public struct NoteSummary: Equatable {
             return .title
         }
 
-        /// Where `term` first is in `folded`, at or after `start`.
-        private func offset(of term: [UInt8], from start: Int) -> Int? {
+        /// Where `term` first is in `folded`, at or after `start` and before `end`.
+        private func offset(of term: [UInt8], from start: Int, to end: Int? = nil) -> Int? {
             folded.withUnsafeBytes { text in
                 term.withUnsafeBytes { term in
-                    guard start < text.count, let base = text.baseAddress,
-                          let hit = memmem(base + start, text.count - start, term.baseAddress, term.count)
+                    let end = min(end ?? text.count, text.count)
+                    guard start < end, let base = text.baseAddress,
+                          let hit = memmem(base + start, end - start, term.baseAddress, term.count)
                     else { return nil }
                     return base.distance(to: UnsafeRawPointer(hit))
                 }
             }
         }
 
-        /// The body line (index into `lines`) that `offset` in `folded` falls in.
+        /// The line (index into the body lines, then the metadata's: see `line(_:)`) that `offset` in `folded` falls in.
         private func lineIndex(at offset: Int) -> Int {
             var low = 1, high = ends.count - 1  // ends[0] is the Title's
             while low < high {
@@ -128,8 +163,8 @@ public struct NoteSummary: Equatable {
     }
 
     /// This Note as a search result: `nil` unless every word or "phrase" of
-    /// `query` is in its Title or body (`SearchQuery`; ignoring case, diacritics
-    /// and Markdown). A body match
+    /// `query` is in its Title, body or metadata values (`SearchQuery`; ignoring
+    /// case, diacritics and Markdown). A body or metadata match
     /// becomes the preview, so the row shows why the Note matched. A blank query
     /// matches every Note unchanged.
     public func matching(_ query: String) -> NoteSummary? {
@@ -157,6 +192,17 @@ public struct NoteSummary: Equatable {
     public static func matches(_ query: String, text: String) -> Bool {
         let query = SearchQuery.Folded(query)
         return query.terms.isEmpty || Content(text).match(query) != nil
+    }
+
+    /// Where a frontmatter line's value starts: after a leading `key:` (word
+    /// characters, then a colon and a space or the end). A list item, an indented
+    /// line or a URL has no key, so all of it is value.
+    private static func valueStart(in line: String) -> String.Index {
+        guard let colon = line.firstIndex(of: ":"),
+              line[..<colon].allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }), colon != line.startIndex,
+              line.index(after: colon) == line.endIndex || line[line.index(after: colon)] == " "
+        else { return line.startIndex }
+        return line.index(after: colon)
     }
 
     fileprivate static let searchOptions: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
@@ -208,7 +254,9 @@ extension SearchQuery {
 
         public init(_ query: String) {
             // A term that folds to nothing (a lone accent) would match everything.
-            let pairs = SearchQuery.terms(query).map { ($0, Array(SearchQuery.fold($0).utf8)) }.filter { !$0.1.isEmpty }
+            // Nor one holding the NUL and filler bytes that separate and mask lines.
+            let pairs = SearchQuery.terms(query).map { ($0, Array(SearchQuery.fold($0).utf8)) }
+                .filter { !$0.1.isEmpty && !$0.1.contains { $0 <= 1 } }
             terms = pairs.map(\.0)
             folded = pairs.map(\.1)
         }

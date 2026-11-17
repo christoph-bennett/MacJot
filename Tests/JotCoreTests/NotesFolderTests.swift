@@ -1046,9 +1046,10 @@ final class NotesFolderTests {
         #expect(try search("[ ]").isEmpty)
     }
 
-    @Test func frontmatterIsNotSearched() throws {
+    @Test func frontmatterValuesAreSearched() throws {  // ticket 53
         try writeNote("a.md", "---\ntags: [secret]\n---\nTitle\n\nBody")
-        #expect(try search("secret").isEmpty)
+        #expect(try search("secret").map(\.preview) == ["tags: [secret]"])
+        #expect(try search("tags").isEmpty)  // keys are not
     }
 
     @Test func snippetOfALongLineStartsNearTheMatch() throws {

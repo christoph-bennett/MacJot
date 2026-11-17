@@ -87,4 +87,63 @@ struct SearchTests {
         #expect(ContinuousClock.now - start < .milliseconds(200))  // about 960 ms before ticket 41
         #expect(found.isEmpty)
     }
+
+    // MARK: Note metadata (ticket 53)
+
+    private let clip = "---\nsource: Safari\ncreated: 2026-11-17 09:00\npage: https://example.com/9runzr\n---\nZebra facts\n\nStripes are unique."
+
+    @Test func aWordOnlyInTheFrontmatterIsAResult() {
+        #expect(summary(clip).matching("9runzr") != nil)
+        #expect(summary(clip).matching("safari") != nil)
+        #expect(summary("Zebra facts\n\nStripes").matching("safari") == nil)  // a Note without it is not
+        #expect(summary(clip).matching("giraffe") == nil)
+    }
+
+    @Test func theMatchingMetadataLineIsThePreview() {
+        #expect(summary(clip).matching("safari")?.preview == "source: Safari")
+        #expect(summary(clip).matching("9runzr")?.preview == "page: https://example.com/9runzr")
+    }
+
+    @Test func aBodyMatchWinsOverMetadata() {
+        #expect(summary(clip).matching("stripes safari")?.preview == "Stripes are unique.")
+        let both = "---\nsource: Zebra\n---\nTitle\n\nA zebra line"
+        #expect(summary(both).matching("zebra")?.preview == "A zebra line")
+    }
+
+    @Test func aTitleWordDoesNotHideAMetadataOnlyWord() {
+        #expect(summary(clip).matching("zebra safari")?.preview == "source: Safari")
+        #expect(summary(clip).matching("zebra")?.preview == summary(clip).preview)  // Title only: unchanged
+    }
+
+    @Test func wordsMatchAcrossTitleBodyAndMetadata() {
+        #expect(NoteSummary.matches("zebra unique safari", text: clip))
+        #expect(!NoteSummary.matches("zebra unique chrome", text: clip))
+    }
+
+    @Test func keysAreNotSearchedOnlyValues() {
+        #expect(summary(clip).matching("created") == nil)  // every Clip has it
+        #expect(summary(clip).matching("2026-11-17") != nil)
+    }
+
+    @Test func aFenceIsNotMetadataAndUnclosedFrontmatterIsNotFrontmatter() {
+        #expect(summary("Title\n\nBody\n\n---\nsource: Safari\n---\n").matching("safari")?.preview == "source: Safari")  // body, as today
+        #expect(summary(clip).matching("---") == nil)
+    }
+
+    @Test func listItemsAndUrlsWithoutAKeyAreSearchedWhole() {
+        let note = "---\ntags:\n  - https://example.com/x\n  - Zürich\n---\nTitle\n\nBody"
+        #expect(summary(note).matching("https")?.preview == "- https://example.com/x")  // trimmed, whole line
+        #expect(summary(note).matching("zurich")?.preview == "- Zürich")
+        #expect(summary(note).matching("tags") == nil)
+    }
+
+    @Test func aClipWithFrontmatterAndNoTitleIsStillSearchable() {
+        #expect(summary("---\nsource: Safari\n---\n").matching("safari")?.preview == "source: Safari")
+        #expect(summary("---\n---\nTitle").matching("title") != nil)
+    }
+
+    @Test func controlBytesAreNotTerms() {
+        #expect(summary(clip).matching("\u{1}") != nil)  // folds to no term: a blank query matches all
+        #expect(summary(clip).matching("zebra \u{1}")?.preview == summary(clip).preview)
+    }
 }
