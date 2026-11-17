@@ -14,6 +14,11 @@ MacJot is a menu bar app for macOS that lets you write a note the moment you thi
 
 **Note metadata, out of your way.** A note that starts with a properties block (the Clips do) shows it as its own collapsed section at the top of the editor. One line tells you the source at a glance; click it, or press ⌥⌘P, to see and edit the details. If you'd rather see them always, there's a setting for that. Find opens the section by itself when the word you're looking for is in there.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-metadata-dark.png">
+  <img src="docs/screenshot-metadata-light.png" alt="A clipped note with its metadata section opened above the text: created, source and page" width="720">
+</picture>
+
 **Search that looks at metadata too.** Searching all your notes now also finds what's in a note's properties. Search for "Safari" and you get every note you clipped from Safari, and the row shows the matching line, so you see why it matched.
 
 **Calmer window handling.** When you switch to another app while a note is open, the MacJot panel now steps back behind that app's windows instead of floating dimmed on top of them. The hotkeys, the menu bar item or a click on the panel bring it forward again, with your text as you left it.

@@ -67,6 +67,15 @@ let samples = [
 
     > Ship it when it's ready, not when it's perfect.
     """,
+    // A Clip (invented source and page), the most recent: opens with its metadata collapsed.
+    """
+    ---
+    created: 2026-11-14T09:12:00+01:00
+    source: Safari
+    page: How small teams ship faster, Example Weekly
+    ---
+    Small teams ship faster because they decide faster: fewer handoffs, one owner per decision, and a launch date that is a commitment rather than a hope.
+    """,
 ]
 for (i, text) in samples.enumerated() {
     let url = folderURL.appendingPathComponent("note-\(i).md")
@@ -89,5 +98,9 @@ for (appearance, suffix) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dar
     controller.showNotes()
     pump()
     save(controller.panel.contentView!.superview!, "screenshot-\(suffix)")
+    // The same Clip with its metadata section opened (View > Show Frontmatter).
+    controller.toggleFrontmatter()
+    pump()
+    save(controller.panel.contentView!.superview!, "screenshot-metadata-\(suffix)")
     controller.panel.orderOut(nil)
 }
