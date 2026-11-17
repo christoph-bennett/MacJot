@@ -133,6 +133,34 @@ public enum MarkdownEditing {
         return end > NSMaxRange(range) ? NSRange(location: 0, length: end) : nil
     }
 
+    /// Ticket 52: whether Find's `term` occurs only inside the collapsed Frontmatter
+    /// Section (`hidden`), so a match there is worth expanding it for. Case is
+    /// ignored, as in Find. `false` when nothing is hidden or the term is empty.
+    public static func findMatchesOnlyHidden(_ term: String, in text: String, hidden: NSRange?) -> Bool {
+        guard let hidden, !term.isEmpty else { return false }
+        let ns = text as NSString
+        let inHidden = ns.range(of: term, options: .caseInsensitive, range: hidden).location != NSNotFound
+        return inHidden && nextVisibleFindMatch(term, in: text, from: hidden.length, hidden: hidden) == nil
+    }
+
+    /// The match of `term` outside `hidden` that follows `location` (or, `backward`,
+    /// precedes it), wrapping around the visible text; `nil` when only hidden text
+    /// matches. A match starting at `location` itself is not "next".
+    public static func nextVisibleFindMatch(_ term: String, in text: String, from location: Int, hidden: NSRange,
+                                            backward: Bool = false) -> NSRange? {
+        guard !term.isEmpty else { return nil }
+        let ns = text as NSString
+        let start = min(max(location, hidden.length), ns.length)
+        let options: NSString.CompareOptions = backward ? [.caseInsensitive, .backwards] : .caseInsensitive
+        func search(_ range: NSRange) -> NSRange? {
+            let found = ns.range(of: term, options: options, range: range)
+            return found.location == NSNotFound ? nil : found
+        }
+        let before = NSRange(location: hidden.length, length: start - hidden.length)
+        let after = NSRange(location: start, length: ns.length - start)
+        return backward ? (search(before) ?? search(after)) : (search(after) ?? search(before))
+    }
+
     /// The Frontmatter Section's header text (ticket 44): `source · page` when
     /// either key has a value. `nil` when neither has (the editor then shows its
     /// own wording) and without closed frontmatter.

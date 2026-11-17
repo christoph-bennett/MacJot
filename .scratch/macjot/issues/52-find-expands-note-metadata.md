@@ -4,12 +4,12 @@
 
 **Blocked by:** None (ticket 51 is done).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The check "are all matches inside the hidden range?" is a pure function with unit tests: only hidden, only visible, both, none, no frontmatter, already expanded.
-- [ ] Typing a term found only in the metadata (e.g. `created`) expands the section and the match is visible and selected.
-- [ ] A term found in both the metadata and the body leaves the section collapsed.
-- [ ] No yellow sliver remains on the collapsed header while Find is open.
-- [ ] Next/Previous that moves from visible matches to a hidden-only state follows the same rule.
-- [ ] The offscreen gutter harness shows no overlapping line numbers while Find expands (at most 100 trials).
-- [ ] Manual check in light and dark.
+- [x] The check "are all matches inside the hidden range?" is a pure function with unit tests: only hidden, only visible, both, none, no frontmatter, already expanded.
+- [x] Typing a term found only in the metadata (e.g. `created`) expands the section and the match is visible and selected.
+- [x] A term found in both the metadata and the body leaves the section collapsed.
+- [x] No yellow sliver remains on the collapsed header while Find is open.
+- [x] Next/Previous that moves from visible matches to a hidden-only state follows the same rule.
+- [x] The offscreen gutter harness shows no overlapping line numbers while Find expands (at most 100 trials).
+- [x] Manual check in light and dark.

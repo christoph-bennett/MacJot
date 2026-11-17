@@ -226,7 +226,11 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         NSTextFinder.Action(rawValue: sender.tag).map(find)
     }
 
+    /// Whether the last Find step went backwards (⇧⌘G); the find bar's own arrows aren't seen.
+    private var findingBackward = false
+
     private func find(_ action: NSTextFinder.Action) {
+        if action == .nextMatch || action == .previousMatch { findingBackward = action == .previousMatch }
         // The text view's finder reads the action from the sender's tag.
         let sender = NSMenuItem()
         sender.tag = action.rawValue
@@ -1016,11 +1020,20 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         // Collapsed frontmatter isn't there to the cursor: arrows, clicks and ⌘A
         // start at the Title instead.
         if let hidden = hiddenFrontmatter(), new.location < hidden.length {
-            // Only Find selects text in there: a match in the collapsed section
-            // expands it (ticket 51), so no match stays hidden.
-            if new.length > 0, NSMaxRange(new) <= hidden.length {
-                DispatchQueue.main.async { [weak self] in self?.revealFindMatch(new) }
-                return new
+            // With the find bar open, a selection in there is a Find match (tickets 51,
+            // 52): it expands the section when the hidden text holds the only
+            // matches; otherwise the selection goes to the next visible match.
+            if new.length > 0, NSMaxRange(new) <= hidden.length, textView.enclosingScrollView?.isFindBarVisible == true {
+                let term = NSPasteboard(name: .find).string(forType: .string) ?? ""
+                if term.isEmpty || MarkdownEditing.findMatchesOnlyHidden(term, in: textView.string, hidden: hidden) {
+                    DispatchQueue.main.async { [weak self] in self?.revealFindMatch(new) }
+                    return new
+                }
+                let from = old.length > 0 ? (findingBackward ? old.location : NSMaxRange(old)) : old.location
+                if let visible = MarkdownEditing.nextVisibleFindMatch(term, in: textView.string, from: from, hidden: hidden,
+                                                                      backward: findingBackward) {
+                    return visible
+                }
             }
             return NSRange(location: hidden.length, length: max(0, NSMaxRange(new) - hidden.length))
         }
@@ -1140,6 +1153,17 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
         textView.usesFontPanel = false
         textView.usesFindBar = true  // ticket 24
         textView.isIncrementalSearchingEnabled = true
+        // Incremental search only highlights while typing and selects nothing, so the
+        // Frontmatter Section (ticket 52) reacts to the find field's text instead.
+        NotificationCenter.default.addObserver(forName: NSControl.textDidChangeNotification, object: nil, queue: .main) { [weak self] note in
+            guard let self, let field = note.object as? NSSearchField,
+                  let bar = self.textView.enclosingScrollView?.findBarView, field.isDescendant(of: bar),
+                  let hidden = self.hiddenFrontmatter(),
+                  MarkdownEditing.findMatchesOnlyHidden(field.stringValue, in: self.textView.string, hidden: hidden)
+            else { return }
+            let match = (self.textView.string as NSString).range(of: field.stringValue, options: .caseInsensitive, range: hidden)
+            self.revealFindMatch(match)
+        }
         textView.textStorage?.delegate = styler
         textView.typingAttributes = styler.baseAttributes
         textView.textContainerInset = NSSize(width: 12, height: 12)

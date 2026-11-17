@@ -234,3 +234,51 @@ struct MarkdownEditingTests {
         #expect(MarkdownEditing.frontmatterRange(in: "Title\n---\nx\n---") == nil)
     }
 }
+
+/// Ticket 52: Find expands a collapsed Frontmatter Section only when its hidden
+/// text holds the only matches.
+struct FindHiddenMatchTests {
+    private let note = "---\nsource: Safari\ncreated: today\n---\nTitle\n\nBody about Safari and notes\n"
+
+    private func onlyHidden(_ term: String, _ text: String, collapsed: Bool = true) -> Bool {
+        let hidden = collapsed ? MarkdownEditing.frontmatterHiddenRange(in: text) : nil
+        return MarkdownEditing.findMatchesOnlyHidden(term, in: text, hidden: hidden)
+    }
+
+    @Test func onlyHiddenMatchesExpand() {
+        #expect(onlyHidden("created", note))
+        #expect(onlyHidden("CREATED", note))  // Find ignores case
+    }
+
+    @Test func aVisibleMatchKeepsItCollapsed() {
+        #expect(!onlyHidden("Safari", note))  // in both
+        #expect(!onlyHidden("notes", note))   // only visible
+    }
+
+    @Test func noMatchOrEmptyTermDoesNothing() {
+        #expect(!onlyHidden("zebra", note))
+        #expect(!onlyHidden("", note))
+    }
+
+    @Test func withoutCollapsedFrontmatterNothingIsHidden() {
+        #expect(!onlyHidden("created", "Title\n\ncreated\n"))  // no frontmatter
+        #expect(!onlyHidden("created", note, collapsed: false))  // already expanded
+    }
+
+    @Test func theNextVisibleMatchWrapsPastTheHiddenText() {
+        let text = "---\nsource: Safari\n---\nTitle\n\nSafari one\n\nSafari two\n"
+        let hidden = MarkdownEditing.frontmatterHiddenRange(in: text)!
+        let ns = text as NSString
+        let first = ns.range(of: "Safari one").location
+        let second = ns.range(of: "Safari two").location
+        func next(_ from: Int, backward: Bool = false) -> Int? {
+            MarkdownEditing.nextVisibleFindMatch("safari", in: text, from: from, hidden: hidden, backward: backward)?.location
+        }
+        #expect(next(0) == first)
+        #expect(next(first + 6) == second)          // from the end of the current match
+        #expect(next(second + 6) == first)          // wraps past the hidden text
+        #expect(next(first, backward: true) == second)  // Previous from the first wraps to the last
+        #expect(next(second, backward: true) == first)
+        #expect(MarkdownEditing.nextVisibleFindMatch("created", in: text, from: 0, hidden: hidden) == nil)
+    }
+}
