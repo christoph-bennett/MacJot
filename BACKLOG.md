@@ -4,9 +4,11 @@ Ideas and requirements not yet built. New items go to **Inbox**; when triaged th
 
 ## Inbox
 
-- **The Capture Panel stays in front, greyed out, when another app is activated.** With the panel open, switching to another app (e.g. ⌘-Tab to Terminal) gives that app the keyboard focus but the panel keeps floating above it, dimmed as an inactive window. That looks wrong. Open: hide it when MacJot loses focus (as Spotlight does), or let it step back behind the other app's windows; how this meets the "pinned while writing" use and the rule that an untouched Draft hides on focus loss (ticket 2) is to be decided. Reported 2026-11-15.
-
 ## Planned
+
+Decided 2026-11-17 (grilled):
+
+- **The Capture Panel steps back when another app takes focus**, instead of floating dimmed above it. A panel with content drops to normal level (behind the other app's windows) when it loses Key to another app, and returns to floating on Key or on summon; an untouched Draft still hides (ticket 2). Triggered by Key status, not app activation, because the panel is non-activating. → ticket 54
 
 Decided 2026-11-15 (grilled; spec and tickets follow):
 

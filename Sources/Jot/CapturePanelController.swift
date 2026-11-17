@@ -586,6 +586,7 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
     private func show() {
         if !panel.isVisible { keepOnScreen() }
         tooltips.restore()
+        panel.level = .floating  // it may have stepped back behind another app
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(textView)
     }
@@ -913,14 +914,21 @@ final class CapturePanelController: NSObject, NSWindowDelegate, NSTextViewDelega
                               width: size.width, height: size.height), display: false)
     }
 
-    /// An untouched Draft shouldn't linger after an accidental summon. Checked one
-    /// run-loop turn later, outside AppKit's key-change callback, and only if focus
-    /// went to another app rather than to one of MacJot's own windows (e.g. an alert).
+    /// Focus went to another app (no MacJot window is key afterwards, so an alert or
+    /// Settings doesn't count). An untouched Draft shouldn't linger after an accidental
+    /// summon: it closes. A panel with content steps back behind the other app's windows
+    /// instead of floating dimmed above them; becoming key or a summon raises it again.
+    /// The panel is non-activating, so MacJot's own activation says nothing here; key status does.
+    /// Checked one run-loop turn later, outside AppKit's key-change callback.
     func windowDidResignKey(_ notification: Notification) {
         Task { [weak self] in
-            guard let self, panel.isVisible, NSApp.keyWindow == nil, folder.isBlankDraft else { return }
-            panel.close()
+            guard let self, panel.isVisible, NSApp.keyWindow == nil else { return }
+            if folder.isBlankDraft { panel.close() } else { panel.level = .normal }
         }
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        panel.level = .floating
     }
 
     /// The next summon starts without a stale search.

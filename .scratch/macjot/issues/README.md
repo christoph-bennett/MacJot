@@ -15,6 +15,7 @@ One file per ticket, each with its full description and acceptance criteria. Thi
 | 51 | [Frontmatter Section: auto-expand setting and Find](51-frontmatter-section-setting-and-find.md) | 44 | done |
 | 52 | [Find expands Note metadata when only hidden text matches](52-find-expands-note-metadata.md) | none | done |
 | 53 | [Global search also searches Note metadata](53-global-search-note-metadata.md) | none | done |
+| 54 | [Capture Panel steps back when another app takes focus](54-capture-panel-steps-back.md) | none | ready-for-agent |
 
 Statuses: `ready-for-agent` (can be picked up once its blockers are done) → `done` → `done` (checked by hand).
 
