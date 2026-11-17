@@ -8,13 +8,21 @@ MacJot is a menu bar app for macOS that lets you write a note the moment you thi
   <img src="docs/screenshot-light.png" alt="MacJot's Capture Panel with a note open in the editor and the note list beside it" width="720">
 </picture>
 
+## What's new (updated on Nov. 17, 2026)
+
+**Clips: keep what you read, and where it came from.** Select text in any app, press ⌃⌥C, and it becomes a new note, without opening MacJot and without leaving what you were doing. A small "Added to MacJot" pill confirms it, and your clipboard stays as it was. Each Clip remembers the app and the page it came from, so you can find the source again later. Prefer the menu? "Clip to MacJot" is also in the Services menu of most apps, and needs no extra permission. The first time you use the hotkey, macOS asks you to allow MacJot to read the selection (it's called "Device Control and Data Access" on macOS 27, "Accessibility" on older versions). "Last Clip" in the menu bar menu takes you straight back to the note you just made.
+
+**Note metadata, out of your way.** A note that starts with a properties block (the Clips do) shows it as its own collapsed section at the top of the editor. One line tells you the source at a glance; click it, or press ⌥⌘P, to see and edit the details. If you'd rather see them always, there's a setting for that. Find opens the section by itself when the word you're looking for is in there.
+
+**Search that looks at metadata too.** Searching all your notes now also finds what's in a note's properties. Search for "Safari" and you get every note you clipped from Safari, and the row shows the matching line, so you see why it matched.
+
 ## Features
 
-- Two global hotkeys: ⌃⌥N opens a new note, ⌃⌥F opens the note list with the search field ready. You can change both in Settings.
+- Three global hotkeys: ⌃⌥N opens a new note, ⌃⌥F opens the note list with the search field ready, ⌃⌥C clips the selected text from any app into a new note. You can change all three in Settings.
 - Notes are `.md` files in one folder (`~/Documents/MacJot` unless you pick another). MacJot has no database.
 - A note's first line is its title, and the filename follows it. Change the title and MacJot renames the file.
 - MacJot saves while you type. If it crashes before a new note has its file, it restores the text on the next launch.
-- Search finds notes by several words in any order, or by an exact phrase in quotes. It ignores case and accents.
+- Search finds notes by several words in any order, or by an exact phrase in quotes, in the text and in a note's properties. It ignores case and accents.
 - The editor shows Markdown as you type, with the syntax dimmed. If you'd rather not type the syntax, a formatting toolbar adds headings, bold, italic, lists, checklists, quotes, code blocks and links.
 - Finder's Open With can open any `.md` file in MacJot. Files outside the notes folder open read-only until you move them in with one click.
 - MacJot can start when you log in.
