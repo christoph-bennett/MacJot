@@ -16,6 +16,8 @@ MacJot is a menu bar app for macOS that lets you write a note the moment you thi
 
 **Search that looks at metadata too.** Searching all your notes now also finds what's in a note's properties. Search for "Safari" and you get every note you clipped from Safari, and the row shows the matching line, so you see why it matched.
 
+**Calmer window handling.** When you switch to another app while a note is open, the MacJot panel now steps back behind that app's windows instead of floating dimmed on top of them. The hotkeys, the menu bar item or a click on the panel bring it forward again, with your text as you left it.
+
 ## Features
 
 - Three global hotkeys: ⌃⌥N opens a new note, ⌃⌥F opens the note list with the search field ready, ⌃⌥C clips the selected text from any app into a new note. You can change all three in Settings.

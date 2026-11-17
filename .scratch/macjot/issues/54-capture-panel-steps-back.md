@@ -8,7 +8,7 @@ An untouched Draft still closes when focus leaves (ticket 2); only a panel with 
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Panel with content, ⌘-Tab to another app: the panel sits behind that app's windows, not dimmed above them; its content is unchanged.
 - [x] Capture Hotkey, Search Hotkey and the menu bar item each bring it back to the front, content kept (ticket 2), and writing continues.
